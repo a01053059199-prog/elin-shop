@@ -609,6 +609,8 @@
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+    .mobile-bottom-nav { display: none; }
+
     @media (max-width: 980px) {
       .utility, .nav { display: none; }
       .mobile-menu { display: inline-grid; }
@@ -624,29 +626,174 @@
     }
 
     @media (max-width: 720px) {
-      .top-alert { font-size: 12px; }
-      .header-inner { padding: 13px 14px; }
-      .brand { font-size: 30px; }
-      .hero { min-height: 520px; }
-      .hero-content { padding: 0 16px 38px; }
-      .hero h1 { font-size: 48px; }
-      .section { padding: 42px 16px; }
-      .section-head { display: block; }
-      .product-tools { justify-content: flex-start; margin-top: 16px; }
-      .category-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 12px; }
+      body { padding-bottom: 68px; }
+      .top-alert { font-size: 11px; padding: 7px 10px; }
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        box-shadow: 0 8px 22px rgba(0,0,0,.06);
+      }
+      .header-inner {
+        grid-template-columns: 38px 1fr auto;
+        padding: 10px 12px 12px;
+        gap: 8px;
+      }
+      .brand {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: center;
+        font-size: 27px;
+      }
+      .header-actions { grid-column: 3; grid-row: 1; }
+      .mobile-menu { grid-column: 1; grid-row: 1; }
+      .search {
+        display: flex;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+        height: 38px;
+        margin-top: 3px;
+      }
+      .mobile-panel {
+        position: fixed;
+        inset: 104px 12px auto;
+        z-index: 70;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+      .hero { display: none; }
+      .section { padding: 22px 12px; }
+      #category { padding-top: 16px; }
+      .section-head { display: block; margin-bottom: 12px; }
+      .section-title { font-size: 20px; }
+      .section-note { font-size: 12px; margin-top: 5px; }
+      .product-tools {
+        position: sticky;
+        top: 105px;
+        z-index: 40;
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 7px;
+        margin: 12px -12px 0;
+        padding: 9px 12px;
+        overflow-x: auto;
+        background: rgba(251,250,248,.96);
+        border-block: 1px solid var(--line);
+      }
+      .chip {
+        flex: 0 0 auto;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      .category-strip {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        margin: 0 -12px;
+        padding: 0 12px 6px;
+        scroll-snap-type: x mandatory;
+      }
+      .category-card {
+        flex: 0 0 118px;
+        height: 92px;
+        scroll-snap-align: start;
+      }
+      .category-card strong { font-size: 14px; }
+      .category-card span { display: none; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 10px; }
+      .product-media { aspect-ratio: 1 / 1.22; border-radius: 4px; }
+      .badge {
+        top: 7px;
+        left: 7px;
+        padding: 4px 7px;
+        font-size: 10px;
+      }
+      .quick {
+        right: 7px;
+        bottom: 7px;
+        opacity: 1;
+        transform: none;
+      }
+      .quick button {
+        width: 31px;
+        height: 31px;
+        font-size: 13px;
+      }
+      .product-info { padding-top: 9px; }
+      .product-top {
+        display: block;
+        font-size: 10px;
+        margin-bottom: 4px;
+      }
+      .product-top span + span { display: none; }
+      .product-name {
+        min-height: 40px;
+        margin-bottom: 5px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .price {
+        display: block;
+        font-size: 13px;
+      }
+      .price del {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+      }
       .quick { opacity: 1; transform: none; }
       .promo-metrics { grid-template-columns: 1fr; }
       .lookbook { grid-template-columns: 1fr; }
       .review-grid { grid-template-columns: 1fr; }
       .outline-btn { margin: 10px 0 0; }
+      .promo-band, #lookbook, #reviews { display: none; }
+      .drawer-panel {
+        width: 100%;
+        max-width: none;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+        top: auto;
+        height: min(72vh, 620px);
+      }
+      .drawer.open .drawer-panel { transform: translateY(0); }
+      .drawer-backdrop { background: rgba(0,0,0,.35); }
+      .toast { bottom: 78px; }
+      .footer { padding-bottom: 90px; }
+      .mobile-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 55;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        height: 62px;
+        padding-bottom: env(safe-area-inset-bottom);
+        background: #fff;
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -8px 24px rgba(0,0,0,.08);
+      }
+      .mobile-bottom-nav a,
+      .mobile-bottom-nav button {
+        display: grid;
+        place-items: center;
+        gap: 2px;
+        border: 0;
+        background: transparent;
+        color: #171717;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .mobile-bottom-nav svg { width: 20px; height: 20px; }
     }
 
     @media (max-width: 430px) {
-      .category-strip, .grid { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .product-media { aspect-ratio: 1 / 1.12; }
-      .hero h1 { font-size: 42px; }
-      .brand { font-size: 27px; }
+      .brand { font-size: 26px; }
       .icon-btn { width: 35px; height: 35px; }
     }
   </style>
@@ -836,6 +983,25 @@
   </aside>
   <div class="toast" id="toast">장바구니에 담았습니다.</div>
 
+  <nav class="mobile-bottom-nav" aria-label="모바일 빠른 메뉴">
+    <a href="/">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3V10.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>홈</span>
+    </a>
+    <a href="#products">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>상품</span>
+    </a>
+    <button type="button" id="mobileCartBtn">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 8h15l-1.7 9H7.7L5.7 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor"/></svg>
+      <span>장바구니</span>
+    </button>
+    <a href="/mypage.html">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>마이</span>
+    </a>
+  </nav>
+
   <script>
     const products = [
       { id: "p1", name: "엘린 클래식 트위드 자켓", category: "women", keywords: "여성 의류 자켓", label: "BEST", price: 168000, old: 198000, stock: 12, image: "https://images.unsplash.com/photo-1548624149-f9b185c22e9d?auto=format&fit=crop&w=800&q=80" },
@@ -941,6 +1107,10 @@
     });
 
     document.querySelector("#cartBtn").addEventListener("click", () => {
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+    });
+    document.querySelector("#mobileCartBtn").addEventListener("click", () => {
       drawer.classList.add("open");
       drawer.setAttribute("aria-hidden", "false");
     });
