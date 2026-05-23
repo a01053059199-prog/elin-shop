@@ -19,6 +19,7 @@
     label { display: block; margin: 14px 0 7px; font-weight: 800; font-size: 14px; }
     input, textarea { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 12px; outline: 0; background: #fff; }
     textarea { min-height: 96px; resize: vertical; }
+    select { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 12px; outline: 0; background: #fff; }
     .item { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid #eee7df; }
     .item img { width: 72px; height: 72px; border-radius: 6px; object-fit: cover; }
     .item b { display: block; margin-bottom: 5px; }
@@ -43,9 +44,18 @@
         <input id="phone" required placeholder="010-0000-0000" autocomplete="tel" />
         <label for="address">배송지</label>
         <input id="address" required autocomplete="street-address" />
-        <label for="memo">배송 메모</label>
-        <textarea id="memo" placeholder="공동현관 비밀번호, 요청사항 등"></textarea>
-        <div class="message" id="message"></div>
+      <label for="memo">배송 메모</label>
+      <textarea id="memo" placeholder="공동현관 비밀번호, 요청사항 등"></textarea>
+      <label for="depositor">입금자명</label>
+      <input id="depositor" required placeholder="주문자와 다르면 실제 입금자명을 입력하세요" />
+      <label for="bank">입금 계좌</label>
+      <select id="bank">
+        <option value="신한은행 110-000-000000 ELIN">신한은행 110-000-000000 ELIN</option>
+        <option value="국민은행 000000-00-000000 ELIN">국민은행 000000-00-000000 ELIN</option>
+        <option value="카카오뱅크 3333-00-0000000 ELIN">카카오뱅크 3333-00-0000000 ELIN</option>
+      </select>
+      <div class="message show" style="display:block">주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다.</div>
+      <div class="message" id="message"></div>
       </form>
     </section>
     <aside class="panel">
@@ -80,7 +90,9 @@
           name: document.querySelector("#name").value,
           phone: document.querySelector("#phone").value,
           address: document.querySelector("#address").value,
-          memo: document.querySelector("#memo").value
+          memo: document.querySelector("#memo").value,
+          depositor: document.querySelector("#depositor").value,
+          bank: document.querySelector("#bank").value
         },
         items: cart.map(item => ({ id: item.id, qty: item.qty, color: item.color, size: item.size }))
       };
@@ -96,7 +108,7 @@
         return;
       }
       localStorage.removeItem("elinCart");
-      message.innerHTML = `주문이 저장되었습니다.<br>주문번호: <strong>${result.id}</strong><br>관리자 페이지에서 확인할 수 있습니다.`;
+      message.innerHTML = `주문이 저장되었습니다.<br>주문번호: <strong>${result.id}</strong><br>입금계좌: <strong>${result.customer.bank}</strong><br>입금자명: <strong>${result.customer.depositor}</strong>`;
     });
     async function loadMember() {
       const response = await fetch("/api/auth/me");
@@ -106,6 +118,7 @@
       document.querySelector("#name").value = result.member.name || "";
       document.querySelector("#phone").value = result.member.phone || "";
       document.querySelector("#address").value = result.member.address || "";
+      document.querySelector("#depositor").value = result.member.name || "";
       document.querySelector("#logoutLink").style.display = "";
     }
     document.querySelector("#logoutLink").addEventListener("click", async event => {

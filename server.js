@@ -267,12 +267,15 @@ async function createOrder(body, member) {
 
   const order = {
     id: `ELIN-${Date.now()}`,
-    status: "주문접수",
+    status: "입금대기",
     customer: {
       name: String(body.customer.name).trim(),
       phone: String(body.customer.phone).trim(),
       address: String(body.customer.address).trim(),
       memo: String(body.customer.memo || "").trim(),
+      depositor: String(body.customer.depositor || body.customer.name).trim(),
+      bank: String(body.customer.bank || "신한은행 110-000-000000 ELIN").trim(),
+      paymentMethod: "무통장입금",
       memberId: member?.id || null,
       email: member?.email || ""
     },
@@ -476,7 +479,7 @@ async function handleApi(req, res, url) {
     if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     const body = await readBody(req);
-    return send(res, 200, await updateOrderStatus(id, String(body.status || "주문접수")));
+    return send(res, 200, await updateOrderStatus(id, String(body.status || "입금대기")));
   }
 
   return send(res, 404, { error: "API 경로를 찾을 수 없습니다." });

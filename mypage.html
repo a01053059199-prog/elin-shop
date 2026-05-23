@@ -46,6 +46,7 @@
         <article class="order">
           <strong>${order.id}</strong>
           <div class="meta">${order.status} · ${new Date(order.createdAt || order.created_at).toLocaleString("ko-KR")}</div>
+          <div class="meta">${order.customer.paymentMethod || "무통장입금"} · ${order.customer.bank || ""} · 입금자 ${order.customer.depositor || order.customer.name}</div>
           <div class="meta">${order.items.map(item => `${item.name} ${item.color || "기본"}/${item.size || "FREE"} ${item.qty}개`).join(", ")}</div>
           <div><strong>${money(order.total)}</strong></div>
         </article>

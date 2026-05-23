@@ -224,10 +224,11 @@
             <strong>${order.id}</strong>
             <div class="meta">${order.customer.name} · ${order.customer.phone} · ${order.customer.address}</div>
             <div class="meta">${order.items.map(item => `${item.name} ${item.qty}개`).join(", ")}</div>
+            <div class="meta">${order.customer.paymentMethod || "무통장입금"} · 입금자 ${order.customer.depositor || order.customer.name} · ${order.customer.bank || "계좌 미입력"}</div>
             <div class="meta">합계 ${money(order.total)} · 메모 ${order.customer.memo || "없음"}</div>
           </div>
           <div class="actions">
-            ${["주문접수", "결제확인", "배송준비", "배송중", "배송완료", "취소"].map(status => `<button class="ghost" onclick="updateOrder('${order.id}','${status}')">${status}</button>`).join("")}
+            ${["입금대기", "입금확인", "배송준비", "배송중", "배송완료", "취소"].map(status => `<button class="ghost" onclick="updateOrder('${order.id}','${status}')">${status}</button>`).join("")}
           </div>
         </article>
       `).join("") : "<p>아직 주문이 없습니다.</p>";
