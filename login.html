@@ -56,6 +56,9 @@
       message.textContent = "로그인되었습니다. 쇼핑몰로 이동합니다.";
       setTimeout(() => location.href = "/", 700);
     });
+    fetch("/api/auth/me").then(response => response.json()).then(result => {
+      if (result.member) location.href = "/";
+    });
   </script>
 </body>
 </html>

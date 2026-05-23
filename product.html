@@ -31,7 +31,7 @@
   </style>
 </head>
 <body>
-  <header><div class="bar"><a class="brand" href="/">ELIN</a><a href="/mypage.html">마이페이지</a></div></header>
+  <header><div class="bar"><a class="brand" href="/">ELIN</a><nav><a href="/mypage.html" id="memberLink">마이페이지</a> · <a href="#" id="logoutLink" style="display:none">로그아웃</a></nav></div></header>
   <main>
     <section class="media" id="media"></section>
     <section class="info" id="info">상품을 불러오는 중입니다.</section>
@@ -86,7 +86,23 @@
       else alert("장바구니에 담았습니다.");
     }
 
+    async function loadMemberNav() {
+      const response = await fetch("/api/auth/me");
+      if (!response.ok) return;
+      const result = await response.json();
+      if (!result.member) return;
+      document.querySelector("#memberLink").textContent = `${result.member.name}님`;
+      document.querySelector("#logoutLink").style.display = "";
+    }
+
+    document.querySelector("#logoutLink").addEventListener("click", async event => {
+      event.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST" });
+      location.href = "/";
+    });
+
     load();
+    loadMemberNav();
   </script>
 </body>
 </html>

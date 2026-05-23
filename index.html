@@ -656,8 +656,9 @@
 
   <header class="header">
     <div class="utility">
-      <a href="/login.html">로그인</a>
-      <a href="/signup.html">회원가입</a>
+      <a href="/login.html" id="loginLink">로그인</a>
+      <a href="/signup.html" id="signupLink">회원가입</a>
+      <a href="#" id="logoutLink" style="display:none">로그아웃</a>
       <a href="/mypage.html">주문조회</a>
       <a href="#">고객센터</a>
       <a href="/admin.html">관리자</a>
@@ -964,6 +965,24 @@
       document.querySelector("#mobilePanel").classList.toggle("open");
     });
 
+    async function loadMemberNav() {
+      const response = await fetch("/api/auth/me");
+      if (!response.ok) return;
+      const result = await response.json();
+      if (!result.member) return;
+      document.querySelector("#loginLink").textContent = `${result.member.name}님`;
+      document.querySelector("#loginLink").href = "/mypage.html";
+      document.querySelector("#signupLink").style.display = "none";
+      document.querySelector("#logoutLink").style.display = "";
+    }
+
+    document.querySelector("#logoutLink").addEventListener("click", async event => {
+      event.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST" });
+      localStorage.removeItem("elinCart");
+      location.href = "/";
+    });
+
     async function loadProducts() {
       try {
         const response = await fetch("/api/products");
@@ -976,6 +995,7 @@
     }
 
     loadProducts();
+    loadMemberNav();
   </script>
 </body>
 </html>

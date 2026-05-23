@@ -31,7 +31,7 @@
   </style>
 </head>
 <body>
-  <header><div class="bar"><a class="brand" href="/">ELIN</a><a href="/">쇼핑 계속하기</a></div></header>
+  <header><div class="bar"><a class="brand" href="/">ELIN</a><nav><a href="/">쇼핑 계속하기</a> · <a href="#" id="logoutLink" style="display:none">로그아웃</a></nav></div></header>
   <main>
     <section>
       <h1>주문서 작성</h1>
@@ -106,7 +106,13 @@
       document.querySelector("#name").value = result.member.name || "";
       document.querySelector("#phone").value = result.member.phone || "";
       document.querySelector("#address").value = result.member.address || "";
+      document.querySelector("#logoutLink").style.display = "";
     }
+    document.querySelector("#logoutLink").addEventListener("click", async event => {
+      event.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST" });
+      location.href = "/";
+    });
     render();
     loadMember();
   </script>
