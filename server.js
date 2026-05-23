@@ -113,6 +113,7 @@ function publicMember(member) {
   if (!member) return null;
   return {
     id: member.id,
+    username: member.username || "",
     email: member.email,
     name: member.name,
     phone: member.phone || "",
@@ -318,16 +319,31 @@ async function findMemberByEmail(email) {
   return members.find(member => member.email === normalized) || null;
 }
 
+async function findMemberByUsername(username) {
+  const normalized = String(username || "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (useSupabase) {
+    const members = await supabase(`members?username=eq.${encodeURIComponent(normalized)}&select=*`);
+    return members[0] || null;
+  }
+  const file = path.join(dataDir, "members.json");
+  await ensureJson(file, []);
+  const members = await readJson(file);
+  return members.find(member => member.username === normalized) || null;
+}
+
 async function createMember(input) {
-  const email = String(input.email || "").trim().toLowerCase();
+  const username = String(input.username || "").trim().toLowerCase();
+  const email = String(input.email || `${username}@elin.local`).trim().toLowerCase();
   const password = String(input.password || "");
   const name = String(input.name || "").trim();
-  if (!email.includes("@") || password.length < 4 || !name) {
-    throw new Error("이메일, 이름, 4자 이상 비밀번호를 입력하세요.");
+  if (!/^[a-z0-9_]{4,20}$/.test(username) || password.length < 4 || !name) {
+    throw new Error("아이디는 영문/숫자/_ 조합 4~20자, 비밀번호는 4자 이상이어야 합니다.");
   }
-  if (await findMemberByEmail(email)) throw new Error("이미 가입된 이메일입니다.");
+  if (await findMemberByUsername(username)) throw new Error("이미 사용 중인 아이디입니다.");
   const member = {
     id: crypto.randomUUID(),
+    username,
     email,
     password_hash: hashPassword(password),
     name,
@@ -391,9 +407,9 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/auth/login" && req.method === "POST") {
     const body = await readBody(req);
-    const member = await findMemberByEmail(body.email);
+    const member = await findMemberByUsername(body.username);
     if (!member || !verifyPassword(body.password, member.password_hash)) {
-      return send(res, 401, { error: "이메일 또는 비밀번호가 올바르지 않습니다." });
+      return send(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다." });
     }
     return startMemberSession(member, res);
   }
