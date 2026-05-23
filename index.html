@@ -898,9 +898,8 @@
       showToast();
     }
 
-    function removeFromCart(id) {
-      const index = cart.findIndex(item => item.id === id);
-      if (index > -1) cart.splice(index, 1);
+    function removeFromCart(index) {
+      cart.splice(Number(index), 1);
       renderCart();
     }
 
@@ -910,11 +909,11 @@
       cartCount.textContent = totalQty;
       cartTotal.textContent = money(totalPrice);
       localStorage.setItem("elinCart", JSON.stringify(cart));
-      cartList.innerHTML = cart.length ? cart.map(item => `
+      cartList.innerHTML = cart.length ? cart.map((item, index) => `
         <div class="cart-item">
           <img src="${item.image}" alt="${item.name}">
           <div><b>${item.name}</b><span>${item.color || "기본"} / ${item.size || "FREE"} · ${money(item.price)} · ${item.qty}개</span></div>
-          <button class="remove" type="button" aria-label="${item.name} 삭제" onclick="removeFromCart(${item.id})">×</button>
+          <button class="remove" type="button" aria-label="${item.name} 삭제" onclick="removeFromCart(${index})">×</button>
         </div>
       `).join("") : "<p style='color:#777;margin:0'>장바구니가 비어 있습니다.</p>";
     }

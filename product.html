@@ -524,7 +524,7 @@
       const qty = Math.max(1, Number(document.querySelector("#qty").value || 1));
       const existing = cart.find(item => item.id === product.id && item.color === color && item.size === size);
       if (existing) existing.qty += qty;
-      else cart.push({ ...product, qty, color, size });
+      else cart.push({ ...product, image: parseImages(product)[0] || product.image, qty, color, size });
       localStorage.setItem("elinCart", JSON.stringify(cart));
       if (goCheckout) location.href = "/checkout.html";
       else alert("장바구니에 담았습니다.");
