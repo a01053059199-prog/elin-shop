@@ -517,6 +517,99 @@
       grid-template-rows: auto 1fr auto;
     }
     .drawer.open .drawer-panel { transform: translateX(0); }
+    .cart-added {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,.12);
+    }
+    .cart-added.open { display: flex; }
+    .cart-added-box {
+      width: min(460px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 28px 34px 34px;
+      position: relative;
+    }
+    .cart-added-close {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      background: transparent;
+      font-size: 34px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .cart-added-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 26px;
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .cart-added-title span:first-child { font-size: 18px; }
+    .cart-added-product {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .cart-added-product img {
+      width: 88px;
+      height: 88px;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .cart-added-product strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 17px;
+      line-height: 1.35;
+      word-break: keep-all;
+    }
+    .cart-added-product span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .cart-added-actions {
+      display: grid;
+      gap: 11px;
+    }
+    .cart-added-actions button,
+    .cart-added-actions a {
+      display: grid;
+      place-items: center;
+      min-height: 58px;
+      border: 1px solid var(--ink);
+      background: #fff;
+      color: var(--ink);
+      font-weight: 900;
+      text-align: center;
+      cursor: pointer;
+    }
+    .cart-added-actions .checkout-now {
+      background: var(--ink);
+      color: #fff;
+    }
+    .cart-added-actions .continue {
+      min-height: 34px;
+      border: 0;
+      text-decoration: underline;
+      background: transparent;
+      font-weight: 500;
+    }
     .drawer-head, .drawer-foot {
       padding: 18px;
       border-bottom: 1px solid var(--line);
@@ -760,6 +853,21 @@
       }
       .drawer.open .drawer-panel { transform: translateY(0); }
       .drawer-backdrop { background: rgba(0,0,0,.35); }
+      .cart-added {
+        align-items: flex-start;
+        padding: 82px 16px 20px;
+      }
+      .cart-added-box {
+        padding: 26px 26px 30px;
+      }
+      .cart-added-product {
+        grid-template-columns: 76px 1fr;
+        gap: 14px;
+      }
+      .cart-added-product img {
+        width: 76px;
+        height: 76px;
+      }
       .toast { bottom: 78px; }
       .footer { padding-bottom: 90px; }
       .mobile-bottom-nav {
@@ -981,6 +1089,19 @@
       </div>
     </div>
   </aside>
+  <div class="cart-added" id="cartAdded" aria-hidden="true">
+    <div class="cart-added-box" role="dialog" aria-label="카트에 추가된 품목">
+      <button class="cart-added-close" type="button" id="cartAddedClose" aria-label="닫기">×</button>
+      <div class="cart-added-title"><span>✓</span><span>카트에 추가된 품목</span></div>
+      <div class="cart-added-product" id="cartAddedProduct"></div>
+      <div class="cart-added-actions">
+        <button type="button" id="cartAddedView">카트 보기(0)</button>
+        <a class="checkout-now" href="/checkout.html">결제</a>
+        <button class="continue" type="button" id="cartAddedContinue">쇼핑 계속하기</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast">장바구니에 담았습니다.</div>
 
   <nav class="mobile-bottom-nav" aria-label="모바일 빠른 메뉴">
@@ -1021,6 +1142,9 @@
     const resultNote = document.querySelector("#resultNote");
     const toast = document.querySelector("#toast");
     const drawer = document.querySelector("#drawer");
+    const cartAdded = document.querySelector("#cartAdded");
+    const cartAddedProduct = document.querySelector("#cartAddedProduct");
+    const cartAddedView = document.querySelector("#cartAddedView");
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
     let searchTerm = "";
@@ -1060,8 +1184,7 @@
       if (existing && !existing.color && !existing.size) existing.qty += 1;
       else cart.push({ ...product, qty: 1, color: "기본", size: "FREE" });
       renderCart();
-      toast.textContent = "장바구니에 담았습니다.";
-      showToast();
+      showCartAdded({ ...product, color: "기본", size: "FREE", qty: 1 });
     }
 
     function removeFromCart(index) {
@@ -1082,6 +1205,25 @@
           <button class="remove" type="button" aria-label="${item.name} 삭제" onclick="removeFromCart(${index})">×</button>
         </div>
       `).join("") : "<p style='color:#777;margin:0'>장바구니가 비어 있습니다.</p>";
+    }
+
+    function showCartAdded(item) {
+      const totalQty = cart.reduce((sum, cartItem) => sum + Number(cartItem.qty || 0), 0);
+      cartAddedProduct.innerHTML = `
+        <img src="${item.image}" alt="${item.name}">
+        <div>
+          <strong>${item.name}</strong>
+          <span>${item.category || "상품"} · ${item.color || "기본"} / ${item.size || "FREE"}</span>
+        </div>
+      `;
+      cartAddedView.textContent = `카트 보기(${totalQty})`;
+      cartAdded.classList.add("open");
+      cartAdded.setAttribute("aria-hidden", "false");
+    }
+
+    function closeCartAdded() {
+      cartAdded.classList.remove("open");
+      cartAdded.setAttribute("aria-hidden", "true");
     }
 
     function showToast() {
@@ -1111,6 +1253,16 @@
       drawer.setAttribute("aria-hidden", "false");
     });
     document.querySelector("#mobileCartBtn").addEventListener("click", () => {
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+    });
+    document.querySelector("#cartAddedClose").addEventListener("click", closeCartAdded);
+    document.querySelector("#cartAddedContinue").addEventListener("click", closeCartAdded);
+    document.querySelector("#cartAdded").addEventListener("click", event => {
+      if (event.target.id === "cartAdded") closeCartAdded();
+    });
+    document.querySelector("#cartAddedView").addEventListener("click", () => {
+      closeCartAdded();
       drawer.classList.add("open");
       drawer.setAttribute("aria-hidden", "false");
     });
