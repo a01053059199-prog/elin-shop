@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ELIN 회원가입</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fbfaf8; color: #171717; font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif; }
+    a { color: inherit; }
+    .auth { width: min(440px, calc(100% - 32px)); background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 26px; }
+    .brand { display: block; text-align: center; font-family: Georgia, "Times New Roman", serif; font-size: 38px; letter-spacing: .08em; text-decoration: none; margin-bottom: 22px; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { margin: 0 0 18px; color: #6a6a6a; line-height: 1.6; }
+    label { display: block; margin: 13px 0 7px; font-weight: 800; font-size: 14px; }
+    input { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 12px; outline: 0; }
+    button { width: 100%; height: 46px; margin-top: 18px; border: 0; border-radius: 4px; background: #171717; color: #fff; font-weight: 900; cursor: pointer; }
+    .message { display: none; margin-top: 14px; padding: 12px; border-radius: 6px; background: #f3f0ea; color: #40513b; line-height: 1.5; }
+    .message.show { display: block; }
+    .foot { margin-top: 18px; text-align: center; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main class="auth">
+    <a class="brand" href="/">ELIN</a>
+    <h1>회원가입</h1>
+    <p>가입하면 주문서에 배송 정보가 자동 입력되고, 주문과 회원 정보를 DB에 저장할 수 있습니다.</p>
+    <form id="signupForm">
+      <label for="email">이메일</label>
+      <input id="email" type="email" required autocomplete="email" />
+      <label for="password">비밀번호</label>
+      <input id="password" type="password" required minlength="4" autocomplete="new-password" />
+      <label for="name">이름</label>
+      <input id="name" required autocomplete="name" />
+      <label for="phone">연락처</label>
+      <input id="phone" autocomplete="tel" placeholder="010-0000-0000" />
+      <label for="address">기본 배송지</label>
+      <input id="address" autocomplete="street-address" />
+      <button type="submit">가입하기</button>
+      <div class="message" id="message"></div>
+    </form>
+    <div class="foot">이미 계정이 있나요? <a href="/login.html">로그인</a></div>
+  </main>
+  <script>
+    const message = document.querySelector("#message");
+    document.querySelector("#signupForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const payload = {
+        email: document.querySelector("#email").value,
+        password: document.querySelector("#password").value,
+        name: document.querySelector("#name").value,
+        phone: document.querySelector("#phone").value,
+        address: document.querySelector("#address").value
+      };
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      message.classList.add("show");
+      if (!response.ok) {
+        message.textContent = result.error || "회원가입에 실패했습니다.";
+        return;
+      }
+      message.textContent = "가입되었습니다. 쇼핑몰로 이동합니다.";
+      setTimeout(() => location.href = "/", 700);
+    });
+  </script>
+</body>
+</html>

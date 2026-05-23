@@ -11,7 +11,12 @@ const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
-const sessions = new Set();
+const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
+const useSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+const adminSessions = new Set();
+const memberSessions = new Map();
 
 const seedProducts = [
   { id: "p1", name: "엘린 클래식 트위드 자켓", category: "women", keywords: "여성 의류 자켓", label: "BEST", price: 168000, old: 198000, stock: 12, image: "https://images.unsplash.com/photo-1548624149-f9b185c22e9d?auto=format&fit=crop&w=800&q=80" },
@@ -57,14 +62,9 @@ async function writeJson(file, value) {
   await fs.writeFile(file, JSON.stringify(value, null, 2), "utf8");
 }
 
-function send(res, status, body, type = "application/json; charset=utf-8") {
-  res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store" });
+function send(res, status, body, type = "application/json; charset=utf-8", headers = {}) {
+  res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store", ...headers });
   res.end(type.startsWith("application/json") ? JSON.stringify(body) : body);
-}
-
-function sendWithHeaders(res, status, body, headers) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers });
-  res.end(JSON.stringify(body));
 }
 
 function readBody(req) {
@@ -87,13 +87,56 @@ function readBody(req) {
   });
 }
 
+function getCookies(req) {
+  return Object.fromEntries(String(req.headers.cookie || "").split(";").map(part => {
+    const [key, ...rest] = part.trim().split("=");
+    return [key, decodeURIComponent(rest.join("="))];
+  }).filter(([key]) => key));
+}
+
+function setCookie(name, value, maxAge = 86400) {
+  return `${name}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+}
+
 function requireAdmin(req) {
   if (req.headers["x-admin-pin"] === ADMIN_PIN) return true;
-  const cookies = Object.fromEntries(String(req.headers.cookie || "").split(";").map(part => {
-    const [key, ...rest] = part.trim().split("=");
-    return [key, rest.join("=")];
-  }).filter(([key]) => key));
-  return Boolean(cookies.elin_admin_session && sessions.has(cookies.elin_admin_session));
+  const token = getCookies(req).elin_admin_session;
+  return Boolean(token && adminSessions.has(token));
+}
+
+function currentMember(req) {
+  const token = getCookies(req).elin_member_session;
+  return token ? memberSessions.get(token) : undefined;
+}
+
+function publicMember(member) {
+  if (!member) return null;
+  return {
+    id: member.id,
+    email: member.email,
+    name: member.name,
+    phone: member.phone || "",
+    address: member.address || ""
+  };
+}
+
+async function supabase(pathname, options = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    const message = data?.message || data?.hint || `Supabase request failed: ${response.status}`;
+    throw new Error(message);
+  }
+  return data;
 }
 
 function cleanProduct(input) {
@@ -116,6 +159,205 @@ function cleanProduct(input) {
   };
 }
 
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const [salt, expected] = String(stored || "").split(":");
+  if (!salt || !expected) return false;
+  const actual = hashPassword(password, salt).split(":")[1];
+  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+}
+
+async function listProducts() {
+  if (useSupabase) return await supabase("products?select=*&order=created_at.desc");
+  return await readJson(productsFile);
+}
+
+async function createProduct(input) {
+  const product = cleanProduct(input);
+  if (useSupabase) {
+    const [created] = await supabase("products", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(product)
+    });
+    return created;
+  }
+  const products = await readJson(productsFile);
+  products.unshift(product);
+  await writeJson(productsFile, products);
+  return product;
+}
+
+async function updateProduct(id, input) {
+  const product = cleanProduct({ ...input, id });
+  if (useSupabase) {
+    const [updated] = await supabase(`products?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(product)
+    });
+    if (!updated) throw new Error("상품을 찾을 수 없습니다.");
+    return updated;
+  }
+  const products = await readJson(productsFile);
+  const index = products.findIndex(item => item.id === id);
+  if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
+  products[index] = product;
+  await writeJson(productsFile, products);
+  return product;
+}
+
+async function deleteProduct(id) {
+  if (useSupabase) {
+    await supabase(`products?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    return;
+  }
+  const products = await readJson(productsFile);
+  await writeJson(productsFile, products.filter(product => product.id !== id));
+}
+
+async function listOrders() {
+  const orders = useSupabase ? await supabase("orders?select=*&order=created_at.desc") : await readJson(ordersFile);
+  return orders.map(order => ({ ...order, createdAt: order.createdAt || order.created_at }));
+}
+
+async function createOrder(body, member) {
+  const products = await listProducts();
+  const items = Array.isArray(body.items) ? body.items : [];
+  if (!body.customer?.name || !body.customer?.phone || !body.customer?.address || items.length === 0) {
+    throw new Error("주문자 정보와 상품이 필요합니다.");
+  }
+
+  const normalized = items.map(item => {
+    const product = products.find(candidate => candidate.id === item.id);
+    if (!product) throw new Error("존재하지 않는 상품이 포함되어 있습니다.");
+    const qty = Math.max(1, Number(item.qty || 1));
+    if (Number(product.stock) < qty) throw new Error(`${product.name} 재고가 부족합니다.`);
+    return { id: product.id, name: product.name, price: product.price, image: product.image, qty };
+  });
+
+  if (useSupabase) {
+    for (const item of normalized) {
+      const product = products.find(candidate => candidate.id === item.id);
+      await supabase(`products?id=eq.${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ stock: Number(product.stock) - item.qty })
+      });
+    }
+  } else {
+    normalized.forEach(item => {
+      const product = products.find(candidate => candidate.id === item.id);
+      product.stock -= item.qty;
+    });
+    await writeJson(productsFile, products);
+  }
+
+  const order = {
+    id: `ELIN-${Date.now()}`,
+    status: "주문접수",
+    customer: {
+      name: String(body.customer.name).trim(),
+      phone: String(body.customer.phone).trim(),
+      address: String(body.customer.address).trim(),
+      memo: String(body.customer.memo || "").trim(),
+      memberId: member?.id || null,
+      email: member?.email || ""
+    },
+    items: normalized,
+    total: normalized.reduce((sum, item) => sum + item.price * item.qty, 0)
+  };
+
+  if (useSupabase) {
+    const [created] = await supabase("orders", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(order)
+    });
+    return { ...created, createdAt: created.created_at };
+  }
+
+  const orders = await readJson(ordersFile);
+  const localOrder = { ...order, createdAt: new Date().toISOString() };
+  orders.unshift(localOrder);
+  await writeJson(ordersFile, orders);
+  return localOrder;
+}
+
+async function updateOrderStatus(id, status) {
+  if (useSupabase) {
+    const [updated] = await supabase(`orders?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ status })
+    });
+    if (!updated) throw new Error("주문을 찾을 수 없습니다.");
+    return { ...updated, createdAt: updated.created_at };
+  }
+  const orders = await readJson(ordersFile);
+  const order = orders.find(candidate => candidate.id === id);
+  if (!order) throw new Error("주문을 찾을 수 없습니다.");
+  order.status = status;
+  await writeJson(ordersFile, orders);
+  return order;
+}
+
+async function findMemberByEmail(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (useSupabase) {
+    const members = await supabase(`members?email=eq.${encodeURIComponent(normalized)}&select=*`);
+    return members[0] || null;
+  }
+  const file = path.join(dataDir, "members.json");
+  await ensureJson(file, []);
+  const members = await readJson(file);
+  return members.find(member => member.email === normalized) || null;
+}
+
+async function createMember(input) {
+  const email = String(input.email || "").trim().toLowerCase();
+  const password = String(input.password || "");
+  const name = String(input.name || "").trim();
+  if (!email.includes("@") || password.length < 4 || !name) {
+    throw new Error("이메일, 이름, 4자 이상 비밀번호를 입력하세요.");
+  }
+  if (await findMemberByEmail(email)) throw new Error("이미 가입된 이메일입니다.");
+  const member = {
+    id: crypto.randomUUID(),
+    email,
+    password_hash: hashPassword(password),
+    name,
+    phone: String(input.phone || "").trim(),
+    address: String(input.address || "").trim()
+  };
+  if (useSupabase) {
+    const [created] = await supabase("members", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(member)
+    });
+    return created;
+  }
+  const file = path.join(dataDir, "members.json");
+  await ensureJson(file, []);
+  const members = await readJson(file);
+  members.push(member);
+  await writeJson(file, members);
+  return member;
+}
+
+function startMemberSession(member, res) {
+  const token = crypto.randomBytes(24).toString("hex");
+  memberSessions.set(token, publicMember(member));
+  send(res, 200, { ok: true, member: publicMember(member) }, "application/json; charset=utf-8", {
+    "Set-Cookie": setCookie("elin_member_session", token)
+  });
+}
+
 async function handleApi(req, res, url) {
   if (url.pathname === "/api/admin/login" && req.method === "POST") {
     const body = await readBody(req);
@@ -123,17 +365,17 @@ async function handleApi(req, res, url) {
       return send(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다." });
     }
     const token = crypto.randomBytes(24).toString("hex");
-    sessions.add(token);
-    return sendWithHeaders(res, 200, { ok: true, username: ADMIN_USER }, {
-      "Set-Cookie": `elin_admin_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400`
+    adminSessions.add(token);
+    return send(res, 200, { ok: true, username: ADMIN_USER }, "application/json; charset=utf-8", {
+      "Set-Cookie": setCookie("elin_admin_session", token)
     });
   }
 
   if (url.pathname === "/api/admin/logout" && req.method === "POST") {
-    const cookie = String(req.headers.cookie || "").match(/elin_admin_session=([^;]+)/)?.[1];
-    if (cookie) sessions.delete(cookie);
-    return sendWithHeaders(res, 200, { ok: true }, {
-      "Set-Cookie": "elin_admin_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"
+    const token = getCookies(req).elin_admin_session;
+    if (token) adminSessions.delete(token);
+    return send(res, 200, { ok: true }, "application/json; charset=utf-8", {
+      "Set-Cookie": setCookie("elin_admin_session", "", 0)
     });
   }
 
@@ -142,94 +384,68 @@ async function handleApi(req, res, url) {
     return send(res, 200, { username: ADMIN_USER });
   }
 
+  if (url.pathname === "/api/auth/signup" && req.method === "POST") {
+    const member = await createMember(await readBody(req));
+    return startMemberSession(member, res);
+  }
+
+  if (url.pathname === "/api/auth/login" && req.method === "POST") {
+    const body = await readBody(req);
+    const member = await findMemberByEmail(body.email);
+    if (!member || !verifyPassword(body.password, member.password_hash)) {
+      return send(res, 401, { error: "이메일 또는 비밀번호가 올바르지 않습니다." });
+    }
+    return startMemberSession(member, res);
+  }
+
+  if (url.pathname === "/api/auth/logout" && req.method === "POST") {
+    const token = getCookies(req).elin_member_session;
+    if (token) memberSessions.delete(token);
+    return send(res, 200, { ok: true }, "application/json; charset=utf-8", {
+      "Set-Cookie": setCookie("elin_member_session", "", 0)
+    });
+  }
+
+  if (url.pathname === "/api/auth/me" && req.method === "GET") {
+    return send(res, 200, { member: publicMember(currentMember(req)) });
+  }
+
   if (url.pathname === "/api/products" && req.method === "GET") {
-    return send(res, 200, await readJson(productsFile));
+    return send(res, 200, await listProducts());
   }
 
   if (url.pathname === "/api/products" && req.method === "POST") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 PIN이 필요합니다." });
-    const products = await readJson(productsFile);
-    const product = cleanProduct(await readBody(req));
-    products.unshift(product);
-    await writeJson(productsFile, products);
-    return send(res, 201, product);
+    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 201, await createProduct(await readBody(req)));
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "PUT") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 PIN이 필요합니다." });
+    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
-    const products = await readJson(productsFile);
-    const index = products.findIndex(product => product.id === id);
-    if (index < 0) return send(res, 404, { error: "상품을 찾을 수 없습니다." });
-    products[index] = cleanProduct({ ...(await readBody(req)), id });
-    await writeJson(productsFile, products);
-    return send(res, 200, products[index]);
+    return send(res, 200, await updateProduct(id, await readBody(req)));
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "DELETE") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 PIN이 필요합니다." });
+    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
-    const products = await readJson(productsFile);
-    await writeJson(productsFile, products.filter(product => product.id !== id));
+    await deleteProduct(id);
     return send(res, 200, { ok: true });
   }
 
   if (url.pathname === "/api/orders" && req.method === "GET") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 PIN이 필요합니다." });
-    return send(res, 200, await readJson(ordersFile));
+    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await listOrders());
   }
 
   if (url.pathname === "/api/orders" && req.method === "POST") {
-    const body = await readBody(req);
-    const products = await readJson(productsFile);
-    const items = Array.isArray(body.items) ? body.items : [];
-    if (!body.customer?.name || !body.customer?.phone || !body.customer?.address || items.length === 0) {
-      return send(res, 400, { error: "주문자 정보와 상품이 필요합니다." });
-    }
-
-    const normalized = items.map(item => {
-      const product = products.find(candidate => candidate.id === item.id);
-      if (!product) throw new Error("존재하지 않는 상품이 포함되어 있습니다.");
-      const qty = Math.max(1, Number(item.qty || 1));
-      if (product.stock < qty) throw new Error(`${product.name} 재고가 부족합니다.`);
-      return { id: product.id, name: product.name, price: product.price, image: product.image, qty };
-    });
-
-    normalized.forEach(item => {
-      const product = products.find(candidate => candidate.id === item.id);
-      product.stock -= item.qty;
-    });
-    await writeJson(productsFile, products);
-
-    const orders = await readJson(ordersFile);
-    const order = {
-      id: `ELIN-${Date.now()}`,
-      status: "주문접수",
-      customer: {
-        name: String(body.customer.name).trim(),
-        phone: String(body.customer.phone).trim(),
-        address: String(body.customer.address).trim(),
-        memo: String(body.customer.memo || "").trim()
-      },
-      items: normalized,
-      total: normalized.reduce((sum, item) => sum + item.price * item.qty, 0),
-      createdAt: new Date().toISOString()
-    };
-    orders.unshift(order);
-    await writeJson(ordersFile, orders);
-    return send(res, 201, order);
+    return send(res, 201, await createOrder(await readBody(req), currentMember(req)));
   }
 
   if (url.pathname.startsWith("/api/orders/") && req.method === "PATCH") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 PIN이 필요합니다." });
+    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     const body = await readBody(req);
-    const orders = await readJson(ordersFile);
-    const order = orders.find(candidate => candidate.id === id);
-    if (!order) return send(res, 404, { error: "주문을 찾을 수 없습니다." });
-    order.status = String(body.status || order.status);
-    await writeJson(ordersFile, orders);
-    return send(res, 200, order);
+    return send(res, 200, await updateOrderStatus(id, String(body.status || "주문접수")));
   }
 
   return send(res, 404, { error: "API 경로를 찾을 수 없습니다." });
@@ -250,7 +466,7 @@ async function serveStatic(req, res, url) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    if (url.pathname === "/health") return send(res, 200, { ok: true });
+    if (url.pathname === "/health") return send(res, 200, { ok: true, storage: useSupabase ? "supabase" : "json" });
     if (url.pathname.startsWith("/api/")) return await handleApi(req, res, url);
     return await serveStatic(req, res, url);
   } catch (error) {
@@ -261,6 +477,6 @@ const server = http.createServer(async (req, res) => {
 ensureData().then(() => {
   server.listen(PORT, () => {
     console.log(`ELIN shop running at http://localhost:${PORT}`);
-    console.log(`Admin PIN: ${ADMIN_PIN}`);
+    console.log(`Storage: ${useSupabase ? "Supabase" : "local JSON"}`);
   });
 });
