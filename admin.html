@@ -39,6 +39,10 @@
     .image-preview { width: 100%; min-height: 160px; border: 1px dashed #cfc7bc; border-radius: 8px; background: #f8f6f2; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; padding: 8px; color: #777; font-size: 13px; }
     .image-preview.empty { display: grid; place-items: center; grid-template-columns: 1fr; }
     .image-preview img { width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; object-fit: cover; background: #eee8df; }
+    .preview-item { position: relative; }
+    .preview-item button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border-radius: 999px; background: rgba(23,23,23,.82); color: #fff; font-size: 14px; line-height: 1; }
+    .image-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+    .image-tools button { width: auto; height: 34px; padding: 0 12px; font-size: 13px; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
     .stock-low { color: #b71f2a; font-weight: 900; }
     @media (max-width: 980px) {
@@ -112,6 +116,9 @@
           <input id="imageFile" type="file" accept="image/*" multiple />
           <div class="hint">권장: 1MB 이하 JPG/PNG. 큰 이미지는 저장이 느릴 수 있습니다.</div>
           <div class="image-preview" id="imagePreview">이미지 미리보기</div>
+          <div class="image-tools">
+            <button type="button" class="ghost" id="clearImages">이미지 전체 삭제</button>
+          </div>
 
           <label for="image">이미지 URL 또는 업로드 데이터</label>
           <textarea id="image" required rows="5" placeholder="이미지 URL을 한 줄에 하나씩 넣거나 위에서 파일을 선택하세요. 최대 10장"></textarea>
@@ -219,12 +226,16 @@
       }
       const current = parseImages(formValue("image"));
       const images = [...current, ...uploaded].slice(0, 10);
-      setValue("image", images.join("\n"));
-      renderImagePreview(images);
+      setImages(images);
       event.target.value = "";
     });
 
     document.querySelector("#image").addEventListener("input", event => renderImagePreview(event.target.value));
+    document.querySelector("#clearImages").addEventListener("click", () => {
+      setValue("image", "");
+      document.querySelector("#imageFile").value = "";
+      renderImagePreview("");
+    });
     document.querySelector("#productSearch").addEventListener("input", renderProducts);
     document.querySelector("#productCategory").addEventListener("change", renderProducts);
     document.querySelector("#orderSearch").addEventListener("input", renderOrders);
@@ -272,6 +283,17 @@
       return images.slice(0, 10);
     }
 
+    function setImages(images) {
+      setValue("image", parseImages(images).join("\n"));
+      renderImagePreview(images);
+    }
+
+    window.removeImage = index => {
+      const images = parseImages(formValue("image"));
+      images.splice(index, 1);
+      setImages(images);
+    };
+
     function readImageFile(file) {
       return new Promise((resolve, reject) => {
         const image = new Image();
@@ -304,7 +326,12 @@
         return;
       }
       preview.classList.remove("empty");
-      preview.innerHTML = images.map((image, index) => `<img src="${image}" alt="상품 이미지 ${index + 1}">`).join("");
+      preview.innerHTML = images.map((image, index) => `
+        <div class="preview-item">
+          <img src="${image}" alt="상품 이미지 ${index + 1}">
+          <button type="button" onclick="removeImage(${index})" aria-label="이미지 ${index + 1} 삭제">×</button>
+        </div>
+      `).join("");
     }
 
     function renderProducts() {
