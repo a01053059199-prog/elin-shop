@@ -72,7 +72,7 @@ function readBody(req) {
     let raw = "";
     req.on("data", chunk => {
       raw += chunk;
-      if (raw.length > 1_000_000) {
+      if (raw.length > 8_000_000) {
         reject(new Error("요청 본문이 너무 큽니다."));
         req.destroy();
       }
