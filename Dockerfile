@@ -9,6 +9,11 @@ COPY checkout.html ./
 COPY admin.html ./
 COPY signup.html ./
 COPY login.html ./
+COPY product.html ./
+COPY mypage.html ./
+COPY terms.html ./
+COPY privacy.html ./
+COPY shipping.html ./
 COPY start-elin.bat ./
 COPY README.md ./
 

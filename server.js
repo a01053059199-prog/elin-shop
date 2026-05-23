@@ -238,7 +238,15 @@ async function createOrder(body, member) {
     if (!product) throw new Error("존재하지 않는 상품이 포함되어 있습니다.");
     const qty = Math.max(1, Number(item.qty || 1));
     if (Number(product.stock) < qty) throw new Error(`${product.name} 재고가 부족합니다.`);
-    return { id: product.id, name: product.name, price: product.price, image: product.image, qty };
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      qty,
+      color: String(item.color || "기본").trim(),
+      size: String(item.size || "FREE").trim()
+    };
   });
 
   if (useSupabase) {
@@ -424,6 +432,13 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/auth/me" && req.method === "GET") {
     return send(res, 200, { member: publicMember(currentMember(req)) });
+  }
+
+  if (url.pathname === "/api/member/orders" && req.method === "GET") {
+    const member = currentMember(req);
+    if (!member) return send(res, 401, { error: "로그인이 필요합니다." });
+    const orders = await listOrders();
+    return send(res, 200, orders.filter(order => order.customer?.memberId === member.id));
   }
 
   if (url.pathname === "/api/products" && req.method === "GET") {

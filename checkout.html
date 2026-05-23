@@ -66,7 +66,7 @@
       itemsEl.innerHTML = cart.length ? cart.map(item => `
         <div class="item">
           <img src="${item.image}" alt="${item.name}">
-          <div><b>${item.name}</b><span>${money(item.price)} · ${item.qty}개</span></div>
+          <div><b>${item.name}</b><span>${item.color || "기본"} / ${item.size || "FREE"} · ${money(item.price)} · ${item.qty}개</span></div>
         </div>
       `).join("") : "<p>장바구니가 비어 있습니다.</p>";
       totalEl.textContent = money(cart.reduce((sum, item) => sum + item.price * item.qty, 0));
@@ -82,7 +82,7 @@
           address: document.querySelector("#address").value,
           memo: document.querySelector("#memo").value
         },
-        items: cart.map(item => ({ id: item.id, qty: item.qty }))
+        items: cart.map(item => ({ id: item.id, qty: item.qty, color: item.color, size: item.size }))
       };
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -98,7 +98,17 @@
       localStorage.removeItem("elinCart");
       message.innerHTML = `주문이 저장되었습니다.<br>주문번호: <strong>${result.id}</strong><br>관리자 페이지에서 확인할 수 있습니다.`;
     });
+    async function loadMember() {
+      const response = await fetch("/api/auth/me");
+      if (!response.ok) return;
+      const result = await response.json();
+      if (!result.member) return;
+      document.querySelector("#name").value = result.member.name || "";
+      document.querySelector("#phone").value = result.member.phone || "";
+      document.querySelector("#address").value = result.member.address || "";
+    }
     render();
+    loadMember();
   </script>
 </body>
 </html>
