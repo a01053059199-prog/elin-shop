@@ -6,45 +6,349 @@
   <title>ELIN 상품상세</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; background: #fbfaf8; color: #171717; font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif; }
+    body {
+      margin: 0;
+      background: #fbfaf8;
+      color: #171717;
+      font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif;
+    }
     a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; }
     header { border-bottom: 1px solid #e6e0d8; background: #fff; }
-    .bar, main { max-width: 1180px; margin: 0 auto; padding: 20px; }
-    .bar { display: flex; justify-content: space-between; align-items: center; }
-    .brand { font-family: Georgia, "Times New Roman", serif; font-size: 34px; letter-spacing: .08em; font-weight: 700; }
-    main { display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 34px; align-items: start; }
-    .media { background: #f3f0ea; border-radius: 8px; overflow: hidden; }
-    .media img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
-    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; margin-top: 10px; }
-    .thumbs button { height: auto; padding: 0; border: 2px solid transparent; background: transparent; border-radius: 6px; overflow: hidden; }
-    .thumbs button.active { border-color: #171717; }
-    .thumbs img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
-    .info { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 24px; position: sticky; top: 18px; }
-    .label { display: inline-block; color: #b71f2a; font-size: 12px; font-weight: 900; margin-bottom: 12px; }
-    h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.25; }
-    .meta { color: #6a6a6a; line-height: 1.7; }
-    .price { margin: 18px 0; font-size: 24px; font-weight: 900; }
-    .price del { margin-left: 8px; color: #999; font-size: 14px; font-weight: 500; }
-    label { display: block; margin: 14px 0 7px; font-weight: 800; font-size: 14px; }
-    select, input { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 12px; background: #fff; }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
-    button { height: 48px; border: 0; border-radius: 4px; background: #171717; color: #fff; font-weight: 900; cursor: pointer; }
-    .ghost { background: #f3f0ea; color: #171717; }
-    .notice { margin-top: 22px; border-top: 1px solid #e6e0d8; padding-top: 18px; color: #555; line-height: 1.8; }
-    @media (max-width: 850px) { main { grid-template-columns: 1fr; } .info { position: static; } }
+    .bar {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    nav { display: flex; align-items: center; gap: 14px; color: #555; font-size: 14px; }
+    .page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 20px 70px;
+    }
+    .crumb {
+      margin-bottom: 22px;
+      color: #777;
+      font-size: 13px;
+    }
+    .product-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 410px;
+      gap: 42px;
+      align-items: start;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .thumbs {
+      display: grid;
+      gap: 8px;
+      max-height: calc(100vh - 130px);
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .thumbs button {
+      width: 86px;
+      aspect-ratio: 1 / 1;
+      padding: 0;
+      border: 1px solid #e1dbd2;
+      border-radius: 4px;
+      background: #f1eee8;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .thumbs button.active { border: 2px solid #171717; }
+    .thumbs img,
+    .main-image img,
+    .detail-images img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+    .main-image {
+      background: #f1eee8;
+      border-radius: 4px;
+      overflow: hidden;
+      min-height: 520px;
+    }
+    .main-image img { aspect-ratio: 4 / 5; height: auto; }
+    .buy-panel {
+      position: sticky;
+      top: 18px;
+      background: #fff;
+      border: 1px solid #e6e0d8;
+      border-radius: 6px;
+      padding: 24px;
+    }
+    .label {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: #b71f2a;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 25px;
+      line-height: 1.35;
+      word-break: keep-all;
+    }
+    .sub {
+      margin-bottom: 18px;
+      color: #777;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .price {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 18px 0;
+      border-top: 1px solid #eee8df;
+      border-bottom: 1px solid #eee8df;
+      font-size: 24px;
+      font-weight: 900;
+    }
+    .price del { color: #aaa; font-size: 14px; font-weight: 500; }
+    .info-table {
+      margin: 18px 0;
+      display: grid;
+      gap: 10px;
+      color: #555;
+      font-size: 13px;
+    }
+    .info-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 10px;
+    }
+    .info-row strong { color: #171717; }
+    label {
+      display: block;
+      margin: 14px 0 7px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    select, input {
+      width: 100%;
+      border: 1px solid #ddd5cb;
+      border-radius: 4px;
+      padding: 13px;
+      background: #fff;
+    }
+    .qty-row {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 8px;
+      align-items: end;
+    }
+    .total {
+      margin-top: 18px;
+      padding: 16px 0 0;
+      border-top: 1px solid #eee8df;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    button.action {
+      height: 50px;
+      border: 0;
+      border-radius: 4px;
+      background: #171717;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #f3f0ea;
+      color: #171717;
+      border: 1px solid #e1dbd2;
+    }
+    .accordion {
+      margin-top: 20px;
+      border-top: 1px solid #eee8df;
+    }
+    details {
+      border-bottom: 1px solid #eee8df;
+      padding: 14px 0;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 800;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    details p {
+      margin: 12px 0 0;
+      color: #666;
+      line-height: 1.8;
+      font-size: 13px;
+    }
+    .section {
+      margin-top: 58px;
+      border-top: 1px solid #171717;
+      padding-top: 24px;
+    }
+    .section h2 {
+      margin: 0 0 18px;
+      font-size: 18px;
+    }
+    .detail-copy {
+      max-width: 720px;
+      color: #555;
+      line-height: 1.9;
+      word-break: keep-all;
+    }
+    .detail-images {
+      margin-top: 22px;
+      display: grid;
+      gap: 14px;
+      max-width: 760px;
+    }
+    .detail-images figure {
+      margin: 0;
+      background: #f1eee8;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .detail-images img {
+      height: auto;
+      aspect-ratio: 4 / 5;
+    }
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #e6e0d8;
+      font-size: 14px;
+    }
+    .guide-table th,
+    .guide-table td {
+      border-bottom: 1px solid #eee8df;
+      padding: 14px;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.7;
+    }
+    .guide-table th {
+      width: 170px;
+      background: #f5f1eb;
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .related img {
+      width: 100%;
+      aspect-ratio: 1 / 1.15;
+      object-fit: cover;
+      background: #f1eee8;
+      border-radius: 4px;
+    }
+    .related strong {
+      display: block;
+      margin-top: 9px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .related span {
+      display: block;
+      margin-top: 4px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .empty {
+      padding: 80px 20px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid #e6e0d8;
+      border-radius: 6px;
+    }
+    @media (max-width: 920px) {
+      .product-layout { grid-template-columns: 1fr; gap: 24px; }
+      .buy-panel { position: static; }
+      .gallery { grid-template-columns: 1fr; }
+      .thumbs {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-auto-flow: column;
+        overflow-x: auto;
+        max-height: none;
+        order: 2;
+      }
+      .thumbs button { width: 100%; }
+      .main-image { min-height: 0; }
+      .related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .bar { align-items: flex-start; flex-direction: column; }
+      .brand { font-size: 30px; }
+      .page { padding: 18px 14px 50px; }
+      .buy-panel { padding: 18px; }
+      .actions { grid-template-columns: 1fr; }
+      .qty-row { grid-template-columns: 1fr; }
+      .guide-table th,
+      .guide-table td {
+        display: block;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <header><div class="bar"><a class="brand" href="/">ELIN</a><nav><a href="/mypage.html" id="memberLink">마이페이지</a> · <a href="#" id="logoutLink" style="display:none">로그아웃</a></nav></div></header>
-  <main>
-    <section class="media" id="media"></section>
-    <section class="info" id="info">상품을 불러오는 중입니다.</section>
+  <header>
+    <div class="bar">
+      <a class="brand" href="/">ELIN</a>
+      <nav>
+        <a href="/login.html" id="loginLink">로그인</a>
+        <a href="/mypage.html" id="memberLink">마이페이지</a>
+        <a href="#" id="logoutLink" style="display:none">로그아웃</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="crumb">ELIN / 상품상세</div>
+    <div id="productRoot" class="empty">상품을 불러오는 중입니다.</div>
   </main>
+
   <script>
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const params = new URLSearchParams(location.search);
     const id = params.get("id");
     let product;
+    let allProducts = [];
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, match => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[match]));
+    }
 
     function parseImages(item) {
       if (Array.isArray(item.images)) return item.images.filter(Boolean).slice(0, 10);
@@ -65,42 +369,146 @@
       });
     }
 
+    function updateTotal() {
+      const qty = Math.max(1, Number(document.querySelector("#qty")?.value || 1));
+      const total = Number(product?.price || 0) * qty;
+      const target = document.querySelector("#totalPrice");
+      if (target) target.textContent = money(total);
+    }
+
     async function load() {
-      const products = await (await fetch("/api/products")).json();
-      product = products.find(item => item.id === id);
+      allProducts = await (await fetch("/api/products")).json();
+      product = allProducts.find(item => item.id === id);
       if (!product) {
-        document.querySelector("#info").textContent = "상품을 찾을 수 없습니다.";
+        document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
         return;
       }
       document.title = `ELIN | ${product.name}`;
+      renderProduct();
+    }
+
+    function renderProduct() {
       const images = parseImages(product);
-      document.querySelector("#media").innerHTML = `
-        <img id="mainImage" src="${images[0]}" alt="${product.name}">
-        ${images.length > 1 ? `<div class="thumbs">${images.map((image, index) => `
-          <button type="button" class="${index === 0 ? "active" : ""}" onclick="showImage(${index})">
-            <img src="${image}" alt="${product.name} ${index + 1}">
-          </button>
-        `).join("")}</div>` : ""}
-      `;
-      document.querySelector("#info").innerHTML = `
-        <span class="label">${product.label || "NEW"}</span>
-        <h1>${product.name}</h1>
-        <div class="meta">ELIN SELECT · 재고 ${product.stock}개</div>
-        <div class="price">${money(product.price)} <del>${money(product.old)}</del></div>
-        <label for="color">색상</label>
-        <select id="color"><option>기본</option><option>블랙</option><option>크림</option><option>브라운</option></select>
-        <label for="size">사이즈</label>
-        <select id="size"><option>FREE</option><option>S</option><option>M</option><option>L</option></select>
-        <label for="qty">수량</label>
-        <input id="qty" type="number" min="1" max="${product.stock}" value="1">
-        <div class="actions">
-          <button type="button" onclick="addToCart(false)">장바구니</button>
-          <button type="button" class="ghost" onclick="addToCart(true)">바로 주문</button>
-        </div>
-        <div class="notice">
-          배송은 결제 확인 후 순차 출고됩니다.<br>
-          교환/반품은 수령 후 7일 이내 고객센터로 접수해주세요.
-        </div>
+      const title = escapeHtml(product.name);
+      const related = allProducts
+        .filter(item => item.id !== product.id && item.category === product.category)
+        .slice(0, 4);
+
+      document.querySelector("#productRoot").className = "";
+      document.querySelector("#productRoot").innerHTML = `
+        <section class="product-layout">
+          <div class="gallery">
+            <div class="thumbs">
+              ${images.map((image, index) => `
+                <button type="button" class="${index === 0 ? "active" : ""}" onclick="showImage(${index})" aria-label="상품 이미지 ${index + 1}">
+                  <img src="${image}" alt="${title} 썸네일 ${index + 1}">
+                </button>
+              `).join("")}
+            </div>
+            <div class="main-image">
+              <img id="mainImage" src="${images[0] || product.image}" alt="${title}">
+            </div>
+          </div>
+
+          <aside class="buy-panel">
+            <span class="label">${escapeHtml(product.label || "NEW")}</span>
+            <h1>${title}</h1>
+            <div class="sub">ELIN SELECT · 재고 ${Number(product.stock || 0)}개 · 무통장입금 주문 가능</div>
+            <div class="price">
+              <span>${money(product.price)}</span>
+              ${Number(product.old || 0) > Number(product.price || 0) ? `<del>${money(product.old)}</del>` : ""}
+            </div>
+
+            <div class="info-table">
+              <div class="info-row"><strong>배송비</strong><span>기본 3,000원 / 100,000원 이상 무료배송</span></div>
+              <div class="info-row"><strong>결제</strong><span>무통장 입금 확인 후 순차 출고</span></div>
+              <div class="info-row"><strong>문의</strong><span>주문 전 상품 상태와 옵션을 확인해주세요.</span></div>
+            </div>
+
+            <label for="color">색상</label>
+            <select id="color">
+              <option>기본</option>
+              <option>블랙</option>
+              <option>크림</option>
+              <option>브라운</option>
+            </select>
+
+            <label for="size">사이즈</label>
+            <select id="size">
+              <option>FREE</option>
+              <option>S</option>
+              <option>M</option>
+              <option>L</option>
+            </select>
+
+            <div class="qty-row">
+              <label for="qty">수량</label>
+              <input id="qty" type="number" min="1" max="${Number(product.stock || 1)}" value="1" oninput="updateTotal()">
+            </div>
+
+            <div class="total">
+              <span>총 상품금액</span>
+              <strong id="totalPrice">${money(product.price)}</strong>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="action secondary" onclick="addToCart(false)">장바구니</button>
+              <button type="button" class="action" onclick="addToCart(true)">바로 주문</button>
+            </div>
+
+            <div class="accordion">
+              <details open>
+                <summary>구매 전 안내</summary>
+                <p>상품 이미지는 모니터 환경에 따라 색상이 다르게 보일 수 있습니다. 주문 전 옵션과 배송지를 꼭 확인해주세요.</p>
+              </details>
+              <details>
+                <summary>배송 안내</summary>
+                <p>입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다. 재고 상황에 따라 일정이 달라질 수 있습니다.</p>
+              </details>
+              <details>
+                <summary>교환/반품 안내</summary>
+                <p>상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.</p>
+              </details>
+            </div>
+          </aside>
+        </section>
+
+        <section class="section">
+          <h2>상품 상세정보</h2>
+          <div class="detail-copy">
+            ELIN에서 선별한 상품입니다. 전체 실루엣, 소재감, 디테일을 확인하실 수 있도록 등록된 이미지를 아래에 한 번 더 정리했습니다.
+          </div>
+          <div class="detail-images">
+            ${images.map((image, index) => `
+              <figure><img src="${image}" alt="${title} 상세 이미지 ${index + 1}"></figure>
+            `).join("")}
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>배송 및 교환 안내</h2>
+          <table class="guide-table">
+            <tr><th>결제 방식</th><td>현재 ELIN은 무통장 입금 방식으로 주문을 받습니다. 주문 후 안내된 계좌로 입금해 주세요.</td></tr>
+            <tr><th>배송 기간</th><td>입금 확인 후 영업일 기준 1~3일 내 출고됩니다. 도서산간 지역은 추가 시간이 소요될 수 있습니다.</td></tr>
+            <tr><th>교환/반품</th><td>상품 수령 후 7일 이내 접수 가능합니다. 착용, 세탁, 훼손, 구성품 누락 시 처리가 어려울 수 있습니다.</td></tr>
+            <tr><th>고객센터</th><td>주문조회 또는 고객센터 메뉴를 통해 문의를 남겨주세요.</td></tr>
+          </table>
+        </section>
+
+        ${related.length ? `
+          <section class="section">
+            <h2>함께 보면 좋은 상품</h2>
+            <div class="related-grid">
+              ${related.map(item => `
+                <a class="related" href="/product.html?id=${encodeURIComponent(item.id)}">
+                  <img src="${parseImages(item)[0] || item.image}" alt="${escapeHtml(item.name)}">
+                  <strong>${escapeHtml(item.name)}</strong>
+                  <span>${money(item.price)}</span>
+                </a>
+              `).join("")}
+            </div>
+          </section>
+        ` : ""}
       `;
     }
 
@@ -122,6 +530,7 @@
       if (!response.ok) return;
       const result = await response.json();
       if (!result.member) return;
+      document.querySelector("#loginLink").style.display = "none";
       document.querySelector("#memberLink").textContent = `${result.member.name}님`;
       document.querySelector("#logoutLink").style.display = "";
     }
