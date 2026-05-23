@@ -144,7 +144,12 @@ function cleanProduct(input) {
   const price = Number(input.price);
   const old = Number(input.old || input.price);
   const stock = Number(input.stock || 0);
-  if (!input.name || !input.category || !input.image || !Number.isFinite(price)) {
+  const images = Array.isArray(input.images)
+    ? input.images
+    : String(input.images || input.image || "").split(/\n|,/);
+  const cleanImages = images.map(image => String(image || "").trim()).filter(Boolean).slice(0, 10);
+  const mainImage = cleanImages[0] || String(input.image || "").trim();
+  if (!input.name || !input.category || !mainImage || !Number.isFinite(price)) {
     throw new Error("상품명, 카테고리, 이미지, 가격은 필수입니다.");
   }
   return {
@@ -156,7 +161,8 @@ function cleanProduct(input) {
     price,
     old: Number.isFinite(old) ? old : price,
     stock: Number.isFinite(stock) ? stock : 0,
-    image: String(input.image).trim()
+    image: mainImage,
+    images: cleanImages.length ? cleanImages : [mainImage]
   };
 }
 

@@ -15,6 +15,10 @@
     main { display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 34px; align-items: start; }
     .media { background: #f3f0ea; border-radius: 8px; overflow: hidden; }
     .media img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; margin-top: 10px; }
+    .thumbs button { height: auto; padding: 0; border: 2px solid transparent; background: transparent; border-radius: 6px; overflow: hidden; }
+    .thumbs button.active { border-color: #171717; }
+    .thumbs img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
     .info { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 24px; position: sticky; top: 18px; }
     .label { display: inline-block; color: #b71f2a; font-size: 12px; font-weight: 900; margin-bottom: 12px; }
     h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.25; }
@@ -42,6 +46,25 @@
     const id = params.get("id");
     let product;
 
+    function parseImages(item) {
+      if (Array.isArray(item.images)) return item.images.filter(Boolean).slice(0, 10);
+      if (item.images) {
+        try {
+          const parsed = JSON.parse(item.images);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, 10);
+        } catch (_) {}
+      }
+      return [item.image].filter(Boolean);
+    }
+
+    function showImage(index) {
+      const images = parseImages(product);
+      document.querySelector("#mainImage").src = images[index] || product.image;
+      document.querySelectorAll(".thumbs button").forEach((button, buttonIndex) => {
+        button.classList.toggle("active", buttonIndex === index);
+      });
+    }
+
     async function load() {
       const products = await (await fetch("/api/products")).json();
       product = products.find(item => item.id === id);
@@ -50,7 +73,15 @@
         return;
       }
       document.title = `ELIN | ${product.name}`;
-      document.querySelector("#media").innerHTML = `<img src="${product.image}" alt="${product.name}">`;
+      const images = parseImages(product);
+      document.querySelector("#media").innerHTML = `
+        <img id="mainImage" src="${images[0]}" alt="${product.name}">
+        ${images.length > 1 ? `<div class="thumbs">${images.map((image, index) => `
+          <button type="button" class="${index === 0 ? "active" : ""}" onclick="showImage(${index})">
+            <img src="${image}" alt="${product.name} ${index + 1}">
+          </button>
+        `).join("")}</div>` : ""}
+      `;
       document.querySelector("#info").innerHTML = `
         <span class="label">${product.label || "NEW"}</span>
         <h1>${product.name}</h1>
