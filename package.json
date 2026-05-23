@@ -1,0 +1,12 @@
+{
+  "name": "elin-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ELIN local full-stack shopping mall prototype",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

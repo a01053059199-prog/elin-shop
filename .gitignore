@@ -1,0 +1,4 @@
+server.err.log
+server.out.log
+node_modules/
+.env

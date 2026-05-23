@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ELIN 관리자</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #fbfaf8; color: #171717; font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif; }
+    a { color: inherit; text-decoration: none; }
+    header { background: #111; color: #fff; }
+    .bar, main { max-width: 1240px; margin: 0 auto; padding: 18px 22px; }
+    .bar { display: flex; justify-content: space-between; align-items: center; }
+    .brand { font-family: Georgia, "Times New Roman", serif; font-size: 32px; letter-spacing: .08em; }
+    h1 { margin: 22px 0 8px; }
+    .note { color: #6a6a6a; margin: 0 0 20px; }
+    .login, .panel { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
+    .login { max-width: 460px; }
+    input, select { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 11px; outline: 0; }
+    label { display: block; font-size: 13px; font-weight: 800; margin: 12px 0 6px; }
+    button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 11px 14px; font-weight: 900; cursor: pointer; }
+    .ghost { background: #f3f0ea; color: #171717; }
+    .danger { background: #b71f2a; }
+    .tabs { display: flex; gap: 8px; margin: 18px 0; }
+    .tabs button.active { background: #b71f2a; }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
+    .fields { display: grid; gap: 8px; }
+    .list { display: grid; gap: 10px; }
+    .product, .order { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; border: 1px solid #e6e0d8; border-radius: 8px; padding: 10px; background: #fff; }
+    .product img { width: 80px; height: 80px; border-radius: 6px; object-fit: cover; }
+    .meta { color: #6a6a6a; font-size: 13px; line-height: 1.5; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .hidden { display: none; }
+    @media (max-width: 900px) { .grid, .product, .order { grid-template-columns: 1fr; } .actions { justify-content: flex-start; } }
+  </style>
+</head>
+<body>
+  <header><div class="bar"><div class="brand">ELIN ADMIN</div><a href="/">쇼핑몰 보기</a></div></header>
+  <main>
+    <h1>관리자 페이지</h1>
+    <p class="note">기본 관리자 계정은 <strong>admin / 1234</strong>입니다. 실제 배포 시에는 서버 환경변수 <strong>ADMIN_USER</strong>, <strong>ADMIN_PASSWORD</strong>로 바꾸세요.</p>
+
+    <section class="login" id="loginBox">
+      <label for="username">아이디</label>
+      <input id="username" autocomplete="username" placeholder="admin" />
+      <label for="password">비밀번호</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="1234" />
+      <div style="height:12px"></div>
+      <button id="loginBtn">입장</button>
+    </section>
+
+    <section id="adminApp" class="hidden">
+      <div class="tabs">
+        <button class="active" data-tab="products">상품 관리</button>
+        <button data-tab="orders">주문 관리</button>
+        <button class="ghost" id="logoutBtn" type="button">로그아웃</button>
+      </div>
+
+      <div id="productsTab" class="grid">
+        <form class="panel" id="productForm">
+          <h2>상품 등록/수정</h2>
+          <input type="hidden" id="productId" />
+          <label>상품명</label><input id="name" required />
+          <label>카테고리</label>
+          <select id="category"><option value="women">여성</option><option value="men">남성</option><option value="bag">가방</option><option value="shoes">슈즈</option></select>
+          <label>검색 키워드</label><input id="keywords" placeholder="여성 의류 자켓" />
+          <label>라벨</label><input id="label" placeholder="NEW" />
+          <label>판매가</label><input id="price" type="number" required />
+          <label>정가</label><input id="old" type="number" />
+          <label>재고</label><input id="stock" type="number" required />
+          <label>이미지 URL</label><input id="image" required />
+          <div style="height:12px"></div>
+          <button type="submit">저장</button>
+          <button type="button" class="ghost" id="resetForm">새 상품 입력</button>
+        </form>
+        <div class="list" id="productList"></div>
+      </div>
+
+      <div id="ordersTab" class="hidden">
+        <div class="list" id="orderList"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let products = [];
+    let orders = [];
+    const money = value => value.toLocaleString("ko-KR") + "원";
+    const headers = () => ({ "Content-Type": "application/json" });
+
+    document.querySelector("#loginBtn").addEventListener("click", async () => {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+          username: document.querySelector("#username").value || "admin",
+          password: document.querySelector("#password").value || "1234"
+        })
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        return alert(result.error || "로그인에 실패했습니다.");
+      }
+      showAdmin();
+      await refresh();
+    });
+
+    document.querySelector("#logoutBtn").addEventListener("click", async () => {
+      await fetch("/api/admin/logout", { method: "POST" });
+      document.querySelector("#adminApp").classList.add("hidden");
+      document.querySelector("#loginBox").classList.remove("hidden");
+    });
+
+    document.querySelectorAll(".tabs button").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+        document.querySelector("#productsTab").classList.toggle("hidden", button.dataset.tab !== "products");
+        document.querySelector("#ordersTab").classList.toggle("hidden", button.dataset.tab !== "orders");
+      });
+    });
+
+    async function refresh() {
+      products = await (await fetch("/api/products")).json();
+      orders = await (await fetch("/api/orders", { headers: headers() })).json();
+      renderProducts();
+      renderOrders();
+    }
+
+    function showAdmin() {
+      document.querySelector("#loginBox").classList.add("hidden");
+      document.querySelector("#adminApp").classList.remove("hidden");
+    }
+
+    function renderProducts() {
+      document.querySelector("#productList").innerHTML = products.map(product => `
+        <article class="product">
+          <img src="${product.image}" alt="${product.name}">
+          <div><strong>${product.name}</strong><div class="meta">${product.category} · ${money(product.price)} · 재고 ${product.stock}개</div></div>
+          <div class="actions">
+            <button class="ghost" onclick="editProduct('${product.id}')">수정</button>
+            <button class="danger" onclick="deleteProduct('${product.id}')">삭제</button>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderOrders() {
+      document.querySelector("#orderList").innerHTML = orders.length ? orders.map(order => `
+        <article class="order">
+          <div><strong>${order.status}</strong><div class="meta">${new Date(order.createdAt).toLocaleString("ko-KR")}</div></div>
+          <div>
+            <strong>${order.id}</strong>
+            <div class="meta">${order.customer.name} · ${order.customer.phone} · ${order.customer.address}</div>
+            <div class="meta">${order.items.map(item => `${item.name} ${item.qty}개`).join(", ")}</div>
+            <div class="meta">합계 ${money(order.total)} · 메모 ${order.customer.memo || "없음"}</div>
+          </div>
+          <div class="actions">
+            ${["주문접수", "결제확인", "배송준비", "배송중", "배송완료", "취소"].map(status => `<button class="ghost" onclick="updateOrder('${order.id}','${status}')">${status}</button>`).join("")}
+          </div>
+        </article>
+      `).join("") : "<p>아직 주문이 없습니다.</p>";
+    }
+
+    function formValue(id) { return document.querySelector(`#${id}`).value; }
+    function setValue(id, value) { document.querySelector(`#${id}`).value = value || ""; }
+
+    document.querySelector("#productForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const id = formValue("productId");
+      const payload = {
+        name: formValue("name"),
+        category: formValue("category"),
+        keywords: formValue("keywords"),
+        label: formValue("label") || "NEW",
+        price: Number(formValue("price")),
+        old: Number(formValue("old") || formValue("price")),
+        stock: Number(formValue("stock")),
+        image: formValue("image")
+      };
+      await fetch(id ? `/api/products/${id}` : "/api/products", {
+        method: id ? "PUT" : "POST",
+        headers: headers(),
+        body: JSON.stringify(payload)
+      });
+      event.target.reset();
+      setValue("productId", "");
+      await refresh();
+    });
+
+    document.querySelector("#resetForm").addEventListener("click", () => {
+      document.querySelector("#productForm").reset();
+      setValue("productId", "");
+    });
+
+    window.editProduct = id => {
+      const product = products.find(item => item.id === id);
+      if (!product) return;
+      setValue("productId", product.id);
+      setValue("name", product.name);
+      setValue("category", product.category);
+      setValue("keywords", product.keywords);
+      setValue("label", product.label);
+      setValue("price", product.price);
+      setValue("old", product.old);
+      setValue("stock", product.stock);
+      setValue("image", product.image);
+      scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.deleteProduct = async id => {
+      if (!confirm("상품을 삭제할까요?")) return;
+      await fetch(`/api/products/${id}`, { method: "DELETE", headers: headers() });
+      await refresh();
+    };
+
+    window.updateOrder = async (id, status) => {
+      await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify({ status })
+      });
+      await refresh();
+    };
+
+    async function restoreSession() {
+      const response = await fetch("/api/admin/me");
+      if (!response.ok) return;
+      showAdmin();
+      await refresh();
+    }
+
+    restoreSession();
+  </script>
+</body>
+</html>
