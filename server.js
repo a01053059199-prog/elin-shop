@@ -299,12 +299,18 @@ async function createOrder(body, member) {
   return localOrder;
 }
 
-async function updateOrderStatus(id, status) {
+async function updateOrderStatus(id, input) {
+  const patch = typeof input === "string" ? { status: input } : {
+    status: String(input.status || "입금대기"),
+    tracking_company: String(input.tracking_company || "").trim(),
+    tracking_number: String(input.tracking_number || "").trim(),
+    admin_memo: String(input.admin_memo || "").trim()
+  };
   if (useSupabase) {
     const [updated] = await supabase(`orders?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify({ status })
+      body: JSON.stringify(patch)
     });
     if (!updated) throw new Error("주문을 찾을 수 없습니다.");
     return { ...updated, createdAt: updated.created_at };
@@ -312,7 +318,7 @@ async function updateOrderStatus(id, status) {
   const orders = await readJson(ordersFile);
   const order = orders.find(candidate => candidate.id === id);
   if (!order) throw new Error("주문을 찾을 수 없습니다.");
-  order.status = status;
+  Object.assign(order, patch);
   await writeJson(ordersFile, orders);
   return order;
 }
@@ -479,7 +485,7 @@ async function handleApi(req, res, url) {
     if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     const body = await readBody(req);
-    return send(res, 200, await updateOrderStatus(id, String(body.status || "입금대기")));
+    return send(res, 200, await updateOrderStatus(id, body));
   }
 
   return send(res, 404, { error: "API 경로를 찾을 수 없습니다." });

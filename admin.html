@@ -16,25 +16,32 @@
     .note { color: #6a6a6a; margin: 0 0 20px; line-height: 1.6; }
     .login, .panel { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
     .login { max-width: 460px; }
-    input, select { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 11px; outline: 0; background: #fff; }
+    input, select, textarea { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 10px; outline: 0; background: #fff; }
+    textarea { min-height: 72px; resize: vertical; }
     label { display: block; font-size: 13px; font-weight: 800; margin: 12px 0 6px; }
-    button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 11px 14px; font-weight: 900; cursor: pointer; }
+    button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 10px 13px; font-weight: 900; cursor: pointer; }
     .ghost { background: #f3f0ea; color: #171717; }
     .danger { background: #b71f2a; }
-    .tabs { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+    .tabs, .filters { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; align-items: center; }
     .tabs button.active { background: #b71f2a; }
+    .dashboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .metric { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; }
+    .metric strong { display: block; font-size: 22px; margin-bottom: 4px; }
+    .metric span { color: #6a6a6a; font-size: 13px; }
     .grid { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: start; }
     .list { display: grid; gap: 10px; }
-    .product, .order { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; border: 1px solid #e6e0d8; border-radius: 8px; padding: 10px; background: #fff; }
+    .product { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; border: 1px solid #e6e0d8; border-radius: 8px; padding: 10px; background: #fff; }
+    .order { display: grid; grid-template-columns: 1fr 320px; gap: 14px; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; background: #fff; }
     .product img { width: 80px; height: 80px; border-radius: 6px; object-fit: cover; background: #f3f0ea; }
-    .meta { color: #6a6a6a; font-size: 13px; line-height: 1.5; }
+    .meta { color: #6a6a6a; font-size: 13px; line-height: 1.6; }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .hidden { display: none; }
     .image-preview { width: 100%; aspect-ratio: 4 / 3; border: 1px dashed #cfc7bc; border-radius: 8px; background: #f8f6f2; display: grid; place-items: center; overflow: hidden; color: #777; font-size: 13px; }
     .image-preview img { width: 100%; height: 100%; object-fit: cover; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
-    @media (max-width: 900px) {
-      .grid, .product, .order { grid-template-columns: 1fr; }
+    .stock-low { color: #b71f2a; font-weight: 900; }
+    @media (max-width: 980px) {
+      .grid, .order, .product, .dashboard { grid-template-columns: 1fr; }
       .actions { justify-content: flex-start; }
     }
   </style>
@@ -49,7 +56,7 @@
 
   <main>
     <h1>관리자 페이지</h1>
-    <p class="note">상품 등록, 상품 이미지 업로드, 주문 상태 관리를 할 수 있습니다. 기본 계정은 <strong>admin / 1234</strong>입니다.</p>
+    <p class="note">상품 등록, 이미지 업로드, 주문 검색, 입금 확인, 송장 입력, 관리자 메모를 관리할 수 있습니다.</p>
 
     <section class="login" id="loginBox">
       <label for="username">아이디</label>
@@ -61,6 +68,8 @@
     </section>
 
     <section id="adminApp" class="hidden">
+      <div class="dashboard" id="dashboard"></div>
+
       <div class="tabs">
         <button class="active" data-tab="products">상품 관리</button>
         <button data-tab="orders">주문 관리</button>
@@ -110,10 +119,34 @@
           <button type="submit">저장</button>
           <button type="button" class="ghost" id="resetForm">새 상품 입력</button>
         </form>
-        <div class="list" id="productList"></div>
+        <div>
+          <div class="filters">
+            <input id="productSearch" placeholder="상품명/카테고리 검색" />
+            <select id="productCategory">
+              <option value="">전체 카테고리</option>
+              <option value="women">여성</option>
+              <option value="men">남성</option>
+              <option value="bag">가방</option>
+              <option value="shoes">슈즈</option>
+            </select>
+          </div>
+          <div class="list" id="productList"></div>
+        </div>
       </div>
 
       <div id="ordersTab" class="hidden">
+        <div class="filters">
+          <input id="orderSearch" placeholder="주문번호/고객명/연락처/입금자 검색" />
+          <select id="orderStatus">
+            <option value="">전체 상태</option>
+            <option>입금대기</option>
+            <option>입금확인</option>
+            <option>배송준비</option>
+            <option>배송중</option>
+            <option>배송완료</option>
+            <option>취소</option>
+          </select>
+        </div>
         <div class="list" id="orderList"></div>
       </div>
     </section>
@@ -178,13 +211,16 @@
       reader.readAsDataURL(file);
     });
 
-    document.querySelector("#image").addEventListener("input", event => {
-      renderImagePreview(event.target.value);
-    });
+    document.querySelector("#image").addEventListener("input", event => renderImagePreview(event.target.value));
+    document.querySelector("#productSearch").addEventListener("input", renderProducts);
+    document.querySelector("#productCategory").addEventListener("change", renderProducts);
+    document.querySelector("#orderSearch").addEventListener("input", renderOrders);
+    document.querySelector("#orderStatus").addEventListener("change", renderOrders);
 
     async function refresh() {
       products = await (await fetch("/api/products")).json();
       orders = await (await fetch("/api/orders", { headers: headers() })).json();
+      renderDashboard();
       renderProducts();
       renderOrders();
     }
@@ -192,6 +228,19 @@
     function showAdmin() {
       document.querySelector("#loginBox").classList.add("hidden");
       document.querySelector("#adminApp").classList.remove("hidden");
+    }
+
+    function renderDashboard() {
+      const sales = orders.filter(order => order.status !== "취소").reduce((sum, order) => sum + Number(order.total || 0), 0);
+      const count = status => orders.filter(order => order.status === status).length;
+      const lowStock = products.filter(product => Number(product.stock) <= 3).length;
+      document.querySelector("#dashboard").innerHTML = `
+        <div class="metric"><strong>${orders.length}</strong><span>총 주문</span></div>
+        <div class="metric"><strong>${count("입금대기")}</strong><span>입금대기</span></div>
+        <div class="metric"><strong>${count("배송중")}</strong><span>배송중</span></div>
+        <div class="metric"><strong>${money(sales)}</strong><span>총 매출</span></div>
+        <div class="metric"><strong>${lowStock}</strong><span>재고 부족</span></div>
+      `;
     }
 
     function renderImagePreview(src) {
@@ -204,34 +253,64 @@
     }
 
     function renderProducts() {
-      document.querySelector("#productList").innerHTML = products.map(product => `
+      const keyword = document.querySelector("#productSearch").value.trim().toLowerCase();
+      const category = document.querySelector("#productCategory").value;
+      const filtered = products.filter(product => {
+        const text = `${product.name} ${product.category} ${product.keywords || ""}`.toLowerCase();
+        return (!keyword || text.includes(keyword)) && (!category || product.category === category);
+      });
+      document.querySelector("#productList").innerHTML = filtered.map(product => `
         <article class="product">
           <img src="${product.image}" alt="${product.name}">
-          <div><strong>${product.name}</strong><div class="meta">${product.category} · ${money(product.price)} · 재고 ${product.stock}개</div></div>
+          <div>
+            <strong>${product.name}</strong>
+            <div class="meta">${product.category} · ${money(product.price)} · <span class="${Number(product.stock) <= 3 ? "stock-low" : ""}">재고 ${product.stock}개</span></div>
+          </div>
           <div class="actions">
             <button class="ghost" onclick="editProduct('${product.id}')">수정</button>
             <button class="danger" onclick="deleteProduct('${product.id}')">삭제</button>
           </div>
         </article>
-      `).join("");
+      `).join("") || "<p>검색 결과가 없습니다.</p>";
     }
 
     function renderOrders() {
-      document.querySelector("#orderList").innerHTML = orders.length ? orders.map(order => `
+      const keyword = document.querySelector("#orderSearch").value.trim().toLowerCase();
+      const statusFilter = document.querySelector("#orderStatus").value;
+      const filtered = orders.filter(order => {
+        const text = `${order.id} ${order.customer?.name || ""} ${order.customer?.phone || ""} ${order.customer?.depositor || ""}`.toLowerCase();
+        return (!keyword || text.includes(keyword)) && (!statusFilter || order.status === statusFilter);
+      });
+      document.querySelector("#orderList").innerHTML = filtered.length ? filtered.map(order => `
         <article class="order">
-          <div><strong>${order.status}</strong><div class="meta">${new Date(order.createdAt || order.created_at).toLocaleString("ko-KR")}</div></div>
           <div>
             <strong>${order.id}</strong>
+            <div class="meta">${order.status} · ${new Date(order.createdAt || order.created_at).toLocaleString("ko-KR")}</div>
             <div class="meta">${order.customer.name} · ${order.customer.phone} · ${order.customer.address}</div>
-            <div class="meta">${order.items.map(item => `${item.name} ${item.qty}개`).join(", ")}</div>
+            <div class="meta">${order.items.map(item => `${item.name} ${item.color || "기본"}/${item.size || "FREE"} ${item.qty}개`).join(", ")}</div>
             <div class="meta">${order.customer.paymentMethod || "무통장입금"} · 입금자 ${order.customer.depositor || order.customer.name} · ${order.customer.bank || "계좌 미입력"}</div>
             <div class="meta">합계 ${money(order.total)} · 메모 ${order.customer.memo || "없음"}</div>
+            <div class="meta">배송: ${order.tracking_company || "미입력"} ${order.tracking_number || ""}</div>
+            <div class="meta">관리자 메모: ${order.admin_memo || "없음"}</div>
           </div>
-          <div class="actions">
-            ${["입금대기", "입금확인", "배송준비", "배송중", "배송완료", "취소"].map(status => `<button class="ghost" onclick="updateOrder('${order.id}','${status}')">${status}</button>`).join("")}
+          <div>
+            <label>상태</label>
+            <select id="status-${order.id}">
+              ${["입금대기", "입금확인", "배송준비", "배송중", "배송완료", "취소"].map(status => `<option ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
+            </select>
+            <label>배송사</label>
+            <select id="company-${order.id}">
+              ${["", "CJ대한통운", "우체국택배", "한진택배", "롯데택배", "로젠택배"].map(company => `<option value="${company}" ${order.tracking_company === company ? "selected" : ""}>${company || "선택 안 함"}</option>`).join("")}
+            </select>
+            <label>송장번호</label>
+            <input id="tracking-${order.id}" value="${order.tracking_number || ""}" placeholder="송장번호">
+            <label>관리자 메모</label>
+            <textarea id="memo-${order.id}" placeholder="관리자 메모">${order.admin_memo || ""}</textarea>
+            <div style="height:10px"></div>
+            <button type="button" onclick="saveOrder('${order.id}')">주문 저장</button>
           </div>
         </article>
-      `).join("") : "<p>아직 주문이 없습니다.</p>";
+      `).join("") : "<p>검색 결과가 없습니다.</p>";
     }
 
     function formValue(id) { return document.querySelector(`#${id}`).value; }
@@ -294,12 +373,22 @@
       await refresh();
     };
 
-    window.updateOrder = async (id, status) => {
-      await fetch(`/api/orders/${id}`, {
+    window.saveOrder = async id => {
+      const response = await fetch(`/api/orders/${id}`, {
         method: "PATCH",
         headers: headers(),
-        body: JSON.stringify({ status })
+        body: JSON.stringify({
+          status: document.querySelector(`#status-${id}`).value,
+          tracking_company: document.querySelector(`#company-${id}`).value,
+          tracking_number: document.querySelector(`#tracking-${id}`).value,
+          admin_memo: document.querySelector(`#memo-${id}`).value
+        })
       });
+      if (!response.ok) {
+        const result = await response.json();
+        alert(result.error || "주문 저장에 실패했습니다.");
+        return;
+      }
       await refresh();
     };
 
