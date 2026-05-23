@@ -9,7 +9,6 @@ COPY checkout.html ./
 COPY admin.html ./
 COPY start-elin.bat ./
 COPY README.md ./
-COPY data ./data
 
 ENV PORT=4173
 EXPOSE 4173
