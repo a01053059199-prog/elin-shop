@@ -146,7 +146,7 @@ function cleanProduct(input) {
   const stock = Number(input.stock || 0);
   const images = Array.isArray(input.images)
     ? input.images
-    : String(input.images || input.image || "").split(/\n|,/);
+    : String(input.images || input.image || "").split(/\n+/);
   const cleanImages = images.map(image => String(image || "").trim()).filter(Boolean).slice(0, 10);
   const mainImage = cleanImages[0] || String(input.image || "").trim();
   if (!input.name || !input.category || !mainImage || !Number.isFinite(price)) {
