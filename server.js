@@ -223,6 +223,12 @@ const defaultCustomerCenterSettings = {
   title: "고객센터",
   introText: "주문, 입금, 배송, 교환/반품 문의를 남겨주세요. 관리자 페이지에서 접수 내용을 확인하고 답변할 수 있습니다.",
   guideTitle: "이용 안내",
+  guideItems: [
+    { title: "상담시간", text: "평일 11:00 - 18:00" },
+    { title: "점심시간", text: "13:00 - 14:00" },
+    { title: "입금계좌", text: "신한은행 110-000-000000 ELIN" },
+    { title: "문의 처리", text: "문의 접수 후 관리자 확인 순서대로 답변됩니다." }
+  ],
   csHoursTitle: "상담시간",
   csHoursText: "평일 11:00 - 18:00",
   lunchTitle: "점심시간",
@@ -232,6 +238,11 @@ const defaultCustomerCenterSettings = {
   processTitle: "문의 처리",
   processText: "문의 접수 후 관리자 확인 순서대로 답변됩니다.",
   faqTitle: "자주 묻는 질문",
+  faqs: [
+    { title: "무통장 입금 확인은 어떻게 되나요?", text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다." },
+    { title: "배송은 얼마나 걸리나요?", text: "상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다." },
+    { title: "교환/반품은 가능한가요?", text: "상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다." }
+  ],
   faq1Title: "무통장 입금 확인은 어떻게 되나요?",
   faq1Text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다.",
   faq2Title: "배송은 얼마나 걸리나요?",
@@ -245,8 +256,26 @@ const defaultCustomerCenterSettings = {
 function normalizeCustomerCenterSettings(input = {}) {
   const settings = { ...defaultCustomerCenterSettings, ...(input || {}) };
   for (const key of Object.keys(defaultCustomerCenterSettings)) {
+    if (key === "guideItems" || key === "faqs") continue;
     settings[key] = String(settings[key] || "").trim();
   }
+  const legacyGuideItems = [
+    { title: settings.csHoursTitle, text: settings.csHoursText },
+    { title: settings.lunchTitle, text: settings.lunchText },
+    { title: settings.bankTitle, text: settings.bankText },
+    { title: settings.processTitle, text: settings.processText }
+  ];
+  const legacyFaqs = [
+    { title: settings.faq1Title, text: settings.faq1Text },
+    { title: settings.faq2Title, text: settings.faq2Text },
+    { title: settings.faq3Title, text: settings.faq3Text }
+  ];
+  const cleanItems = items => (Array.isArray(items) ? items : [])
+    .map(item => ({ title: String(item?.title || "").trim(), text: String(item?.text || "").trim() }))
+    .filter(item => item.title || item.text)
+    .slice(0, 20);
+  settings.guideItems = Array.isArray(input.guideItems) ? cleanItems(input.guideItems) : cleanItems(legacyGuideItems);
+  settings.faqs = Array.isArray(input.faqs) ? cleanItems(input.faqs) : cleanItems(legacyFaqs);
   return settings;
 }
 

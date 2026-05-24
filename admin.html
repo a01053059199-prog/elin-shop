@@ -268,32 +268,21 @@
           <label for="customerIntroText">상단 안내문</label>
           <textarea id="customerIntroText" placeholder="주문, 입금, 배송, 교환/반품 문의를 남겨주세요."></textarea>
 
-          <label for="customerCsHoursText">상담시간</label>
-          <input id="customerCsHoursText" placeholder="평일 11:00 - 18:00" />
+          <label for="customerGuideTitle">이용 안내 제목</label>
+          <input id="customerGuideTitle" placeholder="이용 안내" />
+          <div class="filters" style="justify-content:space-between">
+            <strong>이용 안내 항목</strong>
+            <button class="ghost" type="button" onclick="addCustomerGuideItem()">+ 안내 항목 추가</button>
+          </div>
+          <div class="list" id="customerGuideItems"></div>
 
-          <label for="customerLunchText">점심시간</label>
-          <input id="customerLunchText" placeholder="13:00 - 14:00" />
-
-          <label for="customerBankText">입금계좌</label>
-          <input id="customerBankText" placeholder="신한은행 110-000-000000 ELIN" />
-
-          <label for="customerProcessText">문의 처리 안내</label>
-          <textarea id="customerProcessText" placeholder="문의 접수 후 관리자 확인 순서대로 답변됩니다."></textarea>
-
-          <label for="customerFaq1Title">FAQ 1 제목</label>
-          <input id="customerFaq1Title" />
-          <label for="customerFaq1Text">FAQ 1 내용</label>
-          <textarea id="customerFaq1Text"></textarea>
-
-          <label for="customerFaq2Title">FAQ 2 제목</label>
-          <input id="customerFaq2Title" />
-          <label for="customerFaq2Text">FAQ 2 내용</label>
-          <textarea id="customerFaq2Text"></textarea>
-
-          <label for="customerFaq3Title">FAQ 3 제목</label>
-          <input id="customerFaq3Title" />
-          <label for="customerFaq3Text">FAQ 3 내용</label>
-          <textarea id="customerFaq3Text"></textarea>
+          <label for="customerFaqTitle">FAQ 제목</label>
+          <input id="customerFaqTitle" placeholder="자주 묻는 질문" />
+          <div class="filters" style="justify-content:space-between">
+            <strong>FAQ 항목</strong>
+            <button class="ghost" type="button" onclick="addCustomerFaq()">+ FAQ 추가</button>
+          </div>
+          <div class="list" id="customerFaqItems"></div>
 
           <label for="customerLoginRequiredText">비회원 안내 문구</label>
           <input id="customerLoginRequiredText" placeholder="문의 접수는 로그인한 회원만 가능합니다." />
@@ -310,6 +299,8 @@
     let orders = [];
     let members = [];
     let inquiries = [];
+    let customerGuideItems = [];
+    let customerFaqs = [];
     let knownOrderIds = new Set();
     let knownMemberIds = new Set();
     let knownInquiryIds = new Set();
@@ -664,16 +655,16 @@
       return {
         title: formValue("customerTitle"),
         introText: formValue("customerIntroText"),
-        csHoursText: formValue("customerCsHoursText"),
-        lunchText: formValue("customerLunchText"),
-        bankText: formValue("customerBankText"),
-        processText: formValue("customerProcessText"),
-        faq1Title: formValue("customerFaq1Title"),
-        faq1Text: formValue("customerFaq1Text"),
-        faq2Title: formValue("customerFaq2Title"),
-        faq2Text: formValue("customerFaq2Text"),
-        faq3Title: formValue("customerFaq3Title"),
-        faq3Text: formValue("customerFaq3Text"),
+        guideTitle: formValue("customerGuideTitle"),
+        faqTitle: formValue("customerFaqTitle"),
+        guideItems: customerGuideItems.map((_, index) => ({
+          title: formValue(`customer-guide-title-${index}`),
+          text: formValue(`customer-guide-text-${index}`)
+        })).filter(item => item.title || item.text),
+        faqs: customerFaqs.map((_, index) => ({
+          title: formValue(`customer-faq-title-${index}`),
+          text: formValue(`customer-faq-text-${index}`)
+        })).filter(item => item.title || item.text),
         loginRequiredText: formValue("customerLoginRequiredText")
       };
     }
@@ -681,18 +672,63 @@
     function fillCustomerCenterSettingsForm(settings) {
       setValue("customerTitle", settings.title);
       setValue("customerIntroText", settings.introText);
-      setValue("customerCsHoursText", settings.csHoursText);
-      setValue("customerLunchText", settings.lunchText);
-      setValue("customerBankText", settings.bankText);
-      setValue("customerProcessText", settings.processText);
-      setValue("customerFaq1Title", settings.faq1Title);
-      setValue("customerFaq1Text", settings.faq1Text);
-      setValue("customerFaq2Title", settings.faq2Title);
-      setValue("customerFaq2Text", settings.faq2Text);
-      setValue("customerFaq3Title", settings.faq3Title);
-      setValue("customerFaq3Text", settings.faq3Text);
+      setValue("customerGuideTitle", settings.guideTitle);
+      setValue("customerFaqTitle", settings.faqTitle);
+      customerGuideItems = Array.isArray(settings.guideItems) ? settings.guideItems : [];
+      customerFaqs = Array.isArray(settings.faqs) ? settings.faqs : [];
+      renderCustomerSettingRows();
       setValue("customerLoginRequiredText", settings.loginRequiredText);
     }
+
+    function escapeAttr(value) {
+      return String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
+    }
+
+    function renderCustomerSettingRows() {
+      document.querySelector("#customerGuideItems").innerHTML = customerGuideItems.map((item, index) => `
+        <div class="panel" style="padding:12px">
+          <label>항목 이름</label>
+          <input id="customer-guide-title-${index}" value="${escapeAttr(item.title)}" placeholder="예: 상담시간" />
+          <label>항목 내용</label>
+          <textarea id="customer-guide-text-${index}" placeholder="예: 평일 11:00 - 18:00">${escapeAttr(item.text)}</textarea>
+          <button class="danger" type="button" onclick="removeCustomerGuideItem(${index})">삭제</button>
+        </div>
+      `).join("") || "<p class=\"note\">이용 안내 항목이 없습니다. 추가 버튼을 눌러주세요.</p>";
+
+      document.querySelector("#customerFaqItems").innerHTML = customerFaqs.map((item, index) => `
+        <div class="panel" style="padding:12px">
+          <label>질문</label>
+          <input id="customer-faq-title-${index}" value="${escapeAttr(item.title)}" placeholder="예: 배송은 얼마나 걸리나요?" />
+          <label>답변</label>
+          <textarea id="customer-faq-text-${index}" placeholder="답변 내용을 입력하세요.">${escapeAttr(item.text)}</textarea>
+          <button class="danger" type="button" onclick="removeCustomerFaq(${index})">삭제</button>
+        </div>
+      `).join("") || "<p class=\"note\">FAQ 항목이 없습니다. 추가 버튼을 눌러주세요.</p>";
+    }
+
+    window.addCustomerGuideItem = () => {
+      customerGuideItems = readCustomerCenterSettingsForm().guideItems;
+      customerGuideItems.push({ title: "", text: "" });
+      renderCustomerSettingRows();
+    };
+
+    window.removeCustomerGuideItem = index => {
+      customerGuideItems = readCustomerCenterSettingsForm().guideItems;
+      customerGuideItems.splice(index, 1);
+      renderCustomerSettingRows();
+    };
+
+    window.addCustomerFaq = () => {
+      customerFaqs = readCustomerCenterSettingsForm().faqs;
+      customerFaqs.push({ title: "", text: "" });
+      renderCustomerSettingRows();
+    };
+
+    window.removeCustomerFaq = index => {
+      customerFaqs = readCustomerCenterSettingsForm().faqs;
+      customerFaqs.splice(index, 1);
+      renderCustomerSettingRows();
+    };
 
     function renderDashboard() {
       const sales = orders.filter(order => order.status !== "취소").reduce((sum, order) => sum + Number(order.total || 0), 0);

@@ -61,27 +61,11 @@
     <div class="grid">
       <section class="panel">
         <h2 id="guideTitle">이용 안내</h2>
-        <div class="info">
-          <div><strong id="csHoursTitle">상담시간</strong><br><span id="csHoursText">평일 11:00 - 18:00</span></div>
-          <div><strong id="lunchTitle">점심시간</strong><br><span id="lunchText">13:00 - 14:00</span></div>
-          <div><strong id="bankTitle">입금계좌</strong><br><span id="bankText">신한은행 110-000-000000 ELIN</span></div>
-          <div><strong id="processTitle">문의 처리</strong><br><span id="processText">문의 접수 후 관리자 확인 순서대로 답변됩니다.</span></div>
-        </div>
+        <div class="info" id="guideItems"></div>
 
         <div style="height:18px"></div>
         <h2 id="faqTitle">자주 묻는 질문</h2>
-        <details open>
-          <summary id="faq1Title">무통장 입금 확인은 어떻게 되나요?</summary>
-          <p id="faq1Text">주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다.</p>
-        </details>
-        <details>
-          <summary id="faq2Title">배송은 얼마나 걸리나요?</summary>
-          <p id="faq2Text">상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다.</p>
-        </details>
-        <details>
-          <summary id="faq3Title">교환/반품은 가능한가요?</summary>
-          <p id="faq3Text">상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다.</p>
-        </details>
+        <div id="faqItems"></div>
       </section>
 
       <section class="panel">
@@ -111,27 +95,51 @@
       title: "고객센터",
       introText: "주문, 입금, 배송, 교환/반품 문의를 남겨주세요. 관리자 페이지에서 접수 내용을 확인하고 답변할 수 있습니다.",
       guideTitle: "이용 안내",
-      csHoursTitle: "상담시간",
-      csHoursText: "평일 11:00 - 18:00",
-      lunchTitle: "점심시간",
-      lunchText: "13:00 - 14:00",
-      bankTitle: "입금계좌",
-      bankText: "신한은행 110-000-000000 ELIN",
-      processTitle: "문의 처리",
-      processText: "문의 접수 후 관리자 확인 순서대로 답변됩니다.",
+      guideItems: [
+        { title: "상담시간", text: "평일 11:00 - 18:00" },
+        { title: "점심시간", text: "13:00 - 14:00" },
+        { title: "입금계좌", text: "신한은행 110-000-000000 ELIN" },
+        { title: "문의 처리", text: "문의 접수 후 관리자 확인 순서대로 답변됩니다." }
+      ],
       faqTitle: "자주 묻는 질문",
-      faq1Title: "무통장 입금 확인은 어떻게 되나요?",
-      faq1Text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다.",
-      faq2Title: "배송은 얼마나 걸리나요?",
-      faq2Text: "상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다.",
-      faq3Title: "교환/반품은 가능한가요?",
-      faq3Text: "상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다.",
+      faqs: [
+        { title: "무통장 입금 확인은 어떻게 되나요?", text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다." },
+        { title: "배송은 얼마나 걸리나요?", text: "상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다." },
+        { title: "교환/반품은 가능한가요?", text: "상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다." }
+      ],
       loginRequiredText: "문의 접수는 로그인한 회원만 가능합니다.",
       loginLinkText: "로그인하기"
     };
 
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
+    }
+
     function setText(id, value) {
       document.querySelector(`#${id}`).textContent = value || "";
+    }
+
+    function renderCustomerSettings(settings) {
+      setText("pageTitle", settings.title);
+      setText("introText", settings.introText);
+      setText("guideTitle", settings.guideTitle);
+      setText("faqTitle", settings.faqTitle);
+      setText("loginRequiredText", settings.loginRequiredText);
+      setText("loginLinkText", settings.loginLinkText);
+      document.title = `ELIN ${settings.title || "고객센터"}`;
+
+      const guideItems = Array.isArray(settings.guideItems) ? settings.guideItems : [];
+      document.querySelector("#guideItems").innerHTML = guideItems.map(item => `
+        <div><strong>${escapeHtml(item.title)}</strong><br><span>${escapeHtml(item.text)}</span></div>
+      `).join("");
+
+      const faqs = Array.isArray(settings.faqs) ? settings.faqs : [];
+      document.querySelector("#faqItems").innerHTML = faqs.map((item, index) => `
+        <details ${index === 0 ? "open" : ""}>
+          <summary>${escapeHtml(item.title)}</summary>
+          <p>${escapeHtml(item.text)}</p>
+        </details>
+      `).join("");
     }
 
     async function loadSettings() {
@@ -140,10 +148,7 @@
         const response = await fetch("/api/customer-center-settings");
         if (response.ok) settings = { ...settings, ...(await response.json()) };
       } catch (_) {}
-      for (const [key, value] of Object.entries(settings)) {
-        if (document.querySelector(`#${key}`)) setText(key, value);
-      }
-      document.title = `ELIN ${settings.title || "고객센터"}`;
+      renderCustomerSettings(settings);
     }
 
     async function requireMember() {
