@@ -45,9 +45,16 @@
     .image-tools button { width: auto; height: 34px; padding: 0 12px; font-size: 13px; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
     .stock-low { color: #b71f2a; font-weight: 900; }
+    .order-alert { display: none; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0; padding: 14px 16px; border-radius: 8px; background: #fff0f1; border: 1px solid #f0b7bd; color: #8c111b; }
+    .order-alert.show { display: flex; }
+    .order-alert strong { display: block; margin-bottom: 3px; }
+    .order-alert button { background: #b71f2a; }
+    .notify-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0 18px; }
+    .notify-state { color: #6a6a6a; font-size: 13px; }
     @media (max-width: 980px) {
       .grid, .order, .product, .dashboard { grid-template-columns: 1fr; }
       .actions { justify-content: flex-start; }
+      .order-alert { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
@@ -73,6 +80,17 @@
     </section>
 
     <section id="adminApp" class="hidden">
+      <div class="notify-tools">
+        <button type="button" id="enableNotifyBtn">새 주문 알림 켜기</button>
+        <span class="notify-state" id="notifyState">관리자 페이지를 열어두면 새 주문을 자동 확인합니다.</span>
+      </div>
+      <div class="order-alert" id="orderAlert">
+        <div>
+          <strong id="orderAlertTitle">새 주문이 들어왔습니다.</strong>
+          <span id="orderAlertText">주문 관리에서 확인하세요.</span>
+        </div>
+        <button type="button" id="orderAlertOpen">주문 확인</button>
+      </div>
       <div class="dashboard" id="dashboard"></div>
 
       <div class="tabs">
@@ -222,6 +240,10 @@
   <script>
     let products = [];
     let orders = [];
+    let knownOrderIds = new Set();
+    let orderPollingTimer = null;
+    let orderSoundReady = false;
+    let audioContext = null;
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
 
@@ -242,11 +264,13 @@
       showAdmin();
       setValue("adminUsername", result.username || "admin");
       await loadMemberPageSettings();
-      await refresh();
+      await refresh({ initial: true });
+      startOrderPolling();
     });
 
     document.querySelector("#logoutBtn").addEventListener("click", async () => {
       await fetch("/api/admin/logout", { method: "POST" });
+      if (orderPollingTimer) window.clearInterval(orderPollingTimer);
       document.querySelector("#adminApp").classList.add("hidden");
       document.querySelector("#loginBox").classList.remove("hidden");
     });
@@ -254,11 +278,7 @@
     document.querySelectorAll(".tabs button").forEach(button => {
       button.addEventListener("click", () => {
         if (!button.dataset.tab) return;
-        document.querySelectorAll(".tabs button").forEach(item => item.classList.remove("active"));
-        button.classList.add("active");
-        document.querySelector("#productsTab").classList.toggle("hidden", button.dataset.tab !== "products");
-        document.querySelector("#ordersTab").classList.toggle("hidden", button.dataset.tab !== "orders");
-        document.querySelector("#settingsTab").classList.toggle("hidden", button.dataset.tab !== "settings");
+        activateTab(button.dataset.tab);
       });
     });
 
@@ -304,6 +324,12 @@
     document.querySelector("#productCategory").addEventListener("change", renderProducts);
     document.querySelector("#orderSearch").addEventListener("input", renderOrders);
     document.querySelector("#orderStatus").addEventListener("change", renderOrders);
+    document.querySelector("#enableNotifyBtn").addEventListener("click", enableOrderNotifications);
+    document.querySelector("#orderAlertOpen").addEventListener("click", () => {
+      activateTab("orders");
+      document.querySelector("#orderAlert").classList.remove("show");
+      document.querySelector("#ordersTab").scrollIntoView({ behavior: "smooth" });
+    });
 
     document.querySelector("#adminSettingsForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -337,9 +363,11 @@
       alert("회원페이지 설정이 저장되었습니다.");
     });
 
-    async function refresh() {
+    async function refresh(options = {}) {
       products = await (await fetch("/api/products")).json();
-      orders = await (await fetch("/api/orders", { headers: headers() })).json();
+      const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
+      handleOrderNotifications(nextOrders, options);
+      orders = nextOrders;
       renderDashboard();
       renderProducts();
       renderOrders();
@@ -348,6 +376,100 @@
     function showAdmin() {
       document.querySelector("#loginBox").classList.add("hidden");
       document.querySelector("#adminApp").classList.remove("hidden");
+    }
+
+    async function enableOrderNotifications() {
+      orderSoundReady = true;
+      try {
+        audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === "suspended") await audioContext.resume();
+        playOrderSound();
+      } catch (_) {}
+      if ("Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      updateNotifyState();
+    }
+
+    function updateNotifyState() {
+      const permission = "Notification" in window ? Notification.permission : "unsupported";
+      const browserText = permission === "granted" ? "브라우저 알림 허용됨" : permission === "denied" ? "브라우저 알림 차단됨" : "브라우저 알림 대기";
+      document.querySelector("#notifyState").textContent = `새 주문 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
+    }
+
+    function playOrderSound() {
+      if (!orderSoundReady) return;
+      try {
+        audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioContext.currentTime;
+        [0, 0.16].forEach((offset, index) => {
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = "sine";
+          oscillator.frequency.setValueAtTime(index ? 980 : 740, now + offset);
+          gain.gain.setValueAtTime(0.0001, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.18, now + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14);
+          oscillator.connect(gain).connect(audioContext.destination);
+          oscillator.start(now + offset);
+          oscillator.stop(now + offset + 0.15);
+        });
+      } catch (_) {}
+    }
+
+    function notifyBrowser(order) {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      new Notification("ELIN 새 주문", {
+        body: `${order.customer?.name || "고객"}님 · ${money(order.total)} · ${order.id}`,
+        tag: order.id
+      });
+    }
+
+    function showOrderAlert(newOrders) {
+      const latest = newOrders[0];
+      document.querySelector("#orderAlertTitle").textContent = `새 주문 ${newOrders.length}건이 들어왔습니다.`;
+      document.querySelector("#orderAlertText").textContent = `${latest.customer?.name || "고객"}님 · ${money(latest.total)} · ${latest.id}`;
+      document.querySelector("#orderAlert").classList.add("show");
+      document.title = `(${newOrders.length}) ELIN 관리자`;
+    }
+
+    function handleOrderNotifications(nextOrders, options = {}) {
+      const nextIds = new Set(nextOrders.map(order => order.id));
+      if (options.initial || !knownOrderIds.size) {
+        knownOrderIds = nextIds;
+        updateNotifyState();
+        return;
+      }
+      const newOrders = nextOrders.filter(order => !knownOrderIds.has(order.id));
+      knownOrderIds = nextIds;
+      if (!newOrders.length) {
+        updateNotifyState();
+        return;
+      }
+      showOrderAlert(newOrders);
+      playOrderSound();
+      notifyBrowser(newOrders[0]);
+      updateNotifyState();
+    }
+
+    function startOrderPolling() {
+      if (orderPollingTimer) window.clearInterval(orderPollingTimer);
+      updateNotifyState();
+      orderPollingTimer = window.setInterval(async () => {
+        if (document.querySelector("#adminApp").classList.contains("hidden")) return;
+        try {
+          await refresh({ polling: true });
+        } catch (error) {
+          document.querySelector("#notifyState").textContent = `새 주문 확인 실패: ${error.message || "네트워크 오류"}`;
+        }
+      }, 15000);
+    }
+
+    function activateTab(tabName) {
+      document.querySelectorAll(".tabs button").forEach(item => item.classList.toggle("active", item.dataset.tab === tabName));
+      document.querySelector("#productsTab").classList.toggle("hidden", tabName !== "products");
+      document.querySelector("#ordersTab").classList.toggle("hidden", tabName !== "orders");
+      document.querySelector("#settingsTab").classList.toggle("hidden", tabName !== "settings");
     }
 
     async function loadAdminInfo() {
@@ -626,7 +748,8 @@
       if (!result) return;
       showAdmin();
       await loadMemberPageSettings();
-      await refresh();
+      await refresh({ initial: true });
+      startOrderPolling();
     }
 
     restoreSession();
