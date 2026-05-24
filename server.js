@@ -10,6 +10,7 @@ const ordersFile = path.join(dataDir, "orders.json");
 const inquiriesFile = path.join(dataDir, "inquiries.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
+const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -50,6 +51,7 @@ async function ensureData() {
   await ensureJson(inquiriesFile, []);
   await ensureJson(adminSettingsFile, null);
   await ensureJson(memberPageSettingsFile, null);
+  await ensureJson(customerCenterSettingsFile, null);
 }
 
 async function ensureJson(file, fallback) {
@@ -213,6 +215,69 @@ async function saveMemberPageSettings(settings) {
         body: JSON.stringify([{ key: "member_page_settings", value: JSON.stringify(normalized) }])
       });
     } catch {}
+  }
+  return normalized;
+}
+
+const defaultCustomerCenterSettings = {
+  title: "고객센터",
+  introText: "주문, 입금, 배송, 교환/반품 문의를 남겨주세요. 관리자 페이지에서 접수 내용을 확인하고 답변할 수 있습니다.",
+  guideTitle: "이용 안내",
+  csHoursTitle: "상담시간",
+  csHoursText: "평일 11:00 - 18:00",
+  lunchTitle: "점심시간",
+  lunchText: "13:00 - 14:00",
+  bankTitle: "입금계좌",
+  bankText: "신한은행 110-000-000000 ELIN",
+  processTitle: "문의 처리",
+  processText: "문의 접수 후 관리자 확인 순서대로 답변됩니다.",
+  faqTitle: "자주 묻는 질문",
+  faq1Title: "무통장 입금 확인은 어떻게 되나요?",
+  faq1Text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다.",
+  faq2Title: "배송은 얼마나 걸리나요?",
+  faq2Text: "상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다.",
+  faq3Title: "교환/반품은 가능한가요?",
+  faq3Text: "상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다.",
+  loginRequiredText: "문의 접수는 로그인한 회원만 가능합니다.",
+  loginLinkText: "로그인하기"
+};
+
+function normalizeCustomerCenterSettings(input = {}) {
+  const settings = { ...defaultCustomerCenterSettings, ...(input || {}) };
+  for (const key of Object.keys(defaultCustomerCenterSettings)) {
+    settings[key] = String(settings[key] || "").trim();
+  }
+  return settings;
+}
+
+async function customerCenterSettings() {
+  const localSettings = async () => {
+    try {
+      const saved = await readJson(customerCenterSettingsFile);
+      return normalizeCustomerCenterSettings(saved);
+    } catch {
+      return normalizeCustomerCenterSettings();
+    }
+  };
+  const local = await localSettings();
+  if (useSupabase) {
+    try {
+      const rows = await supabase("admin_settings?key=eq.customer_center_settings&select=value");
+      if (rows?.[0]?.value) return normalizeCustomerCenterSettings(JSON.parse(rows[0].value));
+    } catch {}
+  }
+  return local;
+}
+
+async function saveCustomerCenterSettings(settings) {
+  const normalized = normalizeCustomerCenterSettings(settings);
+  await writeJson(customerCenterSettingsFile, normalized);
+  if (useSupabase) {
+    await supabase("admin_settings?on_conflict=key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify([{ key: "customer_center_settings", value: JSON.stringify(normalized) }])
+    });
   }
   return normalized;
 }
@@ -665,6 +730,16 @@ async function handleApi(req, res, url) {
     return send(res, 200, await saveMemberPageSettings(await readBody(req)));
   }
 
+  if (url.pathname === "/api/admin/customer-center-settings" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await customerCenterSettings());
+  }
+
+  if (url.pathname === "/api/admin/customer-center-settings" && req.method === "PATCH") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await saveCustomerCenterSettings(await readBody(req)));
+  }
+
   if (url.pathname === "/api/auth/signup" && req.method === "POST") {
     const member = await createMember(await readBody(req));
     return startMemberSession(member, res);
@@ -693,6 +768,10 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/member-page-settings" && req.method === "GET") {
     return send(res, 200, await memberPageSettings());
+  }
+
+  if (url.pathname === "/api/customer-center-settings" && req.method === "GET") {
+    return send(res, 200, await customerCenterSettings());
   }
 
   if (url.pathname === "/api/admin/members" && req.method === "GET") {

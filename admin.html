@@ -257,6 +257,50 @@
           <div style="height:12px"></div>
           <button type="submit">회원페이지 설정 저장</button>
         </form>
+
+        <form class="panel" id="customerCenterSettingsForm" style="max-width:720px; margin-top:18px">
+          <h2>고객센터 설정</h2>
+          <p class="note">고객센터의 이용 안내와 자주 묻는 질문 내용을 변경합니다.</p>
+
+          <label for="customerTitle">페이지 제목</label>
+          <input id="customerTitle" placeholder="고객센터" />
+
+          <label for="customerIntroText">상단 안내문</label>
+          <textarea id="customerIntroText" placeholder="주문, 입금, 배송, 교환/반품 문의를 남겨주세요."></textarea>
+
+          <label for="customerCsHoursText">상담시간</label>
+          <input id="customerCsHoursText" placeholder="평일 11:00 - 18:00" />
+
+          <label for="customerLunchText">점심시간</label>
+          <input id="customerLunchText" placeholder="13:00 - 14:00" />
+
+          <label for="customerBankText">입금계좌</label>
+          <input id="customerBankText" placeholder="신한은행 110-000-000000 ELIN" />
+
+          <label for="customerProcessText">문의 처리 안내</label>
+          <textarea id="customerProcessText" placeholder="문의 접수 후 관리자 확인 순서대로 답변됩니다."></textarea>
+
+          <label for="customerFaq1Title">FAQ 1 제목</label>
+          <input id="customerFaq1Title" />
+          <label for="customerFaq1Text">FAQ 1 내용</label>
+          <textarea id="customerFaq1Text"></textarea>
+
+          <label for="customerFaq2Title">FAQ 2 제목</label>
+          <input id="customerFaq2Title" />
+          <label for="customerFaq2Text">FAQ 2 내용</label>
+          <textarea id="customerFaq2Text"></textarea>
+
+          <label for="customerFaq3Title">FAQ 3 제목</label>
+          <input id="customerFaq3Title" />
+          <label for="customerFaq3Text">FAQ 3 내용</label>
+          <textarea id="customerFaq3Text"></textarea>
+
+          <label for="customerLoginRequiredText">비회원 안내 문구</label>
+          <input id="customerLoginRequiredText" placeholder="문의 접수는 로그인한 회원만 가능합니다." />
+
+          <div style="height:12px"></div>
+          <button type="submit">고객센터 설정 저장</button>
+        </form>
       </div>
     </section>
   </main>
@@ -294,6 +338,7 @@
       showAdmin();
       setValue("adminUsername", result.username || "admin");
       await loadMemberPageSettings();
+      await loadCustomerCenterSettings();
       await refresh({ initial: true });
       startOrderPolling();
     });
@@ -394,6 +439,19 @@
       if (!response.ok) return alert(result.error || "회원페이지 설정 저장에 실패했습니다.");
       fillMemberPageSettingsForm(result);
       alert("회원페이지 설정이 저장되었습니다.");
+    });
+
+    document.querySelector("#customerCenterSettingsForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const response = await fetch("/api/admin/customer-center-settings", {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify(readCustomerCenterSettingsForm())
+      });
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || "고객센터 설정 저장에 실패했습니다.");
+      fillCustomerCenterSettingsForm(result);
+      alert("고객센터 설정이 저장되었습니다.");
     });
 
     async function refresh(options = {}) {
@@ -560,6 +618,12 @@
       fillMemberPageSettingsForm(await response.json());
     }
 
+    async function loadCustomerCenterSettings() {
+      const response = await fetch("/api/admin/customer-center-settings");
+      if (!response.ok) return;
+      fillCustomerCenterSettingsForm(await response.json());
+    }
+
     function readMemberPageSettingsForm() {
       return {
         pageTitle: formValue("memberPageTitle"),
@@ -594,6 +658,40 @@
       document.querySelector("#memberShowOrderStatus").checked = Boolean(settings.showOrderStatus);
       document.querySelector("#memberShowBankInfo").checked = Boolean(settings.showBankInfo);
       document.querySelector("#memberShowTracking").checked = Boolean(settings.showTracking);
+    }
+
+    function readCustomerCenterSettingsForm() {
+      return {
+        title: formValue("customerTitle"),
+        introText: formValue("customerIntroText"),
+        csHoursText: formValue("customerCsHoursText"),
+        lunchText: formValue("customerLunchText"),
+        bankText: formValue("customerBankText"),
+        processText: formValue("customerProcessText"),
+        faq1Title: formValue("customerFaq1Title"),
+        faq1Text: formValue("customerFaq1Text"),
+        faq2Title: formValue("customerFaq2Title"),
+        faq2Text: formValue("customerFaq2Text"),
+        faq3Title: formValue("customerFaq3Title"),
+        faq3Text: formValue("customerFaq3Text"),
+        loginRequiredText: formValue("customerLoginRequiredText")
+      };
+    }
+
+    function fillCustomerCenterSettingsForm(settings) {
+      setValue("customerTitle", settings.title);
+      setValue("customerIntroText", settings.introText);
+      setValue("customerCsHoursText", settings.csHoursText);
+      setValue("customerLunchText", settings.lunchText);
+      setValue("customerBankText", settings.bankText);
+      setValue("customerProcessText", settings.processText);
+      setValue("customerFaq1Title", settings.faq1Title);
+      setValue("customerFaq1Text", settings.faq1Text);
+      setValue("customerFaq2Title", settings.faq2Title);
+      setValue("customerFaq2Text", settings.faq2Text);
+      setValue("customerFaq3Title", settings.faq3Title);
+      setValue("customerFaq3Text", settings.faq3Text);
+      setValue("customerLoginRequiredText", settings.loginRequiredText);
     }
 
     function renderDashboard() {
@@ -908,6 +1006,7 @@
       if (!result) return;
       showAdmin();
       await loadMemberPageSettings();
+      await loadCustomerCenterSettings();
       await refresh({ initial: true });
       startOrderPolling();
     }
