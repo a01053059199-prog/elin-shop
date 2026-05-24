@@ -24,13 +24,14 @@
     .danger { background: #b71f2a; }
     .tabs, .filters { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; align-items: center; }
     .tabs button.active { background: #b71f2a; }
-    .dashboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .dashboard { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
     .metric { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; }
     .metric strong { display: block; font-size: 22px; margin-bottom: 4px; }
     .metric span { color: #6a6a6a; font-size: 13px; }
     .grid { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: start; }
     .list { display: grid; gap: 10px; }
     .product { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; border: 1px solid #e6e0d8; border-radius: 8px; padding: 10px; background: #fff; }
+    .member { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; background: #fff; }
     .order { display: grid; grid-template-columns: 1fr 320px; gap: 14px; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; background: #fff; }
     .product img { width: 80px; height: 80px; border-radius: 6px; object-fit: cover; background: #f3f0ea; }
     .meta { color: #6a6a6a; font-size: 13px; line-height: 1.6; }
@@ -81,21 +82,22 @@
 
     <section id="adminApp" class="hidden">
       <div class="notify-tools">
-        <button type="button" id="enableNotifyBtn">새 주문 알림 켜기</button>
-        <span class="notify-state" id="notifyState">관리자 페이지를 열어두면 새 주문을 자동 확인합니다.</span>
+        <button type="button" id="enableNotifyBtn">주문/회원 알림 켜기</button>
+        <span class="notify-state" id="notifyState">관리자 페이지를 열어두면 새 주문과 회원가입을 자동 확인합니다.</span>
       </div>
       <div class="order-alert" id="orderAlert">
         <div>
-          <strong id="orderAlertTitle">새 주문이 들어왔습니다.</strong>
-          <span id="orderAlertText">주문 관리에서 확인하세요.</span>
+          <strong id="orderAlertTitle">새 알림이 있습니다.</strong>
+          <span id="orderAlertText">관리자에서 확인하세요.</span>
         </div>
-        <button type="button" id="orderAlertOpen">주문 확인</button>
+        <button type="button" id="orderAlertOpen">확인하기</button>
       </div>
       <div class="dashboard" id="dashboard"></div>
 
       <div class="tabs">
         <button class="active" data-tab="products">상품 관리</button>
         <button data-tab="orders">주문 관리</button>
+        <button data-tab="members">회원 관리</button>
         <button data-tab="settings">관리자 설정</button>
         <button class="ghost" id="logoutBtn" type="button">로그아웃</button>
       </div>
@@ -177,6 +179,13 @@
         <div class="list" id="orderList"></div>
       </div>
 
+      <div id="membersTab" class="hidden">
+        <div class="filters">
+          <input id="memberSearch" placeholder="회원 아이디/이름/연락처/주소 검색" />
+        </div>
+        <div class="list" id="memberList"></div>
+      </div>
+
       <div id="settingsTab" class="hidden">
         <form class="panel" id="adminSettingsForm" style="max-width:520px">
           <h2>관리자 정보 변경</h2>
@@ -240,10 +249,13 @@
   <script>
     let products = [];
     let orders = [];
+    let members = [];
     let knownOrderIds = new Set();
+    let knownMemberIds = new Set();
     let orderPollingTimer = null;
     let orderSoundReady = false;
     let audioContext = null;
+    let alertTargetTab = "orders";
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
 
@@ -324,11 +336,12 @@
     document.querySelector("#productCategory").addEventListener("change", renderProducts);
     document.querySelector("#orderSearch").addEventListener("input", renderOrders);
     document.querySelector("#orderStatus").addEventListener("change", renderOrders);
+    document.querySelector("#memberSearch").addEventListener("input", renderMembers);
     document.querySelector("#enableNotifyBtn").addEventListener("click", enableOrderNotifications);
     document.querySelector("#orderAlertOpen").addEventListener("click", () => {
-      activateTab("orders");
+      activateTab(alertTargetTab);
       document.querySelector("#orderAlert").classList.remove("show");
-      document.querySelector("#ordersTab").scrollIntoView({ behavior: "smooth" });
+      document.querySelector(`#${alertTargetTab}Tab`).scrollIntoView({ behavior: "smooth" });
     });
 
     document.querySelector("#adminSettingsForm").addEventListener("submit", async event => {
@@ -366,11 +379,14 @@
     async function refresh(options = {}) {
       products = await (await fetch("/api/products")).json();
       const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
-      handleOrderNotifications(nextOrders, options);
+      const nextMembers = await (await fetch("/api/admin/members", { headers: headers() })).json();
+      handleNotifications(nextOrders, nextMembers, options);
       orders = nextOrders;
+      members = nextMembers;
       renderDashboard();
       renderProducts();
       renderOrders();
+      renderMembers();
     }
 
     function showAdmin() {
@@ -394,7 +410,7 @@
     function updateNotifyState() {
       const permission = "Notification" in window ? Notification.permission : "unsupported";
       const browserText = permission === "granted" ? "브라우저 알림 허용됨" : permission === "denied" ? "브라우저 알림 차단됨" : "브라우저 알림 대기";
-      document.querySelector("#notifyState").textContent = `새 주문 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
+      document.querySelector("#notifyState").textContent = `주문/회원 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
     }
 
     function playOrderSound() {
@@ -417,38 +433,54 @@
       } catch (_) {}
     }
 
-    function notifyBrowser(order) {
+    function notifyBrowser(title, body, tag) {
       if (!("Notification" in window) || Notification.permission !== "granted") return;
-      new Notification("ELIN 새 주문", {
-        body: `${order.customer?.name || "고객"}님 · ${money(order.total)} · ${order.id}`,
-        tag: order.id
-      });
+      new Notification(title, { body, tag });
     }
 
     function showOrderAlert(newOrders) {
       const latest = newOrders[0];
+      alertTargetTab = "orders";
       document.querySelector("#orderAlertTitle").textContent = `새 주문 ${newOrders.length}건이 들어왔습니다.`;
       document.querySelector("#orderAlertText").textContent = `${latest.customer?.name || "고객"}님 · ${money(latest.total)} · ${latest.id}`;
       document.querySelector("#orderAlert").classList.add("show");
       document.title = `(${newOrders.length}) ELIN 관리자`;
     }
 
-    function handleOrderNotifications(nextOrders, options = {}) {
+    function showMemberAlert(newMembers) {
+      const latest = newMembers[0];
+      alertTargetTab = "members";
+      document.querySelector("#orderAlertTitle").textContent = `새 회원가입 ${newMembers.length}건이 있습니다.`;
+      document.querySelector("#orderAlertText").textContent = `${latest.name || "회원"}님 · ${latest.username || "-"} · ${latest.phone || "-"}`;
+      document.querySelector("#orderAlert").classList.add("show");
+      document.title = `(${newMembers.length}) ELIN 관리자`;
+    }
+
+    function handleNotifications(nextOrders, nextMembers, options = {}) {
       const nextIds = new Set(nextOrders.map(order => order.id));
+      const nextMemberIds = new Set(nextMembers.map(member => member.id));
       if (options.initial || !knownOrderIds.size) {
         knownOrderIds = nextIds;
+        knownMemberIds = nextMemberIds;
         updateNotifyState();
         return;
       }
       const newOrders = nextOrders.filter(order => !knownOrderIds.has(order.id));
+      const newMembers = nextMembers.filter(member => !knownMemberIds.has(member.id));
       knownOrderIds = nextIds;
-      if (!newOrders.length) {
+      knownMemberIds = nextMemberIds;
+      if (!newOrders.length && !newMembers.length) {
         updateNotifyState();
         return;
       }
-      showOrderAlert(newOrders);
+      if (newOrders.length) {
+        showOrderAlert(newOrders);
+        notifyBrowser("ELIN 새 주문", `${newOrders[0].customer?.name || "고객"}님 · ${money(newOrders[0].total)} · ${newOrders[0].id}`, newOrders[0].id);
+      } else {
+        showMemberAlert(newMembers);
+        notifyBrowser("ELIN 새 회원가입", `${newMembers[0].name || "회원"}님 · ${newMembers[0].username || "-"}`, newMembers[0].id);
+      }
       playOrderSound();
-      notifyBrowser(newOrders[0]);
       updateNotifyState();
     }
 
@@ -460,7 +492,7 @@
         try {
           await refresh({ polling: true });
         } catch (error) {
-          document.querySelector("#notifyState").textContent = `새 주문 확인 실패: ${error.message || "네트워크 오류"}`;
+          document.querySelector("#notifyState").textContent = `알림 확인 실패: ${error.message || "네트워크 오류"}`;
         }
       }, 15000);
     }
@@ -469,6 +501,7 @@
       document.querySelectorAll(".tabs button").forEach(item => item.classList.toggle("active", item.dataset.tab === tabName));
       document.querySelector("#productsTab").classList.toggle("hidden", tabName !== "products");
       document.querySelector("#ordersTab").classList.toggle("hidden", tabName !== "orders");
+      document.querySelector("#membersTab").classList.toggle("hidden", tabName !== "members");
       document.querySelector("#settingsTab").classList.toggle("hidden", tabName !== "settings");
     }
 
@@ -531,6 +564,7 @@
         <div class="metric"><strong>${count("입금대기")}</strong><span>입금대기</span></div>
         <div class="metric"><strong>${count("배송중")}</strong><span>배송중</span></div>
         <div class="metric"><strong>${money(sales)}</strong><span>총 매출</span></div>
+        <div class="metric"><strong>${members.length}</strong><span>총 회원</span></div>
         <div class="metric"><strong>${lowStock}</strong><span>재고 부족</span></div>
       `;
     }
@@ -662,6 +696,38 @@
         </article>
       `).join("") : "<p>검색 결과가 없습니다.</p>";
     }
+
+    function renderMembers() {
+      const keyword = document.querySelector("#memberSearch").value.trim().toLowerCase();
+      const filtered = members.filter(member => {
+        const text = `${member.username || ""} ${member.name || ""} ${member.phone || ""} ${member.address || ""} ${member.email || ""}`.toLowerCase();
+        return !keyword || text.includes(keyword);
+      });
+      document.querySelector("#memberList").innerHTML = filtered.length ? filtered.map(member => `
+        <article class="member">
+          <div>
+            <strong>${member.name || "이름 없음"} <span class="meta">(${member.username || "-"})</span></strong>
+            <div class="meta">연락처 ${member.phone || "-"} · 주소 ${member.address || "-"}</div>
+            <div class="meta">이메일 ${member.email || "-"} · 가입일 ${member.createdAt ? new Date(member.createdAt).toLocaleString("ko-KR") : "-"}</div>
+          </div>
+          <div class="actions">
+            <button class="ghost" type="button" onclick="copyMember('${member.id}')">정보 복사</button>
+          </div>
+        </article>
+      `).join("") : "<p>회원 정보가 없습니다.</p>";
+    }
+
+    window.copyMember = async id => {
+      const member = members.find(item => item.id === id);
+      if (!member) return;
+      const text = `아이디: ${member.username || "-"}\n이름: ${member.name || "-"}\n연락처: ${member.phone || "-"}\n주소: ${member.address || "-"}\n이메일: ${member.email || "-"}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("회원 정보가 복사되었습니다.");
+      } catch {
+        prompt("회원 정보", text);
+      }
+    };
 
     function formValue(id) { return document.querySelector(`#${id}`).value; }
     function setValue(id, value) { document.querySelector(`#${id}`).value = value || ""; }

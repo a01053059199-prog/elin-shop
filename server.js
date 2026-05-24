@@ -473,6 +473,25 @@ async function findMemberByUsername(username) {
   return members.find(member => member.username === normalized) || null;
 }
 
+async function listMembers() {
+  const members = useSupabase ? await supabase("members?select=*") : await (async () => {
+    const file = path.join(dataDir, "members.json");
+    await ensureJson(file, []);
+    return await readJson(file);
+  })();
+  return members
+    .map(member => ({
+      id: member.id,
+      username: member.username || "",
+      email: member.email || "",
+      name: member.name || "",
+      phone: member.phone || "",
+      address: member.address || "",
+      createdAt: member.createdAt || member.created_at || ""
+    }))
+    .sort((a, b) => String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id)));
+}
+
 async function createMember(input) {
   const username = String(input.username || "").trim().toLowerCase();
   const email = String(input.email || `${username}@elin.local`).trim().toLowerCase();
@@ -502,7 +521,7 @@ async function createMember(input) {
   const file = path.join(dataDir, "members.json");
   await ensureJson(file, []);
   const members = await readJson(file);
-  members.push(member);
+  members.push({ ...member, createdAt: new Date().toISOString() });
   await writeJson(file, members);
   return member;
 }
@@ -600,6 +619,11 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/member-page-settings" && req.method === "GET") {
     return send(res, 200, await memberPageSettings());
+  }
+
+  if (url.pathname === "/api/admin/members" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await listMembers());
   }
 
   if (url.pathname === "/api/member/orders" && req.method === "GET") {
