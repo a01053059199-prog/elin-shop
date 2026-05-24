@@ -463,14 +463,17 @@ async function listMemberInquiries(memberId) {
 }
 
 async function createInquiry(input, member) {
+  if (!member) {
+    throw new Error("로그인한 회원만 문의를 접수할 수 있습니다.");
+  }
   const inquiry = {
     id: `QNA-${Date.now()}`,
     status: "접수",
     category: String(input.category || "고객문의").trim(),
     subject: String(input.subject || "").trim(),
-    name: String(input.name || member?.name || "비회원").trim(),
-    phone: String(input.phone || member?.phone || "-").trim(),
-    email: String(input.email || member?.email || "").trim(),
+    name: String(input.name || member.name || "").trim(),
+    phone: String(input.phone || member.phone || "").trim(),
+    email: String(input.email || member.email || "").trim(),
     order_id: String(input.order_id || "").trim(),
     message: String(input.message || "").trim(),
     answer: "",

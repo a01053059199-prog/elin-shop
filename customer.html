@@ -30,6 +30,9 @@
     button { width: 100%; height: 48px; margin-top: 16px; border: 0; border-radius: 4px; background: #171717; color: #fff; font-weight: 900; cursor: pointer; }
     .message { display: none; margin-top: 12px; padding: 12px; border-radius: 6px; background: #f3f0ea; color: #40513b; line-height: 1.6; }
     .message.show { display: block; }
+    .login-required { display: none; margin-top: 12px; padding: 14px; border-radius: 6px; background: #fff6e7; color: #5c3d13; line-height: 1.6; }
+    .login-required.show { display: block; }
+    .login-required a { text-decoration: underline; font-weight: 900; }
     @media (max-width: 820px) {
       .grid { grid-template-columns: 1fr; }
       .bar, main { padding: 16px; }
@@ -83,6 +86,9 @@
 
       <section class="panel">
         <h2>1:1 문의하기</h2>
+        <div class="login-required" id="loginRequired">
+          문의 접수는 로그인한 회원만 가능합니다. <a href="/login.html">로그인하기</a>
+        </div>
         <form id="inquiryForm">
           <label for="subject">제목</label>
           <input id="subject" required placeholder="문의 제목을 입력해주세요" />
@@ -99,9 +105,27 @@
 
   <script>
     const message = document.querySelector("#message");
+    let currentMember = null;
+
+    async function requireMember() {
+      try {
+        const result = await (await fetch("/api/auth/me")).json();
+        currentMember = result.member || null;
+      } catch (_) {
+        currentMember = null;
+      }
+      if (!currentMember) {
+        document.querySelector("#loginRequired").classList.add("show");
+        document.querySelector("#inquiryForm").style.display = "none";
+      }
+    }
 
     document.querySelector("#inquiryForm").addEventListener("submit", async event => {
       event.preventDefault();
+      if (!currentMember) {
+        location.href = "/login.html";
+        return;
+      }
       const payload = {
         subject: document.querySelector("#subject").value,
         message: document.querySelector("#messageText").value
@@ -120,6 +144,8 @@
       message.innerHTML = `문의가 접수되었습니다.<br>접수번호: <strong>${result.id}</strong>`;
       event.target.reset();
     });
+
+    requireMember();
   </script>
 </body>
 </html>
