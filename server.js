@@ -102,6 +102,14 @@ function setCookie(name, value, maxAge = 86400) {
 
 async function adminSettings() {
   const fallback = { username: ADMIN_USER, password: ADMIN_PASSWORD, pin: ADMIN_PIN };
+  const localSettings = async () => {
+    try {
+      const saved = await readJson(adminSettingsFile);
+      return saved || fallback;
+    } catch {
+      return fallback;
+    }
+  };
   if (useSupabase) {
     try {
       const rows = await supabase("admin_settings?select=key,value");
@@ -112,19 +120,19 @@ async function adminSettings() {
         pin: values.pin || fallback.pin
       };
     } catch {
-      return fallback;
+      return await localSettings();
     }
   }
-  const saved = await readJson(adminSettingsFile);
-  return saved || fallback;
+  return await localSettings();
 }
 
 async function saveAdminSettings(settings) {
+  await writeJson(adminSettingsFile, settings);
   if (useSupabase) {
     try {
       await supabase("admin_settings?on_conflict=key", {
         method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates" },
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify([
           { key: "username", value: settings.username },
           { key: "password", value: settings.password },
@@ -136,7 +144,6 @@ async function saveAdminSettings(settings) {
       // Fall back to the local file if the Supabase settings table is not ready yet.
     }
   }
-  await writeJson(adminSettingsFile, settings);
 }
 
 async function requireAdmin(req) {
