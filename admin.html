@@ -24,7 +24,7 @@
     .danger { background: #b71f2a; }
     .tabs, .filters { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; align-items: center; }
     .tabs button.active { background: #b71f2a; }
-    .dashboard { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .dashboard { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
     .metric { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; }
     .metric strong { display: block; font-size: 22px; margin-bottom: 4px; }
     .metric span { color: #6a6a6a; font-size: 13px; }
@@ -82,8 +82,8 @@
 
     <section id="adminApp" class="hidden">
       <div class="notify-tools">
-        <button type="button" id="enableNotifyBtn">주문/회원 알림 켜기</button>
-        <span class="notify-state" id="notifyState">관리자 페이지를 열어두면 새 주문과 회원가입을 자동 확인합니다.</span>
+        <button type="button" id="enableNotifyBtn">주문/회원/문의 알림 켜기</button>
+        <span class="notify-state" id="notifyState">관리자 페이지를 열어두면 새 주문, 회원가입, 고객문의를 자동 확인합니다.</span>
       </div>
       <div class="order-alert" id="orderAlert">
         <div>
@@ -98,6 +98,7 @@
         <button class="active" data-tab="products">상품 관리</button>
         <button data-tab="orders">주문 관리</button>
         <button data-tab="members">회원 관리</button>
+        <button data-tab="inquiries">고객센터</button>
         <button data-tab="settings">관리자 설정</button>
         <button class="ghost" id="logoutBtn" type="button">로그아웃</button>
       </div>
@@ -186,6 +187,20 @@
         <div class="list" id="memberList"></div>
       </div>
 
+      <div id="inquiriesTab" class="hidden">
+        <div class="filters">
+          <input id="inquirySearch" placeholder="문의번호/이름/연락처/제목 검색" />
+          <select id="inquiryStatus">
+            <option value="">전체 상태</option>
+            <option>접수</option>
+            <option>확인중</option>
+            <option>답변완료</option>
+            <option>보류</option>
+          </select>
+        </div>
+        <div class="list" id="inquiryList"></div>
+      </div>
+
       <div id="settingsTab" class="hidden">
         <form class="panel" id="adminSettingsForm" style="max-width:520px">
           <h2>관리자 정보 변경</h2>
@@ -228,7 +243,7 @@
           <input id="memberSupportLinkText" placeholder="고객센터" />
 
           <label for="memberSupportLinkUrl">고객 안내 링크 주소</label>
-          <input id="memberSupportLinkUrl" placeholder="/shipping.html" />
+          <input id="memberSupportLinkUrl" placeholder="/customer.html" />
 
           <div class="filters" style="align-items:flex-start">
             <label><input id="memberShowUsername" type="checkbox" style="width:auto"> 아이디 표시</label>
@@ -250,8 +265,11 @@
     let products = [];
     let orders = [];
     let members = [];
+    let inquiries = [];
     let knownOrderIds = new Set();
     let knownMemberIds = new Set();
+    let knownInquiryIds = new Set();
+    let notificationReady = false;
     let orderPollingTimer = null;
     let orderSoundReady = false;
     let audioContext = null;
@@ -337,6 +355,8 @@
     document.querySelector("#orderSearch").addEventListener("input", renderOrders);
     document.querySelector("#orderStatus").addEventListener("change", renderOrders);
     document.querySelector("#memberSearch").addEventListener("input", renderMembers);
+    document.querySelector("#inquirySearch").addEventListener("input", renderInquiries);
+    document.querySelector("#inquiryStatus").addEventListener("change", renderInquiries);
     document.querySelector("#enableNotifyBtn").addEventListener("click", enableOrderNotifications);
     document.querySelector("#orderAlertOpen").addEventListener("click", () => {
       activateTab(alertTargetTab);
@@ -380,13 +400,16 @@
       products = await (await fetch("/api/products")).json();
       const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
       const nextMembers = await (await fetch("/api/admin/members", { headers: headers() })).json();
-      handleNotifications(nextOrders, nextMembers, options);
+      const nextInquiries = await (await fetch("/api/admin/inquiries", { headers: headers() })).json();
+      handleNotifications(nextOrders, nextMembers, nextInquiries, options);
       orders = nextOrders;
       members = nextMembers;
+      inquiries = nextInquiries;
       renderDashboard();
       renderProducts();
       renderOrders();
       renderMembers();
+      renderInquiries();
     }
 
     function showAdmin() {
@@ -410,7 +433,7 @@
     function updateNotifyState() {
       const permission = "Notification" in window ? Notification.permission : "unsupported";
       const browserText = permission === "granted" ? "브라우저 알림 허용됨" : permission === "denied" ? "브라우저 알림 차단됨" : "브라우저 알림 대기";
-      document.querySelector("#notifyState").textContent = `주문/회원 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
+      document.querySelector("#notifyState").textContent = `주문/회원/문의 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
     }
 
     function playOrderSound() {
@@ -456,29 +479,46 @@
       document.title = `(${newMembers.length}) ELIN 관리자`;
     }
 
-    function handleNotifications(nextOrders, nextMembers, options = {}) {
+    function showInquiryAlert(newInquiries) {
+      const latest = newInquiries[0];
+      alertTargetTab = "inquiries";
+      document.querySelector("#orderAlertTitle").textContent = `새 고객문의 ${newInquiries.length}건이 있습니다.`;
+      document.querySelector("#orderAlertText").textContent = `${latest.name || "고객"}님 · ${latest.category || "문의"} · ${latest.subject || latest.id}`;
+      document.querySelector("#orderAlert").classList.add("show");
+      document.title = `(${newInquiries.length}) ELIN 관리자`;
+    }
+
+    function handleNotifications(nextOrders, nextMembers, nextInquiries, options = {}) {
       const nextIds = new Set(nextOrders.map(order => order.id));
       const nextMemberIds = new Set(nextMembers.map(member => member.id));
-      if (options.initial || !knownOrderIds.size) {
+      const nextInquiryIds = new Set(nextInquiries.map(inquiry => inquiry.id));
+      if (options.initial || !notificationReady) {
         knownOrderIds = nextIds;
         knownMemberIds = nextMemberIds;
+        knownInquiryIds = nextInquiryIds;
+        notificationReady = true;
         updateNotifyState();
         return;
       }
       const newOrders = nextOrders.filter(order => !knownOrderIds.has(order.id));
       const newMembers = nextMembers.filter(member => !knownMemberIds.has(member.id));
+      const newInquiries = nextInquiries.filter(inquiry => !knownInquiryIds.has(inquiry.id));
       knownOrderIds = nextIds;
       knownMemberIds = nextMemberIds;
-      if (!newOrders.length && !newMembers.length) {
+      knownInquiryIds = nextInquiryIds;
+      if (!newOrders.length && !newMembers.length && !newInquiries.length) {
         updateNotifyState();
         return;
       }
       if (newOrders.length) {
         showOrderAlert(newOrders);
         notifyBrowser("ELIN 새 주문", `${newOrders[0].customer?.name || "고객"}님 · ${money(newOrders[0].total)} · ${newOrders[0].id}`, newOrders[0].id);
-      } else {
+      } else if (newMembers.length) {
         showMemberAlert(newMembers);
         notifyBrowser("ELIN 새 회원가입", `${newMembers[0].name || "회원"}님 · ${newMembers[0].username || "-"}`, newMembers[0].id);
+      } else {
+        showInquiryAlert(newInquiries);
+        notifyBrowser("ELIN 새 고객문의", `${newInquiries[0].name || "고객"}님 · ${newInquiries[0].subject || newInquiries[0].category || "문의"}`, newInquiries[0].id);
       }
       playOrderSound();
       updateNotifyState();
@@ -502,6 +542,7 @@
       document.querySelector("#productsTab").classList.toggle("hidden", tabName !== "products");
       document.querySelector("#ordersTab").classList.toggle("hidden", tabName !== "orders");
       document.querySelector("#membersTab").classList.toggle("hidden", tabName !== "members");
+      document.querySelector("#inquiriesTab").classList.toggle("hidden", tabName !== "inquiries");
       document.querySelector("#settingsTab").classList.toggle("hidden", tabName !== "settings");
     }
 
@@ -559,12 +600,14 @@
       const sales = orders.filter(order => order.status !== "취소").reduce((sum, order) => sum + Number(order.total || 0), 0);
       const count = status => orders.filter(order => order.status === status).length;
       const lowStock = products.filter(product => Number(product.stock) <= 3).length;
+      const unanswered = inquiries.filter(inquiry => inquiry.status !== "답변완료").length;
       document.querySelector("#dashboard").innerHTML = `
         <div class="metric"><strong>${orders.length}</strong><span>총 주문</span></div>
         <div class="metric"><strong>${count("입금대기")}</strong><span>입금대기</span></div>
         <div class="metric"><strong>${count("배송중")}</strong><span>배송중</span></div>
         <div class="metric"><strong>${money(sales)}</strong><span>총 매출</span></div>
         <div class="metric"><strong>${members.length}</strong><span>총 회원</span></div>
+        <div class="metric"><strong>${unanswered}</strong><span>미답변 문의</span></div>
         <div class="metric"><strong>${lowStock}</strong><span>재고 부족</span></div>
       `;
     }
@@ -717,6 +760,39 @@
       `).join("") : "<p>회원 정보가 없습니다.</p>";
     }
 
+    function renderInquiries() {
+      const keyword = document.querySelector("#inquirySearch").value.trim().toLowerCase();
+      const statusFilter = document.querySelector("#inquiryStatus").value;
+      const filtered = inquiries.filter(inquiry => {
+        const text = `${inquiry.id} ${inquiry.name || ""} ${inquiry.phone || ""} ${inquiry.email || ""} ${inquiry.subject || ""} ${inquiry.message || ""}`.toLowerCase();
+        return (!keyword || text.includes(keyword)) && (!statusFilter || inquiry.status === statusFilter);
+      });
+      document.querySelector("#inquiryList").innerHTML = filtered.length ? filtered.map(inquiry => `
+        <article class="order">
+          <div>
+            <strong>${inquiry.id}</strong>
+            <div class="meta">${inquiry.status || "접수"} · ${inquiry.category || "일반문의"} · ${inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString("ko-KR") : "-"}</div>
+            <div class="meta">${inquiry.name || "-"} · ${inquiry.phone || "-"} · ${inquiry.email || "-"}</div>
+            <div class="meta">주문번호: ${inquiry.order_id || "없음"}</div>
+            <div style="margin-top:10px"><strong>${inquiry.subject || "제목 없음"}</strong></div>
+            <div class="meta" style="white-space:pre-wrap">${inquiry.message || ""}</div>
+          </div>
+          <div>
+            <label>처리 상태</label>
+            <select id="inquiry-status-${inquiry.id}">
+              ${["접수", "확인중", "답변완료", "보류"].map(status => `<option ${inquiry.status === status ? "selected" : ""}>${status}</option>`).join("")}
+            </select>
+            <label>고객 답변</label>
+            <textarea id="inquiry-answer-${inquiry.id}" placeholder="고객에게 안내할 답변">${inquiry.answer || ""}</textarea>
+            <label>관리자 메모</label>
+            <textarea id="inquiry-memo-${inquiry.id}" placeholder="내부 메모">${inquiry.admin_memo || ""}</textarea>
+            <div style="height:10px"></div>
+            <button type="button" onclick="saveInquiry('${inquiry.id}')">문의 저장</button>
+          </div>
+        </article>
+      `).join("") : "<p>고객문의가 없습니다.</p>";
+    }
+
     window.copyMember = async id => {
       const member = members.find(item => item.id === id);
       if (!member) return;
@@ -804,6 +880,24 @@
       if (!response.ok) {
         const result = await response.json();
         alert(result.error || "주문 저장에 실패했습니다.");
+        return;
+      }
+      await refresh();
+    };
+
+    window.saveInquiry = async id => {
+      const response = await fetch(`/api/admin/inquiries/${id}`, {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify({
+          status: document.querySelector(`#inquiry-status-${id}`).value,
+          answer: document.querySelector(`#inquiry-answer-${id}`).value,
+          admin_memo: document.querySelector(`#inquiry-memo-${id}`).value
+        })
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        alert(result.error || "문의 저장에 실패했습니다.");
         return;
       }
       await refresh();

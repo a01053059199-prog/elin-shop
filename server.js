@@ -7,6 +7,7 @@ const root = __dirname;
 const dataDir = path.join(root, "data");
 const productsFile = path.join(dataDir, "products.json");
 const ordersFile = path.join(dataDir, "orders.json");
+const inquiriesFile = path.join(dataDir, "inquiries.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const PORT = Number(process.env.PORT || 4173);
@@ -46,6 +47,7 @@ async function ensureData() {
   await fs.mkdir(dataDir, { recursive: true });
   await ensureJson(productsFile, seedProducts);
   await ensureJson(ordersFile, []);
+  await ensureJson(inquiriesFile, []);
   await ensureJson(adminSettingsFile, null);
   await ensureJson(memberPageSettingsFile, null);
 }
@@ -161,7 +163,7 @@ const defaultMemberPageSettings = {
   emptyOrderText: "아직 주문내역이 없습니다.",
   supportText: "문의가 필요하면 고객센터로 연락해주세요.",
   supportLinkText: "고객센터",
-  supportLinkUrl: "/shipping.html",
+  supportLinkUrl: "/customer.html",
   showUsername: true,
   showPhone: true,
   showAddress: true,
@@ -447,6 +449,67 @@ async function updateOrderStatus(id, input) {
   return order;
 }
 
+async function listInquiries() {
+  const inquiries = useSupabase ? await supabase("inquiries?select=*&order=created_at.desc") : await readJson(inquiriesFile);
+  return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
+}
+
+async function createInquiry(input, member) {
+  const inquiry = {
+    id: `QNA-${Date.now()}`,
+    status: "접수",
+    category: String(input.category || "일반문의").trim(),
+    subject: String(input.subject || "").trim(),
+    name: String(input.name || member?.name || "").trim(),
+    phone: String(input.phone || member?.phone || "").trim(),
+    email: String(input.email || member?.email || "").trim(),
+    order_id: String(input.order_id || "").trim(),
+    message: String(input.message || "").trim(),
+    answer: "",
+    admin_memo: "",
+    member_id: member?.id || null
+  };
+  if (!inquiry.name || !inquiry.phone || !inquiry.message) {
+    throw new Error("이름, 연락처, 문의 내용을 입력해주세요.");
+  }
+  if (useSupabase) {
+    const [created] = await supabase("inquiries", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(inquiry)
+    });
+    return { ...created, createdAt: created.created_at };
+  }
+  const inquiries = await readJson(inquiriesFile);
+  const localInquiry = { ...inquiry, createdAt: new Date().toISOString() };
+  inquiries.unshift(localInquiry);
+  await writeJson(inquiriesFile, inquiries);
+  return localInquiry;
+}
+
+async function updateInquiry(id, input) {
+  const patch = {
+    status: String(input.status || "접수").trim(),
+    answer: String(input.answer || "").trim(),
+    admin_memo: String(input.admin_memo || "").trim()
+  };
+  if (useSupabase) {
+    const [updated] = await supabase(`inquiries?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(patch)
+    });
+    if (!updated) throw new Error("문의를 찾을 수 없습니다.");
+    return { ...updated, createdAt: updated.created_at };
+  }
+  const inquiries = await readJson(inquiriesFile);
+  const inquiry = inquiries.find(item => item.id === id);
+  if (!inquiry) throw new Error("문의를 찾을 수 없습니다.");
+  Object.assign(inquiry, patch);
+  await writeJson(inquiriesFile, inquiries);
+  return inquiry;
+}
+
 async function findMemberByEmail(email) {
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return null;
@@ -624,6 +687,21 @@ async function handleApi(req, res, url) {
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
     if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     return send(res, 200, await listMembers());
+  }
+
+  if (url.pathname === "/api/inquiries" && req.method === "POST") {
+    return send(res, 201, await createInquiry(await readBody(req), currentMember(req)));
+  }
+
+  if (url.pathname === "/api/admin/inquiries" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await listInquiries());
+  }
+
+  if (url.pathname.startsWith("/api/admin/inquiries/") && req.method === "PATCH") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    return send(res, 200, await updateInquiry(id, await readBody(req)));
   }
 
   if (url.pathname === "/api/member/orders" && req.method === "GET") {

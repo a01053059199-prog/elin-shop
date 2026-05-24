@@ -14,6 +14,7 @@ COPY mypage.html ./
 COPY terms.html ./
 COPY privacy.html ./
 COPY shipping.html ./
+COPY customer.html ./
 COPY start-elin.bat ./
 COPY README.md ./
 
