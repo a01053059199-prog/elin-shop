@@ -8,6 +8,7 @@ const dataDir = path.join(root, "data");
 const productsFile = path.join(dataDir, "products.json");
 const ordersFile = path.join(dataDir, "orders.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
+const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -46,6 +47,7 @@ async function ensureData() {
   await ensureJson(productsFile, seedProducts);
   await ensureJson(ordersFile, []);
   await ensureJson(adminSettingsFile, null);
+  await ensureJson(memberPageSettingsFile, null);
 }
 
 async function ensureJson(file, fallback) {
@@ -145,6 +147,68 @@ async function saveAdminSettings(settings) {
       // Fall back to the local file if the Supabase settings table is not ready yet.
     }
   }
+}
+
+const defaultMemberPageSettings = {
+  pageTitle: "마이페이지",
+  introText: "회원 정보와 주문 내역을 확인할 수 있습니다.",
+  noticeText: "무통장 입금 주문은 입금 확인 후 배송이 시작됩니다.",
+  loginRequiredText: "로그인이 필요합니다.",
+  emptyOrderText: "아직 주문내역이 없습니다.",
+  supportText: "문의가 필요하면 고객센터로 연락해주세요.",
+  supportLinkText: "고객센터",
+  supportLinkUrl: "/shipping.html",
+  showUsername: true,
+  showPhone: true,
+  showAddress: true,
+  showOrderStatus: true,
+  showBankInfo: true,
+  showTracking: true
+};
+
+function normalizeMemberPageSettings(input = {}) {
+  const settings = { ...defaultMemberPageSettings, ...(input || {}) };
+  for (const key of ["pageTitle", "introText", "noticeText", "loginRequiredText", "emptyOrderText", "supportText", "supportLinkText", "supportLinkUrl"]) {
+    settings[key] = String(settings[key] || "").trim();
+  }
+  for (const key of ["showUsername", "showPhone", "showAddress", "showOrderStatus", "showBankInfo", "showTracking"]) {
+    settings[key] = Boolean(settings[key]);
+  }
+  return settings;
+}
+
+async function memberPageSettings() {
+  const localSettings = async () => {
+    try {
+      const saved = await readJson(memberPageSettingsFile);
+      return normalizeMemberPageSettings(saved);
+    } catch {
+      return normalizeMemberPageSettings();
+    }
+  };
+  const local = await localSettings();
+  if (useSupabase) {
+    try {
+      const rows = await supabase("admin_settings?key=eq.member_page_settings&select=value");
+      if (rows?.[0]?.value) return normalizeMemberPageSettings(JSON.parse(rows[0].value));
+    } catch {}
+  }
+  return local;
+}
+
+async function saveMemberPageSettings(settings) {
+  const normalized = normalizeMemberPageSettings(settings);
+  await writeJson(memberPageSettingsFile, normalized);
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?on_conflict=key", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify([{ key: "member_page_settings", value: JSON.stringify(normalized) }])
+      });
+    } catch {}
+  }
+  return normalized;
 }
 
 async function requireAdmin(req) {
@@ -494,6 +558,16 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, username });
   }
 
+  if (url.pathname === "/api/admin/member-page-settings" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await memberPageSettings());
+  }
+
+  if (url.pathname === "/api/admin/member-page-settings" && req.method === "PATCH") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await saveMemberPageSettings(await readBody(req)));
+  }
+
   if (url.pathname === "/api/auth/signup" && req.method === "POST") {
     const member = await createMember(await readBody(req));
     return startMemberSession(member, res);
@@ -518,6 +592,10 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/auth/me" && req.method === "GET") {
     return send(res, 200, { member: publicMember(currentMember(req)) });
+  }
+
+  if (url.pathname === "/api/member-page-settings" && req.method === "GET") {
+    return send(res, 200, await memberPageSettings());
   }
 
   if (url.pathname === "/api/member/orders" && req.method === "GET") {

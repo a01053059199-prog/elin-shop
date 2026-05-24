@@ -174,6 +174,47 @@
           <div style="height:12px"></div>
           <button type="submit">관리자 정보 저장</button>
         </form>
+
+        <form class="panel" id="memberPageSettingsForm" style="max-width:720px; margin-top:18px">
+          <h2>회원페이지 설정</h2>
+          <p class="note">회원 마이페이지에 보이는 제목, 안내문, 표시 항목을 관리합니다.</p>
+
+          <label for="memberPageTitle">페이지 제목</label>
+          <input id="memberPageTitle" placeholder="마이페이지" />
+
+          <label for="memberIntroText">상단 안내문</label>
+          <textarea id="memberIntroText" placeholder="회원 정보와 주문 내역을 확인할 수 있습니다."></textarea>
+
+          <label for="memberNoticeText">회원 공지</label>
+          <textarea id="memberNoticeText" placeholder="무통장 입금 주문은 입금 확인 후 배송이 시작됩니다."></textarea>
+
+          <label for="memberLoginRequiredText">로그인 필요 문구</label>
+          <input id="memberLoginRequiredText" placeholder="로그인이 필요합니다." />
+
+          <label for="memberEmptyOrderText">주문 없음 문구</label>
+          <input id="memberEmptyOrderText" placeholder="아직 주문내역이 없습니다." />
+
+          <label for="memberSupportText">하단 고객 안내 문구</label>
+          <input id="memberSupportText" placeholder="문의가 필요하면 고객센터로 연락해주세요." />
+
+          <label for="memberSupportLinkText">고객 안내 링크 이름</label>
+          <input id="memberSupportLinkText" placeholder="고객센터" />
+
+          <label for="memberSupportLinkUrl">고객 안내 링크 주소</label>
+          <input id="memberSupportLinkUrl" placeholder="/shipping.html" />
+
+          <div class="filters" style="align-items:flex-start">
+            <label><input id="memberShowUsername" type="checkbox" style="width:auto"> 아이디 표시</label>
+            <label><input id="memberShowPhone" type="checkbox" style="width:auto"> 연락처 표시</label>
+            <label><input id="memberShowAddress" type="checkbox" style="width:auto"> 주소 표시</label>
+            <label><input id="memberShowOrderStatus" type="checkbox" style="width:auto"> 주문상태 표시</label>
+            <label><input id="memberShowBankInfo" type="checkbox" style="width:auto"> 입금계좌 표시</label>
+            <label><input id="memberShowTracking" type="checkbox" style="width:auto"> 배송정보 표시</label>
+          </div>
+
+          <div style="height:12px"></div>
+          <button type="submit">회원페이지 설정 저장</button>
+        </form>
       </div>
     </section>
   </main>
@@ -200,6 +241,7 @@
       const result = await response.json();
       showAdmin();
       setValue("adminUsername", result.username || "admin");
+      await loadMemberPageSettings();
       await refresh();
     });
 
@@ -282,6 +324,19 @@
       location.reload();
     });
 
+    document.querySelector("#memberPageSettingsForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const response = await fetch("/api/admin/member-page-settings", {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify(readMemberPageSettingsForm())
+      });
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || "회원페이지 설정 저장에 실패했습니다.");
+      fillMemberPageSettingsForm(result);
+      alert("회원페이지 설정이 저장되었습니다.");
+    });
+
     async function refresh() {
       products = await (await fetch("/api/products")).json();
       orders = await (await fetch("/api/orders", { headers: headers() })).json();
@@ -301,6 +356,48 @@
       const result = await response.json();
       setValue("adminUsername", result.username || "admin");
       return result;
+    }
+
+    async function loadMemberPageSettings() {
+      const response = await fetch("/api/admin/member-page-settings");
+      if (!response.ok) return;
+      fillMemberPageSettingsForm(await response.json());
+    }
+
+    function readMemberPageSettingsForm() {
+      return {
+        pageTitle: formValue("memberPageTitle"),
+        introText: formValue("memberIntroText"),
+        noticeText: formValue("memberNoticeText"),
+        loginRequiredText: formValue("memberLoginRequiredText"),
+        emptyOrderText: formValue("memberEmptyOrderText"),
+        supportText: formValue("memberSupportText"),
+        supportLinkText: formValue("memberSupportLinkText"),
+        supportLinkUrl: formValue("memberSupportLinkUrl"),
+        showUsername: document.querySelector("#memberShowUsername").checked,
+        showPhone: document.querySelector("#memberShowPhone").checked,
+        showAddress: document.querySelector("#memberShowAddress").checked,
+        showOrderStatus: document.querySelector("#memberShowOrderStatus").checked,
+        showBankInfo: document.querySelector("#memberShowBankInfo").checked,
+        showTracking: document.querySelector("#memberShowTracking").checked
+      };
+    }
+
+    function fillMemberPageSettingsForm(settings) {
+      setValue("memberPageTitle", settings.pageTitle);
+      setValue("memberIntroText", settings.introText);
+      setValue("memberNoticeText", settings.noticeText);
+      setValue("memberLoginRequiredText", settings.loginRequiredText);
+      setValue("memberEmptyOrderText", settings.emptyOrderText);
+      setValue("memberSupportText", settings.supportText);
+      setValue("memberSupportLinkText", settings.supportLinkText);
+      setValue("memberSupportLinkUrl", settings.supportLinkUrl);
+      document.querySelector("#memberShowUsername").checked = Boolean(settings.showUsername);
+      document.querySelector("#memberShowPhone").checked = Boolean(settings.showPhone);
+      document.querySelector("#memberShowAddress").checked = Boolean(settings.showAddress);
+      document.querySelector("#memberShowOrderStatus").checked = Boolean(settings.showOrderStatus);
+      document.querySelector("#memberShowBankInfo").checked = Boolean(settings.showBankInfo);
+      document.querySelector("#memberShowTracking").checked = Boolean(settings.showTracking);
     }
 
     function renderDashboard() {
@@ -528,6 +625,7 @@
       const result = await loadAdminInfo();
       if (!result) return;
       showAdmin();
+      await loadMemberPageSettings();
       await refresh();
     }
 

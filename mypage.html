@@ -10,52 +10,128 @@
     a { color: inherit; text-decoration: none; }
     header { border-bottom: 1px solid #e6e0d8; background: #fff; }
     .bar, main { max-width: 1040px; margin: 0 auto; padding: 20px; }
-    .bar { display: flex; justify-content: space-between; align-items: center; }
+    .bar { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
     .brand { font-family: Georgia, "Times New Roman", serif; font-size: 34px; letter-spacing: .08em; font-weight: 700; }
-    .panel, .order { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
-    h1 { margin: 20px 0 14px; }
+    .nav { display: flex; gap: 14px; color: #555; font-size: 14px; }
+    h1 { margin: 22px 0 8px; font-size: 30px; }
+    .lead { margin: 0 0 18px; color: #6a6a6a; line-height: 1.7; }
+    .panel, .order, .notice { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
+    .notice { margin-bottom: 14px; background: #f5f1eb; }
     .list { display: grid; gap: 12px; }
-    .meta { color: #6a6a6a; line-height: 1.6; font-size: 14px; }
+    .meta { color: #6a6a6a; line-height: 1.7; font-size: 14px; }
+    .member-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
     button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 11px 14px; font-weight: 900; cursor: pointer; }
+    .order strong { display: block; margin-bottom: 6px; }
+    .order-lines { margin: 10px 0; padding: 10px 0; border-block: 1px solid #eee8df; }
+    .support { margin-top: 18px; color: #6a6a6a; font-size: 14px; }
+    .support a { text-decoration: underline; color: #171717; }
+    @media (max-width: 640px) {
+      .bar, main { padding: 16px; }
+      .brand { font-size: 28px; }
+      .nav { font-size: 13px; }
+      h1 { font-size: 24px; }
+    }
   </style>
 </head>
 <body>
-  <header><div class="bar"><a class="brand" href="/">ELIN</a><a href="/login.html">로그인</a></div></header>
+  <header>
+    <div class="bar">
+      <a class="brand" href="/">ELIN</a>
+      <nav class="nav"><a href="/">쇼핑</a><a href="/login.html">로그인</a></nav>
+    </div>
+  </header>
   <main>
+    <h1 id="pageTitle">마이페이지</h1>
+    <p class="lead" id="introText">회원 정보와 주문 내역을 확인할 수 있습니다.</p>
+    <section class="notice" id="noticeBox"></section>
     <section class="panel" id="memberBox">회원 정보를 확인하는 중입니다.</section>
-    <h1>주문내역</h1>
+    <h1 style="font-size:24px">주문내역</h1>
     <section class="list" id="orders"></section>
+    <p class="support" id="supportBox"></p>
   </main>
   <script>
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
+    const escapeHtml = value => String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
+    let pageSettings = {
+      pageTitle: "마이페이지",
+      introText: "회원 정보와 주문 내역을 확인할 수 있습니다.",
+      noticeText: "무통장 입금 주문은 입금 확인 후 배송이 시작됩니다.",
+      loginRequiredText: "로그인이 필요합니다.",
+      emptyOrderText: "아직 주문내역이 없습니다.",
+      supportText: "문의가 필요하면 고객센터로 연락해주세요.",
+      supportLinkText: "고객센터",
+      supportLinkUrl: "/shipping.html",
+      showUsername: true,
+      showPhone: true,
+      showAddress: true,
+      showOrderStatus: true,
+      showBankInfo: true,
+      showTracking: true
+    };
+
+    async function loadSettings() {
+      try {
+        const response = await fetch("/api/member-page-settings");
+        if (response.ok) pageSettings = { ...pageSettings, ...(await response.json()) };
+      } catch (_) {}
+      document.querySelector("#pageTitle").textContent = pageSettings.pageTitle || "마이페이지";
+      document.querySelector("#introText").textContent = pageSettings.introText || "";
+      document.querySelector("#noticeBox").textContent = pageSettings.noticeText || "";
+      document.querySelector("#noticeBox").style.display = pageSettings.noticeText ? "" : "none";
+      document.querySelector("#supportBox").innerHTML = `${escapeHtml(pageSettings.supportText || "")} ${pageSettings.supportLinkUrl ? `<a href="${escapeHtml(pageSettings.supportLinkUrl)}">${escapeHtml(pageSettings.supportLinkText || "바로가기")}</a>` : ""}`;
+    }
+
+    function memberInfo(member) {
+      const rows = [];
+      if (pageSettings.showUsername) rows.push(`아이디 ${escapeHtml(member.username || "-")}`);
+      if (pageSettings.showPhone) rows.push(`연락처 ${escapeHtml(member.phone || "-")}`);
+      if (pageSettings.showAddress) rows.push(`주소 ${escapeHtml(member.address || "-")}`);
+      return rows.join(" · ");
+    }
+
+    function orderCard(order) {
+      const itemText = (order.items || []).map(item => `${escapeHtml(item.name)} ${escapeHtml(item.color || "기본")}/${escapeHtml(item.size || "FREE")} ${Number(item.qty || 0)}개`).join(", ");
+      const lines = [];
+      if (pageSettings.showOrderStatus) lines.push(`${escapeHtml(order.status || "주문접수")} · ${new Date(order.createdAt || order.created_at).toLocaleString("ko-KR")}`);
+      if (pageSettings.showBankInfo) lines.push(`${escapeHtml(order.customer?.paymentMethod || "무통장입금")} · ${escapeHtml(order.customer?.bank || "")} · 입금자 ${escapeHtml(order.customer?.depositor || order.customer?.name || "")}`);
+      if (pageSettings.showTracking && (order.tracking_company || order.tracking_number)) lines.push(`배송 ${escapeHtml(order.tracking_company || "")} ${escapeHtml(order.tracking_number || "")}`);
+      return `
+        <article class="order">
+          <strong>${escapeHtml(order.id)}</strong>
+          ${lines.map(line => `<div class="meta">${line}</div>`).join("")}
+          <div class="order-lines meta">${itemText}</div>
+          <div><strong>${money(order.total)}</strong></div>
+        </article>
+      `;
+    }
+
     async function load() {
+      await loadSettings();
       const me = await (await fetch("/api/auth/me")).json();
       if (!me.member) {
-        document.querySelector("#memberBox").innerHTML = `로그인이 필요합니다. <a href="/login.html">로그인하기</a>`;
+        document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">로그인하기</a>`;
         document.querySelector("#orders").innerHTML = "";
         return;
       }
       document.querySelector("#memberBox").innerHTML = `
-        <strong>${me.member.name}</strong>
-        <div class="meta">아이디 ${me.member.username || "-"} · ${me.member.phone || "-"} · ${me.member.address || "-"}</div>
-        <button type="button" onclick="logout()">로그아웃</button>
+        <div class="member-head">
+          <div>
+            <strong>${escapeHtml(me.member.name)}</strong>
+            <div class="meta">${memberInfo(me.member)}</div>
+          </div>
+          <button type="button" onclick="logout()">로그아웃</button>
+        </div>
       `;
       const response = await fetch("/api/member/orders");
       const orders = response.ok ? await response.json() : [];
-      document.querySelector("#orders").innerHTML = orders.length ? orders.map(order => `
-        <article class="order">
-          <strong>${order.id}</strong>
-          <div class="meta">${order.status} · ${new Date(order.createdAt || order.created_at).toLocaleString("ko-KR")}</div>
-          <div class="meta">${order.customer.paymentMethod || "무통장입금"} · ${order.customer.bank || ""} · 입금자 ${order.customer.depositor || order.customer.name}</div>
-          <div class="meta">${order.items.map(item => `${item.name} ${item.color || "기본"}/${item.size || "FREE"} ${item.qty}개`).join(", ")}</div>
-          <div><strong>${money(order.total)}</strong></div>
-        </article>
-      `).join("") : "<p>아직 주문내역이 없습니다.</p>";
+      document.querySelector("#orders").innerHTML = orders.length ? orders.map(orderCard).join("") : `<p>${escapeHtml(pageSettings.emptyOrderText || "아직 주문내역이 없습니다.")}</p>`;
     }
+
     async function logout() {
       await fetch("/api/auth/logout", { method: "POST" });
       location.href = "/";
     }
+
     load();
   </script>
 </body>
