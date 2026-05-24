@@ -14,15 +14,19 @@
     .brand { font-family: Georgia, "Times New Roman", serif; font-size: 34px; letter-spacing: .08em; font-weight: 700; }
     .nav { display: flex; gap: 14px; color: #555; font-size: 14px; }
     h1 { margin: 22px 0 8px; font-size: 30px; }
+    h2 { margin: 24px 0 10px; font-size: 22px; }
     .lead { margin: 0 0 18px; color: #6a6a6a; line-height: 1.7; }
-    .panel, .order, .notice { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
+    .panel, .order, .notice, .inquiry { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
     .notice { margin-bottom: 14px; background: #f5f1eb; }
     .list { display: grid; gap: 12px; }
     .meta { color: #6a6a6a; line-height: 1.7; font-size: 14px; }
     .member-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
     button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 11px 14px; font-weight: 900; cursor: pointer; }
-    .order strong { display: block; margin-bottom: 6px; }
+    .order strong, .inquiry strong { display: block; margin-bottom: 6px; }
     .order-lines { margin: 10px 0; padding: 10px 0; border-block: 1px solid #eee8df; }
+    .answer { margin-top: 12px; padding: 12px; border-radius: 6px; background: #f5f1eb; white-space: pre-wrap; line-height: 1.7; }
+    .badge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; border-radius: 999px; background: #171717; color: #fff; font-size: 12px; font-weight: 900; }
+    .badge.wait { background: #8a6b36; }
     .support { margin-top: 18px; color: #6a6a6a; font-size: 14px; }
     .support a { text-decoration: underline; color: #171717; }
     @media (max-width: 640px) {
@@ -37,24 +41,35 @@
   <header>
     <div class="bar">
       <a class="brand" href="/">ELIN</a>
-      <nav class="nav"><a href="/">쇼핑</a><a href="/login.html">로그인</a></nav>
+      <nav class="nav">
+        <a href="/">쇼핑몰</a>
+        <a href="/customer.html">고객센터</a>
+        <a href="/login.html">로그인</a>
+      </nav>
     </div>
   </header>
+
   <main>
     <h1 id="pageTitle">마이페이지</h1>
-    <p class="lead" id="introText">회원 정보와 주문 내역을 확인할 수 있습니다.</p>
+    <p class="lead" id="introText">회원 정보와 주문 내역, 문의 답변을 확인할 수 있습니다.</p>
     <section class="notice" id="noticeBox"></section>
     <section class="panel" id="memberBox">회원 정보를 확인하는 중입니다.</section>
-    <h1 style="font-size:24px">주문내역</h1>
+
+    <h2>주문내역</h2>
     <section class="list" id="orders"></section>
+
+    <h2>내 문의내역</h2>
+    <section class="list" id="inquiries"></section>
+
     <p class="support" id="supportBox"></p>
   </main>
+
   <script>
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const escapeHtml = value => String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
     let pageSettings = {
       pageTitle: "마이페이지",
-      introText: "회원 정보와 주문 내역을 확인할 수 있습니다.",
+      introText: "회원 정보와 주문 내역, 문의 답변을 확인할 수 있습니다.",
       noticeText: "무통장 입금 주문은 입금 확인 후 배송이 시작됩니다.",
       loginRequiredText: "로그인이 필요합니다.",
       emptyOrderText: "아직 주문내역이 없습니다.",
@@ -105,14 +120,32 @@
       `;
     }
 
+    function inquiryCard(inquiry) {
+      const hasAnswer = Boolean(String(inquiry.answer || "").trim());
+      return `
+        <article class="inquiry">
+          <strong>${escapeHtml(inquiry.subject || "문의")}</strong>
+          <div class="meta">${escapeHtml(inquiry.id)} · ${escapeHtml(inquiry.status || "접수")} · ${inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString("ko-KR") : "-"}</div>
+          <div class="answer">${escapeHtml(inquiry.message || "")}</div>
+          <div class="answer">
+            <span class="badge ${hasAnswer ? "" : "wait"}">${hasAnswer ? "답변완료" : "답변대기"}</span>
+            <div style="height:8px"></div>
+            ${hasAnswer ? escapeHtml(inquiry.answer) : "아직 관리자 답변이 등록되지 않았습니다."}
+          </div>
+        </article>
+      `;
+    }
+
     async function load() {
       await loadSettings();
       const me = await (await fetch("/api/auth/me")).json();
       if (!me.member) {
         document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">로그인하기</a>`;
         document.querySelector("#orders").innerHTML = "";
+        document.querySelector("#inquiries").innerHTML = "";
         return;
       }
+
       document.querySelector("#memberBox").innerHTML = `
         <div class="member-head">
           <div>
@@ -122,9 +155,14 @@
           <button type="button" onclick="logout()">로그아웃</button>
         </div>
       `;
-      const response = await fetch("/api/member/orders");
-      const orders = response.ok ? await response.json() : [];
+
+      const orderResponse = await fetch("/api/member/orders");
+      const orders = orderResponse.ok ? await orderResponse.json() : [];
       document.querySelector("#orders").innerHTML = orders.length ? orders.map(orderCard).join("") : `<p>${escapeHtml(pageSettings.emptyOrderText || "아직 주문내역이 없습니다.")}</p>`;
+
+      const inquiryResponse = await fetch("/api/member/inquiries");
+      const inquiries = inquiryResponse.ok ? await inquiryResponse.json() : [];
+      document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>아직 문의내역이 없습니다. <a href="/customer.html">문의하기</a></p>`;
     }
 
     async function logout() {

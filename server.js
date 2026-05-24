@@ -454,6 +454,14 @@ async function listInquiries() {
   return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
 }
 
+async function listMemberInquiries(memberId) {
+  if (!memberId) return [];
+  const inquiries = useSupabase
+    ? await supabase(`inquiries?member_id=eq.${encodeURIComponent(memberId)}&select=*&order=created_at.desc`)
+    : (await readJson(inquiriesFile)).filter(item => item.member_id === memberId);
+  return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
+}
+
 async function createInquiry(input, member) {
   const inquiry = {
     id: `QNA-${Date.now()}`,
@@ -709,6 +717,12 @@ async function handleApi(req, res, url) {
     if (!member) return send(res, 401, { error: "로그인이 필요합니다." });
     const orders = await listOrders();
     return send(res, 200, orders.filter(order => order.customer?.memberId === member.id));
+  }
+
+  if (url.pathname === "/api/member/inquiries" && req.method === "GET") {
+    const member = currentMember(req);
+    if (!member) return send(res, 401, { error: "로그인이 필요합니다." });
+    return send(res, 200, await listMemberInquiries(member.id));
   }
 
   if (url.pathname === "/api/products" && req.method === "GET") {
