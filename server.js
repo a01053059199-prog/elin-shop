@@ -458,10 +458,10 @@ async function createInquiry(input, member) {
   const inquiry = {
     id: `QNA-${Date.now()}`,
     status: "접수",
-    category: String(input.category || "일반문의").trim(),
+    category: String(input.category || "고객문의").trim(),
     subject: String(input.subject || "").trim(),
-    name: String(input.name || member?.name || "").trim(),
-    phone: String(input.phone || member?.phone || "").trim(),
+    name: String(input.name || member?.name || "비회원").trim(),
+    phone: String(input.phone || member?.phone || "-").trim(),
     email: String(input.email || member?.email || "").trim(),
     order_id: String(input.order_id || "").trim(),
     message: String(input.message || "").trim(),
@@ -469,8 +469,8 @@ async function createInquiry(input, member) {
     admin_memo: "",
     member_id: member?.id || null
   };
-  if (!inquiry.name || !inquiry.phone || !inquiry.message) {
-    throw new Error("이름, 연락처, 문의 내용을 입력해주세요.");
+  if (!inquiry.subject || !inquiry.message) {
+    throw new Error("문의 제목과 내용을 입력해주세요.");
   }
   if (useSupabase) {
     const [created] = await supabase("inquiries", {
