@@ -130,7 +130,6 @@ async function adminSettings() {
 }
 
 async function saveAdminSettings(settings) {
-  await writeJson(adminSettingsFile, settings);
   if (useSupabase) {
     try {
       await supabase("admin_settings?on_conflict=key", {
@@ -142,11 +141,16 @@ async function saveAdminSettings(settings) {
           { key: "pin", value: settings.pin }
         ])
       });
+      const saved = await adminSettings();
+      if (saved.username !== settings.username || saved.password !== settings.password || saved.pin !== settings.pin) {
+        throw new Error("관리자 정보가 DB에 저장되지 않았습니다. Supabase admin_settings 테이블을 확인해주세요.");
+      }
       return;
-    } catch {
-      // Fall back to the local file if the Supabase settings table is not ready yet.
+    } catch (error) {
+      throw new Error(error.message || "관리자 정보 저장에 실패했습니다.");
     }
   }
+  await writeJson(adminSettingsFile, settings);
 }
 
 const defaultMemberPageSettings = {
