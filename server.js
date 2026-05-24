@@ -1,4 +1,4 @@
-const http = require("http");
+﻿const http = require("http");
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
@@ -7,6 +7,7 @@ const root = __dirname;
 const dataDir = path.join(root, "data");
 const productsFile = path.join(dataDir, "products.json");
 const ordersFile = path.join(dataDir, "orders.json");
+const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -44,6 +45,7 @@ async function ensureData() {
   await fs.mkdir(dataDir, { recursive: true });
   await ensureJson(productsFile, seedProducts);
   await ensureJson(ordersFile, []);
+  await ensureJson(adminSettingsFile, null);
 }
 
 async function ensureJson(file, fallback) {
@@ -98,8 +100,48 @@ function setCookie(name, value, maxAge = 86400) {
   return `${name}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
 }
 
-function requireAdmin(req) {
-  if (req.headers["x-admin-pin"] === ADMIN_PIN) return true;
+async function adminSettings() {
+  const fallback = { username: ADMIN_USER, password: ADMIN_PASSWORD, pin: ADMIN_PIN };
+  if (useSupabase) {
+    try {
+      const rows = await supabase("admin_settings?select=key,value");
+      const values = Object.fromEntries((rows || []).map(row => [row.key, row.value]));
+      return {
+        username: values.username || fallback.username,
+        password: values.password || fallback.password,
+        pin: values.pin || fallback.pin
+      };
+    } catch {
+      return fallback;
+    }
+  }
+  const saved = await readJson(adminSettingsFile);
+  return saved || fallback;
+}
+
+async function saveAdminSettings(settings) {
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?on_conflict=key", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates" },
+        body: JSON.stringify([
+          { key: "username", value: settings.username },
+          { key: "password", value: settings.password },
+          { key: "pin", value: settings.pin }
+        ])
+      });
+      return;
+    } catch {
+      // Fall back to the local file if the Supabase settings table is not ready yet.
+    }
+  }
+  await writeJson(adminSettingsFile, settings);
+}
+
+async function requireAdmin(req) {
+  const settings = await adminSettings();
+  if (req.headers["x-admin-pin"] === settings.pin) return true;
   const token = getCookies(req).elin_admin_session;
   return Boolean(token && adminSessions.has(token));
 }
@@ -400,12 +442,13 @@ function startMemberSession(member, res) {
 async function handleApi(req, res, url) {
   if (url.pathname === "/api/admin/login" && req.method === "POST") {
     const body = await readBody(req);
-    if (body.username !== ADMIN_USER || body.password !== ADMIN_PASSWORD) {
+    const settings = await adminSettings();
+    if (body.username !== settings.username || body.password !== settings.password) {
       return send(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다." });
     }
     const token = crypto.randomBytes(24).toString("hex");
     adminSessions.add(token);
-    return send(res, 200, { ok: true, username: ADMIN_USER }, "application/json; charset=utf-8", {
+    return send(res, 200, { ok: true, username: settings.username }, "application/json; charset=utf-8", {
       "Set-Cookie": setCookie("elin_admin_session", token)
     });
   }
@@ -419,8 +462,28 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/admin/me" && req.method === "GET") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "로그인이 필요합니다." });
-    return send(res, 200, { username: ADMIN_USER });
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "로그인이 필요합니다." });
+    const settings = await adminSettings();
+    return send(res, 200, { username: settings.username });
+  }
+
+  if (url.pathname === "/api/admin/settings" && req.method === "PATCH") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const body = await readBody(req);
+    const settings = await adminSettings();
+    if (String(body.currentPassword || "") !== settings.password) {
+      return send(res, 400, { error: "현재 비밀번호가 맞지 않습니다." });
+    }
+    const username = String(body.username || "").trim();
+    const password = String(body.password || "").trim();
+    const pin = String(body.pin || "").trim();
+    if (!/^[a-zA-Z0-9_]{4,24}$/.test(username)) {
+      return send(res, 400, { error: "관리자 아이디는 영문/숫자/_ 조합 4~24자로 입력하세요." });
+    }
+    if (password.length < 4) return send(res, 400, { error: "비밀번호는 4자 이상으로 입력하세요." });
+    if (!/^[0-9]{4,12}$/.test(pin)) return send(res, 400, { error: "PIN은 숫자 4~12자리로 입력하세요." });
+    await saveAdminSettings({ username, password, pin });
+    return send(res, 200, { ok: true, username });
   }
 
   if (url.pathname === "/api/auth/signup" && req.method === "POST") {
@@ -461,25 +524,25 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/products" && req.method === "POST") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     return send(res, 201, await createProduct(await readBody(req)));
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "PUT") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     return send(res, 200, await updateProduct(id, await readBody(req)));
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "DELETE") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     await deleteProduct(id);
     return send(res, 200, { ok: true });
   }
 
   if (url.pathname === "/api/orders" && req.method === "GET") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     return send(res, 200, await listOrders());
   }
 
@@ -488,7 +551,7 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname.startsWith("/api/orders/") && req.method === "PATCH") {
-    if (!requireAdmin(req)) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     const body = await readBody(req);
     return send(res, 200, await updateOrderStatus(id, body));
@@ -526,3 +589,4 @@ ensureData().then(() => {
     console.log(`Storage: ${useSupabase ? "Supabase" : "local JSON"}`);
   });
 });
+
