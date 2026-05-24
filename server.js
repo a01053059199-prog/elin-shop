@@ -110,20 +110,21 @@ async function adminSettings() {
       return fallback;
     }
   };
+  const local = await localSettings();
   if (useSupabase) {
     try {
       const rows = await supabase("admin_settings?select=key,value");
       const values = Object.fromEntries((rows || []).map(row => [row.key, row.value]));
       return {
-        username: values.username || fallback.username,
-        password: values.password || fallback.password,
-        pin: values.pin || fallback.pin
+        username: values.username || local.username,
+        password: values.password || local.password,
+        pin: values.pin || local.pin
       };
     } catch {
-      return await localSettings();
+      return local;
     }
   }
-  return await localSettings();
+  return local;
 }
 
 async function saveAdminSettings(settings) {
