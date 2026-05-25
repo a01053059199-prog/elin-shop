@@ -407,6 +407,15 @@
       .buy-panel { padding: 18px; }
       .actions { grid-template-columns: 1fr; }
       .qty-row { grid-template-columns: 1fr; }
+      .thumbs {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-auto-flow: row;
+        overflow: visible;
+        gap: 8px;
+      }
+      .thumbs button {
+        width: 100%;
+      }
       .section {
         width: 100%;
         margin-left: auto;
