@@ -502,6 +502,7 @@
     const id = params.get("id");
     let product;
     let allProducts = [];
+    let currentMember = null;
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({
@@ -681,7 +682,15 @@
       });
     }
 
+    function requireMember() {
+      if (currentMember) return true;
+      alert("로그인 후 이용 가능합니다.");
+      location.href = "/login.html";
+      return false;
+    }
+
     function addToCart(goCheckout) {
+      if (!requireMember()) return;
       const cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
       const color = document.querySelector("#color").value;
       const size = document.querySelector("#size").value;
@@ -718,6 +727,7 @@
       if (!response.ok) return;
       const result = await response.json();
       if (!result.member) return;
+      currentMember = result.member;
       document.querySelector("#loginLink").style.display = "none";
       document.querySelector("#memberLink").textContent = `${result.member.name}님`;
       document.querySelector("#logoutLink").style.display = "";

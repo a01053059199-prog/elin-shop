@@ -1007,6 +1007,7 @@
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
     let searchTerm = "";
+    let currentMember = null;
 
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const firstImage = product => Array.isArray(product.images) && product.images.length ? product.images[0] : product.image;
@@ -1044,7 +1045,15 @@
       newGrid.innerHTML = products.slice(0, 8).map(productCard).join("");
     }
 
+    function requireMember() {
+      if (currentMember) return true;
+      alert("로그인 후 이용 가능합니다.");
+      location.href = "/login.html";
+      return false;
+    }
+
     function addToCart(id) {
+      if (!requireMember()) return;
       const product = products.find(item => item.id === id);
       if (!product || Number(product.stock) < 1) return;
       const existing = cart.find(item => item.id === id && item.color === "기본" && item.size === "FREE");
@@ -1094,6 +1103,7 @@
     }
 
     function openDrawer() {
+      if (!requireMember()) return;
       drawer.classList.add("open");
       drawer.setAttribute("aria-hidden", "false");
     }
@@ -1129,6 +1139,7 @@
     document.querySelector("#closeDrawer").addEventListener("click", closeDrawer);
     document.querySelector("#drawerBackdrop").addEventListener("click", closeDrawer);
     document.querySelector(".checkout").addEventListener("click", () => {
+      if (!requireMember()) return;
       if (!cart.length) return showToast("장바구니가 비어 있습니다.");
       location.href = "/checkout.html";
     });
@@ -1138,6 +1149,7 @@
       if (event.target.id === "cartAdded") closeCartAdded();
     });
     document.querySelector("#cartAddedView").addEventListener("click", () => {
+      if (!requireMember()) return;
       closeCartAdded();
       openDrawer();
     });
@@ -1156,6 +1168,7 @@
       if (!response.ok) return;
       const result = await response.json();
       if (!result.member) return;
+      currentMember = result.member;
       document.querySelector("#loginLink").textContent = `${result.member.name}님`;
       document.querySelector("#loginLink").href = "/mypage.html";
       document.querySelector("#signupLink").style.display = "none";
