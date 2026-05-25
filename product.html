@@ -673,6 +673,12 @@
           </section>
         ` : ""}
       `;
+      document.querySelectorAll(".accordion details").forEach(detail => {
+        detail.open = true;
+        detail.addEventListener("toggle", () => {
+          if (!detail.open) detail.open = true;
+        });
+      });
     }
 
     function addToCart(goCheckout) {
