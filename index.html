@@ -1186,6 +1186,14 @@
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const firstImage = product => Array.isArray(product.images) && product.images.length ? product.images[0] : product.image;
     const escapeHtml = value => String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
+    const parseOptions = (value, fallback) => {
+      if (Array.isArray(value)) {
+        const items = value.map(item => String(item || "").trim()).filter(Boolean);
+        return items.length ? items : [fallback];
+      }
+      const items = String(value || "").split(/[\n,]+/).map(item => item.trim()).filter(Boolean);
+      return items.length ? items : [fallback];
+    };
 
     function productCard(product) {
       const image = firstImage(product);
@@ -1230,11 +1238,13 @@
       if (!requireMember()) return;
       const product = products.find(item => item.id === id);
       if (!product || Number(product.stock) < 1) return;
-      const existing = cart.find(item => item.id === id && item.color === "기본" && item.size === "FREE");
+      const color = parseOptions(product.colors, "기본")[0];
+      const size = parseOptions(product.sizes, "FREE")[0];
+      const existing = cart.find(item => item.id === id && item.color === color && item.size === size);
       if (existing) existing.qty += 1;
-      else cart.push({ ...product, image: firstImage(product), qty: 1, color: "기본", size: "FREE" });
+      else cart.push({ ...product, image: firstImage(product), qty: 1, color, size });
       renderCart();
-      showCartAdded({ ...product, image: firstImage(product), color: "기본", size: "FREE" });
+      showCartAdded({ ...product, image: firstImage(product), color, size });
     }
 
     function removeFromCart(index) {

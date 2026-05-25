@@ -134,6 +134,14 @@
           <label for="stock">재고</label>
           <input id="stock" type="number" required />
 
+          <label for="colors">색상 옵션</label>
+          <textarea id="colors" rows="3" placeholder="블랙&#10;화이트&#10;브라운"></textarea>
+          <div class="hint">여러 색상은 줄바꿈 또는 쉼표로 구분하세요. 비워두면 기본으로 저장됩니다.</div>
+
+          <label for="sizes">사이즈 옵션</label>
+          <textarea id="sizes" rows="3" placeholder="FREE&#10;S&#10;M&#10;L"></textarea>
+          <div class="hint">신발은 250, 255처럼 입력할 수 있습니다. 비워두면 FREE로 저장됩니다.</div>
+
           <label for="imageFile">상품 이미지 업로드</label>
           <input id="imageFile" type="file" accept="image/*" multiple />
           <div class="hint">권장: 1MB 이하 JPG/PNG. 큰 이미지는 저장이 느릴 수 있습니다.</div>
@@ -290,6 +298,32 @@
           <div style="height:12px"></div>
           <button type="submit">고객센터 설정 저장</button>
         </form>
+
+        <form class="panel" id="siteSettingsForm" style="max-width:720px; margin-top:18px">
+          <h2>하단 푸터 설정</h2>
+          <p class="note">메인 페이지 하단의 브랜드 정보, 회사 정보, 링크를 변경합니다.</p>
+
+          <label for="footerBrandTitle">왼쪽 제목</label>
+          <input id="footerBrandTitle" placeholder="ELIN" />
+
+          <label for="footerBrandText">왼쪽 내용</label>
+          <textarea id="footerBrandText" placeholder="Online Select Shop&#10;Mon-Fri 11:00 - 18:00"></textarea>
+
+          <label for="footerCompanyTitle">오른쪽 제목</label>
+          <input id="footerCompanyTitle" placeholder="Company" />
+
+          <label for="footerCompanyText">오른쪽 회사 정보</label>
+          <textarea id="footerCompanyText" placeholder="상호명 ELIN · 대표 관리자 · 사업자등록번호 000-00-00000"></textarea>
+
+          <div class="filters" style="justify-content:space-between">
+            <strong>하단 링크</strong>
+            <button class="ghost" type="button" onclick="addFooterLink()">+ 링크 추가</button>
+          </div>
+          <div class="list" id="footerLinks"></div>
+
+          <div style="height:12px"></div>
+          <button type="submit">푸터 설정 저장</button>
+        </form>
       </div>
     </section>
   </main>
@@ -301,6 +335,7 @@
     let inquiries = [];
     let customerGuideItems = [];
     let customerFaqs = [];
+    let footerLinks = [];
     let knownOrderIds = new Set();
     let knownMemberIds = new Set();
     let knownInquiryIds = new Set();
@@ -330,6 +365,7 @@
       setValue("adminUsername", result.username || "admin");
       await loadMemberPageSettings();
       await loadCustomerCenterSettings();
+      await loadSiteSettings();
       await refresh({ initial: true });
       startOrderPolling();
     });
@@ -443,6 +479,19 @@
       if (!response.ok) return alert(result.error || "고객센터 설정 저장에 실패했습니다.");
       fillCustomerCenterSettingsForm(result);
       alert("고객센터 설정이 저장되었습니다.");
+    });
+
+    document.querySelector("#siteSettingsForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const response = await fetch("/api/admin/site-settings", {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify(readSiteSettingsForm())
+      });
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || "푸터 설정 저장에 실패했습니다.");
+      fillSiteSettingsForm(result);
+      alert("푸터 설정이 저장되었습니다.");
     });
 
     async function refresh(options = {}) {
@@ -615,6 +664,12 @@
       fillCustomerCenterSettingsForm(await response.json());
     }
 
+    async function loadSiteSettings() {
+      const response = await fetch("/api/admin/site-settings");
+      if (!response.ok) return;
+      fillSiteSettingsForm(await response.json());
+    }
+
     function readMemberPageSettingsForm() {
       return {
         pageTitle: formValue("memberPageTitle"),
@@ -730,6 +785,52 @@
       renderCustomerSettingRows();
     };
 
+    function readSiteSettingsForm() {
+      return {
+        footerBrandTitle: formValue("footerBrandTitle"),
+        footerBrandText: formValue("footerBrandText"),
+        footerCompanyTitle: formValue("footerCompanyTitle"),
+        footerCompanyText: formValue("footerCompanyText"),
+        footerLinks: footerLinks.map((_, index) => ({
+          label: formValue(`footer-link-label-${index}`),
+          url: formValue(`footer-link-url-${index}`)
+        })).filter(link => link.label || link.url)
+      };
+    }
+
+    function fillSiteSettingsForm(settings) {
+      setValue("footerBrandTitle", settings.footerBrandTitle);
+      setValue("footerBrandText", settings.footerBrandText);
+      setValue("footerCompanyTitle", settings.footerCompanyTitle);
+      setValue("footerCompanyText", settings.footerCompanyText);
+      footerLinks = Array.isArray(settings.footerLinks) ? settings.footerLinks : [];
+      renderFooterLinks();
+    }
+
+    function renderFooterLinks() {
+      document.querySelector("#footerLinks").innerHTML = footerLinks.map((link, index) => `
+        <div class="panel" style="padding:12px">
+          <label>링크 이름</label>
+          <input id="footer-link-label-${index}" value="${escapeAttr(link.label)}" placeholder="예: 이용약관" />
+          <label>링크 주소</label>
+          <input id="footer-link-url-${index}" value="${escapeAttr(link.url)}" placeholder="예: /terms.html" />
+          <button class="danger" type="button" onclick="removeFooterLink(${index})">삭제</button>
+        </div>
+      `).join("") || "<p class=\"note\">하단 링크가 없습니다. 추가 버튼을 눌러주세요.</p>";
+    }
+
+    window.addFooterLink = () => {
+      footerLinks = readSiteSettingsForm().footerLinks;
+      footerLinks.push({ label: "", url: "" });
+      renderFooterLinks();
+    };
+
+    window.removeFooterLink = index => {
+      footerLinks = readSiteSettingsForm().footerLinks;
+      footerLinks.splice(index, 1);
+      renderFooterLinks();
+    };
+
     function renderDashboard() {
       const sales = orders.filter(order => order.status !== "취소").reduce((sum, order) => sum + Number(order.total || 0), 0);
       const count = status => orders.filter(order => order.status === status).length;
@@ -754,6 +855,20 @@
         if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, 10);
       } catch (_) {}
       return String(value).split(/\n+/).map(item => item.trim()).filter(Boolean).slice(0, 10);
+    }
+
+    function parseOptions(value, fallback) {
+      if (Array.isArray(value)) return value.map(item => String(item || "").trim()).filter(Boolean).slice(0, 30);
+      const options = String(value || "")
+        .split(/[\n,]+/)
+        .map(item => item.trim())
+        .filter(Boolean)
+        .slice(0, 30);
+      return options.length ? options : [fallback];
+    }
+
+    function optionText(value, fallback) {
+      return parseOptions(value, fallback).join(", ");
     }
 
     function productImages(product) {
@@ -826,6 +941,7 @@
           <div>
             <strong>${product.name}</strong>
             <div class="meta">${product.category} · ${money(product.price)} · <span class="${Number(product.stock) <= 3 ? "stock-low" : ""}">재고 ${product.stock}개</span></div>
+            <div class="meta">색상 ${optionText(product.colors, "기본")} · 사이즈 ${optionText(product.sizes, "FREE")}</div>
           </div>
           <div class="actions">
             <button class="ghost" onclick="editProduct('${product.id}')">수정</button>
@@ -953,6 +1069,8 @@
         price: Number(formValue("price")),
         old: Number(formValue("old") || formValue("price")),
         stock: Number(formValue("stock")),
+        colors: parseOptions(formValue("colors"), "기본"),
+        sizes: parseOptions(formValue("sizes"), "FREE"),
         image: parseImages(formValue("image"))[0],
         images: parseImages(formValue("image"))
       };
@@ -989,6 +1107,8 @@
       setValue("price", product.price);
       setValue("old", product.old);
       setValue("stock", product.stock);
+      setValue("colors", optionText(product.colors, "기본"));
+      setValue("sizes", optionText(product.sizes, "FREE"));
       setValue("image", productImages(product).join("\n"));
       renderImagePreview(productImages(product));
       scrollTo({ top: 0, behavior: "smooth" });
@@ -1043,6 +1163,7 @@
       showAdmin();
       await loadMemberPageSettings();
       await loadCustomerCenterSettings();
+      await loadSiteSettings();
       await refresh({ initial: true });
       startOrderPolling();
     }

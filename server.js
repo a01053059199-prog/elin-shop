@@ -11,6 +11,7 @@ const inquiriesFile = path.join(dataDir, "inquiries.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
+const siteSettingsFile = path.join(dataDir, "site-settings.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -52,6 +53,7 @@ async function ensureData() {
   await ensureJson(adminSettingsFile, null);
   await ensureJson(memberPageSettingsFile, null);
   await ensureJson(customerCenterSettingsFile, null);
+  await ensureJson(siteSettingsFile, null);
 }
 
 async function ensureJson(file, fallback) {
@@ -311,6 +313,65 @@ async function saveCustomerCenterSettings(settings) {
   return normalized;
 }
 
+const defaultSiteSettings = {
+  footerBrandTitle: "ELIN",
+  footerBrandText: "Online Select Shop\nMon-Fri 11:00 - 18:00",
+  footerCompanyTitle: "Company",
+  footerCompanyText: "상호명 ELIN · 대표 관리자 · 사업자등록번호 000-00-00000",
+  footerLinks: [
+    { label: "이용약관", url: "/terms.html" },
+    { label: "개인정보처리방침", url: "/privacy.html" },
+    { label: "배송/교환 안내", url: "/customer.html" }
+  ]
+};
+
+function normalizeSiteSettings(input = {}) {
+  const settings = { ...defaultSiteSettings, ...(input || {}) };
+  for (const key of ["footerBrandTitle", "footerBrandText", "footerCompanyTitle", "footerCompanyText"]) {
+    settings[key] = String(settings[key] || "").trim();
+  }
+  settings.footerLinks = (Array.isArray(input.footerLinks) ? input.footerLinks : defaultSiteSettings.footerLinks)
+    .map(link => ({
+      label: String(link?.label || "").trim(),
+      url: String(link?.url || "").trim()
+    }))
+    .filter(link => link.label || link.url)
+    .slice(0, 10);
+  return settings;
+}
+
+async function siteSettings() {
+  const localSettings = async () => {
+    try {
+      const saved = await readJson(siteSettingsFile);
+      return normalizeSiteSettings(saved);
+    } catch {
+      return normalizeSiteSettings();
+    }
+  };
+  const local = await localSettings();
+  if (useSupabase) {
+    try {
+      const rows = await supabase("admin_settings?key=eq.site_settings&select=value");
+      if (rows?.[0]?.value) return normalizeSiteSettings(JSON.parse(rows[0].value));
+    } catch {}
+  }
+  return local;
+}
+
+async function saveSiteSettings(settings) {
+  const normalized = normalizeSiteSettings(settings);
+  await writeJson(siteSettingsFile, normalized);
+  if (useSupabase) {
+    await supabase("admin_settings?on_conflict=key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify([{ key: "site_settings", value: JSON.stringify(normalized) }])
+    });
+  }
+  return normalized;
+}
+
 async function requireAdmin(req) {
   const settings = await adminSettings();
   if (req.headers["x-admin-pin"] === settings.pin) return true;
@@ -362,6 +423,15 @@ function cleanProduct(input) {
     ? input.images
     : String(input.images || input.image || "").split(/\n+/);
   const cleanImages = images.map(image => String(image || "").trim()).filter(Boolean).slice(0, 10);
+  const parseOptions = (value, fallback) => {
+    const items = Array.isArray(value)
+      ? value
+      : String(value || "").split(/[\n,]+/);
+    const clean = items.map(item => String(item || "").trim()).filter(Boolean).slice(0, 30);
+    return clean.length ? clean : [fallback];
+  };
+  const colors = parseOptions(input.colors, "기본");
+  const sizes = parseOptions(input.sizes, "FREE");
   const mainImage = cleanImages[0] || String(input.image || "").trim();
   if (!input.name || !input.category || !mainImage || !Number.isFinite(price)) {
     throw new Error("상품명, 카테고리, 이미지, 가격은 필수입니다.");
@@ -375,6 +445,8 @@ function cleanProduct(input) {
     price,
     old: Number.isFinite(old) ? old : price,
     stock: Number.isFinite(stock) ? stock : 0,
+    colors,
+    sizes,
     image: mainImage,
     images: cleanImages.length ? cleanImages : [mainImage]
   };
@@ -769,6 +841,16 @@ async function handleApi(req, res, url) {
     return send(res, 200, await saveCustomerCenterSettings(await readBody(req)));
   }
 
+  if (url.pathname === "/api/admin/site-settings" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await siteSettings());
+  }
+
+  if (url.pathname === "/api/admin/site-settings" && req.method === "PATCH") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, await saveSiteSettings(await readBody(req)));
+  }
+
   if (url.pathname === "/api/auth/signup" && req.method === "POST") {
     const member = await createMember(await readBody(req));
     return startMemberSession(member, res);
@@ -801,6 +883,10 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/customer-center-settings" && req.method === "GET") {
     return send(res, 200, await customerCenterSettings());
+  }
+
+  if (url.pathname === "/api/site-settings" && req.method === "GET") {
+    return send(res, 200, await siteSettings());
   }
 
   if (url.pathname === "/api/admin/members" && req.method === "GET") {

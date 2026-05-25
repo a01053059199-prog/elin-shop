@@ -525,6 +525,26 @@
       return [item.image].filter(Boolean);
     }
 
+    function parseOptions(value, fallback) {
+      if (Array.isArray(value)) return value.map(item => String(item || "").trim()).filter(Boolean).slice(0, 30);
+      if (value) {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed.map(item => String(item || "").trim()).filter(Boolean).slice(0, 30);
+        } catch (_) {}
+      }
+      const options = String(value || "")
+        .split(/[\n,]+/)
+        .map(item => item.trim())
+        .filter(Boolean)
+        .slice(0, 30);
+      return options.length ? options : [fallback];
+    }
+
+    function optionTags(options) {
+      return options.map(option => `<option>${escapeHtml(option)}</option>`).join("");
+    }
+
     function showImage(index) {
       const images = parseImages(product);
       document.querySelector("#mainImage").src = images[index] || product.image;
@@ -553,6 +573,8 @@
 
     function renderProduct() {
       const images = parseImages(product);
+      const colors = parseOptions(product.colors, "기본");
+      const sizes = parseOptions(product.sizes, "FREE");
       const title = escapeHtml(product.name);
       const related = allProducts
         .filter(item => item.id !== product.id && item.category === product.category)
@@ -591,18 +613,12 @@
 
             <label for="color">색상</label>
             <select id="color">
-              <option>기본</option>
-              <option>블랙</option>
-              <option>크림</option>
-              <option>브라운</option>
+              ${optionTags(colors)}
             </select>
 
             <label for="size">사이즈</label>
             <select id="size">
-              <option>FREE</option>
-              <option>S</option>
-              <option>M</option>
-              <option>L</option>
+              ${optionTags(sizes)}
             </select>
 
             <div class="qty-row">
