@@ -241,6 +241,101 @@
       padding: 24px;
     }
     .hero-side h2 { font-size: 26px; }
+    .legacy-hero { display: none !important; }
+    .hero-slider {
+      max-width: 1240px;
+      margin: 28px auto 0;
+      padding: 0 22px;
+    }
+    .hero-slider-frame {
+      position: relative;
+      min-height: 430px;
+      overflow: hidden;
+      background: #eee8df;
+    }
+    .hero-slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 56px;
+      background: center/cover no-repeat;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .45s ease, visibility .45s ease;
+    }
+    .hero-slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,.1);
+    }
+    .hero-slide.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .hero-slide-content {
+      position: relative;
+      z-index: 1;
+      max-width: 520px;
+      text-align: center;
+      color: #111;
+    }
+    .hero-slide-content h1 {
+      margin: 0 0 14px;
+      font-size: clamp(30px, 3.4vw, 46px);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .hero-slide-content p {
+      margin: 0 0 24px;
+      color: rgba(17,17,17,.7);
+      line-height: 1.8;
+      word-break: keep-all;
+    }
+    .hero-slider-controls {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      min-height: 56px;
+      border: 1px solid var(--line);
+      border-top: 0;
+      background: #fff;
+    }
+    .hero-arrow,
+    .hero-pause {
+      width: 56px;
+      height: 56px;
+      border: 0;
+      background: transparent;
+      color: #111;
+      font-size: 22px;
+    }
+    .hero-arrow.prev { justify-self: end; }
+    .hero-arrow.next { justify-self: start; }
+    .hero-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 0 18px;
+    }
+    .hero-dot {
+      width: 11px;
+      height: 11px;
+      border: 1px solid #999;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0;
+    }
+    .hero-dot.active {
+      background: #111;
+      border-color: #111;
+    }
+    .hero-pause {
+      justify-self: start;
+      border-left: 1px solid var(--line);
+    }
     .btn {
       display: inline-grid;
       place-items: center;
@@ -686,6 +781,40 @@
         padding: 0;
         display: block;
       }
+      .hero-slider {
+        margin-top: 0;
+        padding: 0;
+      }
+      .hero-slider-frame {
+        min-height: 390px;
+      }
+      .hero-slide {
+        padding: 42px 24px;
+        place-items: end start;
+      }
+      .hero-slide-content {
+        max-width: 310px;
+        text-align: left;
+        color: #fff;
+      }
+      .hero-slide::before {
+        background: linear-gradient(180deg, rgba(0,0,0,.04), rgba(0,0,0,.58));
+      }
+      .hero-slide-content h1 { font-size: 42px; }
+      .hero-slide-content p { color: rgba(255,255,255,.86); font-size: 14px; }
+      .hero-slider-controls {
+        min-height: 48px;
+      }
+      .hero-arrow,
+      .hero-pause {
+        width: 48px;
+        height: 48px;
+      }
+      .hero-dots { gap: 12px; }
+      .hero-dot {
+        width: 9px;
+        height: 9px;
+      }
       .hero-card {
         min-height: 390px;
         padding: 24px 18px 34px;
@@ -876,7 +1005,48 @@
   </header>
 
   <main>
-    <section class="hero-grid">
+    <section class="hero-slider" aria-label="메인 슬라이드 배너">
+      <div class="hero-slider-frame">
+        <article class="hero-slide active" style="background-image:url('https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1800&q=80')">
+          <div class="hero-slide-content">
+            <h1>26SS Daily Select</h1>
+            <p>매일 입기 좋은 의류, 슈즈, 가방을 ELIN 감도로 선별했습니다.</p>
+            <a class="btn" href="#products">바로가기</a>
+          </div>
+        </article>
+        <article class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1800&q=80')">
+          <div class="hero-slide-content">
+            <h1>Real Styling</h1>
+            <p>데일리룩에 바로 어울리는 상품을 빠르게 둘러보세요.</p>
+            <a class="btn" href="#category">카테고리</a>
+          </div>
+        </article>
+        <article class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1800&q=80')">
+          <div class="hero-slide-content">
+            <h1>Premium Shoes</h1>
+            <p>신상품과 인기 상품을 한 번에 확인할 수 있습니다.</p>
+            <a class="btn" href="#weekly">보기</a>
+          </div>
+        </article>
+        <article class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=1800&q=80')">
+          <div class="hero-slide-content">
+            <h1>ELIN Update</h1>
+            <p>새로 등록된 셀렉트 상품을 지금 확인해보세요.</p>
+            <a class="btn" href="#products">신상품 보기</a>
+          </div>
+        </article>
+      </div>
+      <div class="hero-slider-controls">
+        <button class="hero-arrow prev" type="button" id="heroPrev" aria-label="이전 슬라이드">‹</button>
+        <div class="hero-dots" id="heroDots" aria-label="슬라이드 선택"></div>
+        <div>
+          <button class="hero-arrow next" type="button" id="heroNext" aria-label="다음 슬라이드">›</button>
+          <button class="hero-pause" type="button" id="heroPause" aria-label="슬라이드 일시정지">Ⅱ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="hero-grid legacy-hero">
       <article class="hero-card" style="background-image:url('https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=1600&q=80')">
         <div>
           <h1>26SS Daily Select</h1>
@@ -1190,6 +1360,57 @@
       }
     }
 
+    function initHeroSlider() {
+      const slides = [...document.querySelectorAll(".hero-slide")];
+      const dots = document.querySelector("#heroDots");
+      const prev = document.querySelector("#heroPrev");
+      const next = document.querySelector("#heroNext");
+      const pause = document.querySelector("#heroPause");
+      if (!slides.length || !dots || !prev || !next || !pause) return;
+
+      let index = 0;
+      let playing = true;
+      let timer;
+
+      dots.innerHTML = slides.map((_, slideIndex) => `
+        <button class="hero-dot ${slideIndex === 0 ? "active" : ""}" type="button" aria-label="${slideIndex + 1}번 슬라이드"></button>
+      `).join("");
+      const dotButtons = [...dots.querySelectorAll(".hero-dot")];
+
+      const showSlide = nextIndex => {
+        index = (nextIndex + slides.length) % slides.length;
+        slides.forEach((slide, slideIndex) => slide.classList.toggle("active", slideIndex === index));
+        dotButtons.forEach((dot, dotIndex) => dot.classList.toggle("active", dotIndex === index));
+      };
+      const restart = () => {
+        window.clearInterval(timer);
+        if (playing) timer = window.setInterval(() => showSlide(index + 1), 4500);
+      };
+
+      prev.addEventListener("click", () => {
+        showSlide(index - 1);
+        restart();
+      });
+      next.addEventListener("click", () => {
+        showSlide(index + 1);
+        restart();
+      });
+      dotButtons.forEach((dot, dotIndex) => {
+        dot.addEventListener("click", () => {
+          showSlide(dotIndex);
+          restart();
+        });
+      });
+      pause.addEventListener("click", () => {
+        playing = !playing;
+        pause.textContent = playing ? "Ⅱ" : "▶";
+        restart();
+      });
+
+      restart();
+    }
+
+    initHeroSlider();
     loadProducts();
     loadMemberNav();
   </script>
