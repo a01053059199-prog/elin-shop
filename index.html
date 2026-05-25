@@ -45,11 +45,12 @@
       backdrop-filter: blur(10px);
     }
     .topline {
+      position: relative;
       max-width: 1240px;
       margin: 0 auto;
       padding: 15px 22px 12px;
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) auto auto minmax(90px, 1fr);
+      grid-template-columns: minmax(260px, 1fr) auto minmax(260px, 1fr);
       align-items: center;
       gap: 20px;
     }
@@ -62,9 +63,12 @@
       letter-spacing: .03em;
     }
     .utility {
+      position: absolute;
+      left: calc(50% + 118px);
+      top: 25px;
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 18px;
       color: #555;
       font-size: 13px;
       justify-self: start;
@@ -648,7 +652,6 @@
       .notice-bars a + a { display: none; }
       .header { box-shadow: 0 8px 22px rgba(0,0,0,.06); }
       .topline {
-        position: relative;
         grid-template-columns: 38px 1fr auto;
         gap: 8px;
         padding: 10px 12px 12px;
