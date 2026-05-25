@@ -405,6 +405,35 @@
       .buy-panel { padding: 18px; }
       .actions { grid-template-columns: 1fr; }
       .qty-row { grid-template-columns: 1fr; }
+      .section {
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+      }
+      .section h2 {
+        text-align: center;
+      }
+      .detail-copy {
+        width: 100%;
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+      }
+      .detail-images {
+        width: 100%;
+        max-width: 430px;
+        margin-left: auto;
+        margin-right: auto;
+        justify-items: center;
+      }
+      .detail-images figure {
+        width: 100%;
+        max-width: 430px;
+        margin-left: auto;
+        margin-right: auto;
+      }
       .guide-table th,
       .guide-table td {
         display: block;
@@ -449,7 +478,7 @@
       <div class="cart-added-title"><span>✓</span><span>카트에 추가된 품목</span></div>
       <div class="cart-added-product" id="cartAddedProduct"></div>
       <div class="cart-added-actions">
-        <a id="cartAddedView" href="/">카트 보기(0)</a>
+        <a id="cartAddedView" href="/?cart=open">카트 보기(0)</a>
         <a class="checkout-now" href="/checkout.html">결제</a>
         <button class="continue" type="button" id="cartAddedContinue">쇼핑 계속하기</button>
       </div>
