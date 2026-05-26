@@ -382,10 +382,12 @@
     let orderPollingTimer = null;
     let alarmLoopTimer = null;
     let orderSoundReady = false;
+    let lastSoundError = "";
     let audioContext = null;
     let alertTargetTab = "orders";
     const adminRememberKey = "elinAdminRemember";
     const notifySoundKey = "elinAdminNotifySound";
+    const pendingAlertKey = "elinAdminPendingAlert";
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
 
@@ -432,6 +434,7 @@
       await loadCustomerCenterSettings();
       await loadSiteSettings();
       await refresh({ initial: true });
+      restorePendingAlert();
       startOrderPolling();
     });
 
@@ -553,6 +556,7 @@
     document.querySelector("#enableNotifyBtn").addEventListener("click", enableOrderNotifications);
     document.querySelector("#orderAlertOpen").addEventListener("click", () => {
       stopAlarmLoop();
+      clearPendingAlert();
       activateTab(alertTargetTab);
       document.querySelector("#orderAlert").classList.remove("show");
       document.title = "ELIN 관리자";
@@ -642,12 +646,9 @@
 
     async function enableOrderNotifications() {
       orderSoundReady = true;
+      lastSoundError = "";
       localStorage.setItem(notifySoundKey, "on");
-      try {
-        audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-        if (audioContext.state === "suspended") await audioContext.resume();
-        playOrderSound(3);
-      } catch (_) {}
+      await playOrderSound(5);
       if ("Notification" in window && Notification.permission === "default") {
         await Notification.requestPermission();
       }
@@ -657,7 +658,8 @@
     function updateNotifyState() {
       const permission = "Notification" in window ? Notification.permission : "unsupported";
       const browserText = permission === "granted" ? "브라우저 알림 허용됨" : permission === "denied" ? "브라우저 알림 차단됨" : "브라우저 알림 대기";
-      document.querySelector("#notifyState").textContent = `주문/회원/문의 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
+      const soundText = lastSoundError || `소리 ${orderSoundReady ? "켜짐" : "꺼짐"}`;
+      document.querySelector("#notifyState").textContent = `주문/회원/문의 자동 확인 중 · ${soundText} · ${browserText}`;
       document.querySelector("#enableNotifyBtn").textContent = orderSoundReady ? "알림 소리 테스트" : "주문/회원/문의 알림 켜기";
     }
 
@@ -670,25 +672,38 @@
     }
 
     async function playOrderSound(count = 4) {
-      if (!orderSoundReady) return;
+      if (!orderSoundReady) return false;
       try {
-        audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) throw new Error("이 브라우저는 알림 소리를 지원하지 않습니다.");
+        audioContext = audioContext || new AudioCtor();
         if (audioContext.state === "suspended") await audioContext.resume();
+        if (audioContext.state === "suspended") {
+          throw new Error("브라우저가 소리를 막았습니다. 화면을 한 번 누른 뒤 알림 소리 테스트를 눌러주세요.");
+        }
+        navigator.vibrate?.([240, 120, 240]);
         const now = audioContext.currentTime;
         Array.from({ length: count }).forEach((_, index) => {
-          const offset = index * 0.18;
+          const offset = index * 0.22;
           const oscillator = audioContext.createOscillator();
           const gain = audioContext.createGain();
           oscillator.type = "square";
-          oscillator.frequency.setValueAtTime(index % 2 ? 1040 : 780, now + offset);
+          oscillator.frequency.setValueAtTime(index % 2 ? 1180 : 820, now + offset);
           gain.gain.setValueAtTime(0.0001, now + offset);
-          gain.gain.exponentialRampToValueAtTime(0.35, now + offset + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.16);
+          gain.gain.exponentialRampToValueAtTime(0.65, now + offset + 0.025);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.2);
           oscillator.connect(gain).connect(audioContext.destination);
           oscillator.start(now + offset);
-          oscillator.stop(now + offset + 0.17);
+          oscillator.stop(now + offset + 0.21);
         });
-      } catch (_) {}
+        lastSoundError = "";
+        updateNotifyState();
+        return true;
+      } catch (error) {
+        lastSoundError = error.message || "소리가 차단되었습니다. 알림 소리 테스트를 다시 눌러주세요.";
+        updateNotifyState();
+        return false;
+      }
     }
 
     document.addEventListener("pointerdown", unlockOrderSound, { passive: true });
@@ -716,31 +731,64 @@
       new Notification(title, { body, tag });
     }
 
+    function savePendingAlert(payload) {
+      localStorage.setItem(pendingAlertKey, JSON.stringify({ ...payload, createdAt: Date.now() }));
+    }
+
+    function clearPendingAlert() {
+      localStorage.removeItem(pendingAlertKey);
+    }
+
+    function displayAlert(payload, shouldSave = true) {
+      alertTargetTab = payload.targetTab || "orders";
+      document.querySelector("#orderAlertTitle").textContent = payload.title || "새 알림이 있습니다.";
+      document.querySelector("#orderAlertText").textContent = payload.text || "관리자에서 확인하세요.";
+      document.querySelector("#orderAlert").classList.add("show");
+      document.title = payload.documentTitle || "(1) ELIN 관리자";
+      if (shouldSave) savePendingAlert({ ...payload, targetTab: alertTargetTab });
+    }
+
+    function restorePendingAlert() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(pendingAlertKey) || "null");
+        if (!saved || !saved.title || !saved.text) return false;
+        displayAlert(saved, false);
+        startAlarmLoop();
+        return true;
+      } catch (_) {
+        clearPendingAlert();
+        return false;
+      }
+    }
+
     function showOrderAlert(newOrders) {
       const latest = newOrders[0];
-      alertTargetTab = "orders";
-      document.querySelector("#orderAlertTitle").textContent = `새 주문 ${newOrders.length}건이 들어왔습니다.`;
-      document.querySelector("#orderAlertText").textContent = `${latest.customer?.name || "고객"}님 · ${money(latest.total)} · ${latest.id}`;
-      document.querySelector("#orderAlert").classList.add("show");
-      document.title = `(${newOrders.length}) ELIN 관리자`;
+      displayAlert({
+        targetTab: "orders",
+        title: `새 주문 ${newOrders.length}건이 들어왔습니다.`,
+        text: `${latest.customer?.name || "고객"}님 · ${money(latest.total)} · ${latest.id}`,
+        documentTitle: `(${newOrders.length}) ELIN 관리자`
+      });
     }
 
     function showMemberAlert(newMembers) {
       const latest = newMembers[0];
-      alertTargetTab = "members";
-      document.querySelector("#orderAlertTitle").textContent = `새 회원가입 ${newMembers.length}건이 있습니다.`;
-      document.querySelector("#orderAlertText").textContent = `${latest.name || "회원"}님 · ${latest.username || "-"} · ${latest.phone || "-"}`;
-      document.querySelector("#orderAlert").classList.add("show");
-      document.title = `(${newMembers.length}) ELIN 관리자`;
+      displayAlert({
+        targetTab: "members",
+        title: `새 회원가입 ${newMembers.length}건이 있습니다.`,
+        text: `${latest.name || "회원"}님 · ${latest.username || "-"} · ${latest.phone || "-"}`,
+        documentTitle: `(${newMembers.length}) ELIN 관리자`
+      });
     }
 
     function showInquiryAlert(newInquiries) {
       const latest = newInquiries[0];
-      alertTargetTab = "inquiries";
-      document.querySelector("#orderAlertTitle").textContent = `새 고객문의 ${newInquiries.length}건이 있습니다.`;
-      document.querySelector("#orderAlertText").textContent = `${latest.name || "고객"}님 · ${latest.category || "문의"} · ${latest.subject || latest.id}`;
-      document.querySelector("#orderAlert").classList.add("show");
-      document.title = `(${newInquiries.length}) ELIN 관리자`;
+      displayAlert({
+        targetTab: "inquiries",
+        title: `새 고객문의 ${newInquiries.length}건이 있습니다.`,
+        text: `${latest.name || "고객"}님 · ${latest.category || "문의"} · ${latest.subject || latest.id}`,
+        documentTitle: `(${newInquiries.length}) ELIN 관리자`
+      });
     }
 
     function handleNotifications(nextOrders, nextMembers, nextInquiries, options = {}) {
@@ -1411,6 +1459,7 @@
       await loadCustomerCenterSettings();
       await loadSiteSettings();
       await refresh({ initial: true });
+      restorePendingAlert();
       startOrderPolling();
     }
 
