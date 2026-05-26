@@ -1210,7 +1210,7 @@
           <div class="product-info">
             <div class="product-meta"><span>ELIN SELECT</span><span>재고 ${Number(product.stock || 0)}개</span></div>
             <h3 class="product-name"><a href="/product.html?id=${encodeURIComponent(product.id)}">${escapeHtml(product.name)}</a></h3>
-            <div class="price"><span>${money(product.price)}</span>${Number(product.old || 0) > Number(product.price || 0) ? `<del>${money(product.old)}</del>` : ""}</div>
+            <div class="price"><span>${money(product.price)}</span></div>
           </div>
         </article>
       `;

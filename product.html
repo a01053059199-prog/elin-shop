@@ -602,7 +602,6 @@
             <div class="sub">ELIN SELECT · 재고 ${Number(product.stock || 0)}개 · 무통장입금 주문 가능</div>
             <div class="price">
               <span>${money(product.price)}</span>
-              ${Number(product.old || 0) > Number(product.price || 0) ? `<del>${money(product.old)}</del>` : ""}
             </div>
 
             <div class="info-table">

@@ -128,9 +128,6 @@
           <label for="price">판매가</label>
           <input id="price" type="number" required />
 
-          <label for="old">정가</label>
-          <input id="old" type="number" />
-
           <label for="stock">재고</label>
           <input id="stock" type="number" required />
 
@@ -1067,7 +1064,7 @@
         keywords: formValue("keywords"),
         label: formValue("label") || "NEW",
         price: Number(formValue("price")),
-        old: Number(formValue("old") || formValue("price")),
+        old: Number(formValue("price")),
         stock: Number(formValue("stock")),
         colors: parseOptions(formValue("colors"), "기본"),
         sizes: parseOptions(formValue("sizes"), "FREE"),
@@ -1105,7 +1102,6 @@
       setValue("keywords", product.keywords);
       setValue("label", product.label);
       setValue("price", product.price);
-      setValue("old", product.old);
       setValue("stock", product.stock);
       setValue("colors", optionText(product.colors, "기본"));
       setValue("sizes", optionText(product.sizes, "FREE"));

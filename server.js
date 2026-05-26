@@ -417,7 +417,6 @@ async function supabase(pathname, options = {}) {
 
 function cleanProduct(input) {
   const price = Number(input.price);
-  const old = Number(input.old || input.price);
   const stock = Number(input.stock || 0);
   const images = Array.isArray(input.images)
     ? input.images
@@ -443,7 +442,7 @@ function cleanProduct(input) {
     keywords: String(input.keywords || "").trim(),
     label: String(input.label || "NEW").trim(),
     price,
-    old: Number.isFinite(old) ? old : price,
+    old: price,
     stock: Number.isFinite(stock) ? stock : 0,
     colors,
     sizes,
