@@ -108,7 +108,18 @@
         return;
       }
       localStorage.removeItem("elinCart");
-      message.innerHTML = `주문이 저장되었습니다.<br>주문번호: <strong>${result.id}</strong><br>입금계좌: <strong>${result.customer.bank}</strong><br>입금자명: <strong>${result.customer.depositor}</strong>`;
+      message.innerHTML = `
+        <strong style="display:block;font-size:18px;margin-bottom:8px">주문이 완료되었습니다.</strong>
+        <div>아래 계좌로 입금해주시면 관리자가 확인 후 배송을 진행합니다.</div>
+        <div style="height:10px"></div>
+        <div>주문번호: <strong>${result.id}</strong></div>
+        <div>입금계좌: <strong>${result.customer.bank}</strong></div>
+        <div>입금금액: <strong>${money(Number(result.total || 0))}</strong></div>
+        <div>입금자명: <strong>${result.customer.depositor}</strong></div>
+        <div style="height:10px"></div>
+        <div style="color:#6a6a6a">입금자명이 다르면 확인이 늦어질 수 있습니다.</div>
+      `;
+      message.scrollIntoView({ behavior: "smooth", block: "center" });
     });
     async function loadMember() {
       const response = await fetch("/api/auth/me");
