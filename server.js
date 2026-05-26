@@ -162,9 +162,17 @@ async function saveAdminSettings(settings) {
 const defaultMemberPageSettings = {
   pageTitle: "마이페이지",
   introText: "회원 정보와 주문 내역을 확인할 수 있습니다.",
+  heroImage: "",
+  heroImageAlt: "회원페이지 이미지",
+  memberBoxTitle: "회원 정보",
+  ordersTitle: "주문내역",
+  inquiriesTitle: "1:1 문의내역",
   noticeText: "무통장 입금 주문은 입금 확인 후 배송이 시작됩니다.",
   loginRequiredText: "로그인이 필요합니다.",
+  loginLinkText: "로그인하기",
   emptyOrderText: "아직 주문내역이 없습니다.",
+  emptyInquiryText: "아직 문의내역이 없습니다.",
+  inquiryLinkText: "문의하기",
   supportText: "문의가 필요하면 고객센터로 연락해주세요.",
   supportLinkText: "고객센터",
   supportLinkUrl: "/customer.html",
@@ -178,7 +186,24 @@ const defaultMemberPageSettings = {
 
 function normalizeMemberPageSettings(input = {}) {
   const settings = { ...defaultMemberPageSettings, ...(input || {}) };
-  for (const key of ["pageTitle", "introText", "noticeText", "loginRequiredText", "emptyOrderText", "supportText", "supportLinkText", "supportLinkUrl"]) {
+  for (const key of [
+    "pageTitle",
+    "introText",
+    "heroImage",
+    "heroImageAlt",
+    "memberBoxTitle",
+    "ordersTitle",
+    "inquiriesTitle",
+    "noticeText",
+    "loginRequiredText",
+    "loginLinkText",
+    "emptyOrderText",
+    "emptyInquiryText",
+    "inquiryLinkText",
+    "supportText",
+    "supportLinkText",
+    "supportLinkUrl"
+  ]) {
     settings[key] = String(settings[key] || "").trim();
   }
   for (const key of ["showUsername", "showPhone", "showAddress", "showOrderStatus", "showBankInfo", "showTracking"]) {

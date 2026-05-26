@@ -232,14 +232,46 @@
           <label for="memberIntroText">상단 안내문</label>
           <textarea id="memberIntroText" placeholder="회원 정보와 주문 내역을 확인할 수 있습니다."></textarea>
 
+          <label for="memberHeroImageFile">회원페이지 이미지 업로드</label>
+          <input id="memberHeroImageFile" type="file" accept="image/*" />
+          <div class="hint">회원페이지 상단에 표시할 이미지입니다. JPG/PNG/WEBP를 권장합니다.</div>
+          <div class="image-preview empty" id="memberHeroPreview">회원페이지 이미지 미리보기</div>
+          <div class="image-tools">
+            <button type="button" class="ghost" id="clearMemberHeroImage">회원 이미지 삭제</button>
+          </div>
+
+          <label for="memberHeroImage">회원페이지 이미지 URL 또는 업로드 데이터</label>
+          <textarea id="memberHeroImage" rows="4" placeholder="이미지 URL을 넣거나 위에서 파일을 선택하세요."></textarea>
+
+          <label for="memberHeroImageAlt">이미지 설명</label>
+          <input id="memberHeroImageAlt" placeholder="회원페이지 이미지" />
+
+          <label for="memberBoxTitle">회원 정보 박스 제목</label>
+          <input id="memberBoxTitle" placeholder="회원 정보" />
+
+          <label for="memberOrdersTitle">주문내역 제목</label>
+          <input id="memberOrdersTitle" placeholder="주문내역" />
+
+          <label for="memberInquiriesTitle">문의내역 제목</label>
+          <input id="memberInquiriesTitle" placeholder="1:1 문의내역" />
+
           <label for="memberNoticeText">회원 공지</label>
           <textarea id="memberNoticeText" placeholder="무통장 입금 주문은 입금 확인 후 배송이 시작됩니다."></textarea>
 
           <label for="memberLoginRequiredText">로그인 필요 문구</label>
           <input id="memberLoginRequiredText" placeholder="로그인이 필요합니다." />
 
+          <label for="memberLoginLinkText">로그인 링크 문구</label>
+          <input id="memberLoginLinkText" placeholder="로그인하기" />
+
           <label for="memberEmptyOrderText">주문 없음 문구</label>
           <input id="memberEmptyOrderText" placeholder="아직 주문내역이 없습니다." />
+
+          <label for="memberEmptyInquiryText">문의 없음 문구</label>
+          <input id="memberEmptyInquiryText" placeholder="아직 문의내역이 없습니다." />
+
+          <label for="memberInquiryLinkText">문의하기 링크 문구</label>
+          <input id="memberInquiryLinkText" placeholder="문의하기" />
 
           <label for="memberSupportText">하단 고객 안내 문구</label>
           <input id="memberSupportText" placeholder="문의가 필요하면 고객센터로 연락해주세요." />
@@ -418,6 +450,33 @@
       setValue("image", "");
       document.querySelector("#imageFile").value = "";
       renderImagePreview("");
+    });
+    document.querySelector("#memberHeroImageFile").addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!supportedImageTypes.includes(file.type)) {
+        alert("JPG, PNG, WEBP 이미지만 등록할 수 있습니다. HEIC 사진은 JPG로 변환해서 올려주세요.");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > 8_000_000) {
+        alert("이미지는 8MB 이하로 선택해주세요.");
+        event.target.value = "";
+        return;
+      }
+      try {
+        const imageData = await readImageFile(file);
+        setValue("memberHeroImage", imageData);
+        renderMemberHeroPreview(imageData);
+      } catch (error) {
+        alert(error.message || "이미지를 읽지 못했습니다. JPG 파일로 다시 올려주세요.");
+      }
+      event.target.value = "";
+    });
+    document.querySelector("#memberHeroImage").addEventListener("input", event => renderMemberHeroPreview(event.target.value));
+    document.querySelector("#clearMemberHeroImage").addEventListener("click", () => {
+      setValue("memberHeroImage", "");
+      renderMemberHeroPreview("");
     });
     document.querySelector("#productSearch").addEventListener("input", renderProducts);
     document.querySelector("#productCategory").addEventListener("change", renderProducts);
@@ -671,9 +730,17 @@
       return {
         pageTitle: formValue("memberPageTitle"),
         introText: formValue("memberIntroText"),
+        heroImage: formValue("memberHeroImage"),
+        heroImageAlt: formValue("memberHeroImageAlt"),
+        memberBoxTitle: formValue("memberBoxTitle"),
+        ordersTitle: formValue("memberOrdersTitle"),
+        inquiriesTitle: formValue("memberInquiriesTitle"),
         noticeText: formValue("memberNoticeText"),
         loginRequiredText: formValue("memberLoginRequiredText"),
+        loginLinkText: formValue("memberLoginLinkText"),
         emptyOrderText: formValue("memberEmptyOrderText"),
+        emptyInquiryText: formValue("memberEmptyInquiryText"),
+        inquiryLinkText: formValue("memberInquiryLinkText"),
         supportText: formValue("memberSupportText"),
         supportLinkText: formValue("memberSupportLinkText"),
         supportLinkUrl: formValue("memberSupportLinkUrl"),
@@ -689,12 +756,21 @@
     function fillMemberPageSettingsForm(settings) {
       setValue("memberPageTitle", settings.pageTitle);
       setValue("memberIntroText", settings.introText);
+      setValue("memberHeroImage", settings.heroImage);
+      setValue("memberHeroImageAlt", settings.heroImageAlt);
+      setValue("memberBoxTitle", settings.memberBoxTitle);
+      setValue("memberOrdersTitle", settings.ordersTitle);
+      setValue("memberInquiriesTitle", settings.inquiriesTitle);
       setValue("memberNoticeText", settings.noticeText);
       setValue("memberLoginRequiredText", settings.loginRequiredText);
+      setValue("memberLoginLinkText", settings.loginLinkText);
       setValue("memberEmptyOrderText", settings.emptyOrderText);
+      setValue("memberEmptyInquiryText", settings.emptyInquiryText);
+      setValue("memberInquiryLinkText", settings.inquiryLinkText);
       setValue("memberSupportText", settings.supportText);
       setValue("memberSupportLinkText", settings.supportLinkText);
       setValue("memberSupportLinkUrl", settings.supportLinkUrl);
+      renderMemberHeroPreview(settings.heroImage);
       document.querySelector("#memberShowUsername").checked = Boolean(settings.showUsername);
       document.querySelector("#memberShowPhone").checked = Boolean(settings.showPhone);
       document.querySelector("#memberShowAddress").checked = Boolean(settings.showAddress);
@@ -923,6 +999,18 @@
           <button type="button" onclick="removeImage(${index})" aria-label="이미지 ${index + 1} 삭제">×</button>
         </div>
       `).join("");
+    }
+
+    function renderMemberHeroPreview(src) {
+      const preview = document.querySelector("#memberHeroPreview");
+      const image = String(src || "").trim();
+      if (!image) {
+        preview.classList.add("empty");
+        preview.textContent = "회원페이지 이미지 미리보기";
+        return;
+      }
+      preview.classList.remove("empty");
+      preview.innerHTML = `<img src="${image}" alt="회원페이지 이미지 미리보기" style="aspect-ratio:16/7; object-fit:cover;">`;
     }
 
     function renderProducts() {

@@ -16,6 +16,8 @@
     h1 { margin: 22px 0 8px; font-size: 30px; }
     h2 { margin: 24px 0 10px; font-size: 22px; }
     .lead { margin: 0 0 18px; color: #6a6a6a; line-height: 1.7; }
+    .member-hero { display: none; margin: 18px 0; overflow: hidden; border-radius: 8px; border: 1px solid #e6e0d8; background: #f5f1eb; }
+    .member-hero img { display: block; width: 100%; max-height: 360px; object-fit: cover; }
     .panel, .order, .notice, .inquiry { background: #fff; border: 1px solid #e6e0d8; border-radius: 8px; padding: 18px; }
     .notice { margin-bottom: 14px; background: #f5f1eb; }
     .list { display: grid; gap: 12px; }
@@ -52,6 +54,7 @@
   <main>
     <h1 id="pageTitle">마이페이지</h1>
     <p class="lead" id="introText">회원 정보와 주문 내역, 문의 답변을 확인할 수 있습니다.</p>
+    <section class="member-hero" id="memberHero"></section>
     <section class="notice" id="noticeBox"></section>
     <section class="panel" id="memberBox">회원 정보를 확인하는 중입니다.</section>
 
@@ -83,6 +86,17 @@
       showBankInfo: true,
       showTracking: true
     };
+    pageSettings = {
+      heroImage: "",
+      heroImageAlt: "Member page image",
+      memberBoxTitle: "Member info",
+      ordersTitle: "Orders",
+      inquiriesTitle: "Inquiries",
+      loginLinkText: "Login",
+      emptyInquiryText: "No inquiries yet.",
+      inquiryLinkText: "Ask a question",
+      ...pageSettings
+    };
 
     async function loadSettings() {
       try {
@@ -91,6 +105,13 @@
       } catch (_) {}
       document.querySelector("#pageTitle").textContent = pageSettings.pageTitle || "마이페이지";
       document.querySelector("#introText").textContent = pageSettings.introText || "";
+      const heroImage = String(pageSettings.heroImage || "").trim();
+      const hero = document.querySelector("#memberHero");
+      hero.style.display = heroImage ? "block" : "none";
+      hero.innerHTML = heroImage ? `<img src="${escapeHtml(heroImage)}" alt="${escapeHtml(pageSettings.heroImageAlt || "Member page image")}">` : "";
+      const headings = document.querySelectorAll("main h2");
+      if (headings[0]) headings[0].textContent = pageSettings.ordersTitle || "Orders";
+      if (headings[1]) headings[1].textContent = pageSettings.inquiriesTitle || "Inquiries";
       document.querySelector("#noticeBox").textContent = pageSettings.noticeText || "";
       document.querySelector("#noticeBox").style.display = pageSettings.noticeText ? "" : "none";
       document.querySelector("#supportBox").innerHTML = `${escapeHtml(pageSettings.supportText || "")} ${pageSettings.supportLinkUrl ? `<a href="${escapeHtml(pageSettings.supportLinkUrl)}">${escapeHtml(pageSettings.supportLinkText || "바로가기")}</a>` : ""}`;
@@ -140,13 +161,14 @@
       await loadSettings();
       const me = await (await fetch("/api/auth/me")).json();
       if (!me.member) {
-        document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">로그인하기</a>`;
+        document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">${escapeHtml(pageSettings.loginLinkText || "로그인하기")}</a>`;
         document.querySelector("#orders").innerHTML = "";
         document.querySelector("#inquiries").innerHTML = "";
         return;
       }
 
       document.querySelector("#memberBox").innerHTML = `
+        <h2 style="margin-top:0">${escapeHtml(pageSettings.memberBoxTitle || "Member info")}</h2>
         <div class="member-head">
           <div>
             <strong>${escapeHtml(me.member.name)}</strong>
@@ -162,7 +184,7 @@
 
       const inquiryResponse = await fetch("/api/member/inquiries");
       const inquiries = inquiryResponse.ok ? await inquiryResponse.json() : [];
-      document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>아직 문의내역이 없습니다. <a href="/customer.html">문의하기</a></p>`;
+      document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>${escapeHtml(pageSettings.emptyInquiryText || "아직 문의내역이 없습니다.")} <a href="/customer.html">${escapeHtml(pageSettings.inquiryLinkText || "문의하기")}</a></p>`;
     }
 
     async function logout() {
