@@ -19,6 +19,8 @@
     input, select, textarea { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 10px; outline: 0; background: #fff; }
     textarea { min-height: 72px; resize: vertical; }
     label { display: block; font-size: 13px; font-weight: 800; margin: 12px 0 6px; }
+    .remember { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: #555; font-size: 13px; font-weight: 700; }
+    .remember input { width: auto; }
     button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 10px 13px; font-weight: 900; cursor: pointer; }
     .ghost { background: #f3f0ea; color: #171717; }
     .danger { background: #b71f2a; }
@@ -75,6 +77,7 @@
       <input id="username" autocomplete="username" placeholder="admin" />
       <label for="password">비밀번호</label>
       <input id="password" type="password" autocomplete="current-password" placeholder="1234" />
+      <label class="remember"><input id="rememberAdminLogin" type="checkbox"> 아이디/비밀번호 기억하기</label>
       <div style="height:12px"></div>
       <button id="loginBtn">로그인</button>
     </section>
@@ -380,16 +383,39 @@
     let orderSoundReady = false;
     let audioContext = null;
     let alertTargetTab = "orders";
+    const adminRememberKey = "elinAdminRemember";
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
 
+    function loadRememberedAdminLogin() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(adminRememberKey) || "{}");
+        if (!saved.username && !saved.password) return;
+        document.querySelector("#username").value = saved.username || "";
+        document.querySelector("#password").value = saved.password || "";
+        document.querySelector("#rememberAdminLogin").checked = true;
+      } catch {}
+    }
+
+    function saveRememberedAdminLogin(username, password) {
+      if (!document.querySelector("#rememberAdminLogin").checked) {
+        localStorage.removeItem(adminRememberKey);
+        return;
+      }
+      localStorage.setItem(adminRememberKey, JSON.stringify({ username, password }));
+    }
+
+    loadRememberedAdminLogin();
+
     document.querySelector("#loginBtn").addEventListener("click", async () => {
+      const loginUsername = document.querySelector("#username").value || "admin";
+      const loginPassword = document.querySelector("#password").value || "1234";
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({
-          username: document.querySelector("#username").value || "admin",
-          password: document.querySelector("#password").value || "1234"
+          username: loginUsername,
+          password: loginPassword
         })
       });
       if (!response.ok) {
@@ -397,6 +423,7 @@
         return alert(result.error || "로그인에 실패했습니다.");
       }
       const result = await response.json();
+      saveRememberedAdminLogin(loginUsername, loginPassword);
       showAdmin();
       setValue("adminUsername", result.username || "admin");
       await loadMemberPageSettings();

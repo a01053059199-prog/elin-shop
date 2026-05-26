@@ -14,6 +14,8 @@
     p { margin: 0 0 18px; color: #6a6a6a; line-height: 1.6; }
     label { display: block; margin: 13px 0 7px; font-weight: 800; font-size: 14px; }
     input { width: 100%; border: 1px solid #ddd5cb; border-radius: 6px; padding: 12px; outline: 0; }
+    .remember { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: #555; font-size: 13px; font-weight: 700; }
+    .remember input { width: auto; }
     button { width: 100%; height: 46px; margin-top: 18px; border: 0; border-radius: 4px; background: #171717; color: #fff; font-weight: 900; cursor: pointer; }
     .message { display: none; margin-top: 14px; padding: 12px; border-radius: 6px; background: #f3f0ea; color: #40513b; line-height: 1.5; }
     .message.show { display: block; }
@@ -30,6 +32,7 @@
       <input id="username" required autocomplete="username" />
       <label for="password">비밀번호</label>
       <input id="password" type="password" required autocomplete="current-password" />
+      <label class="remember"><input id="rememberMemberLogin" type="checkbox"> 아이디/비밀번호 기억하기</label>
       <button type="submit">로그인</button>
       <div class="message" id="message"></div>
     </form>
@@ -37,14 +40,37 @@
   </main>
   <script>
     const message = document.querySelector("#message");
+    const memberRememberKey = "elinMemberRemember";
+
+    function loadRememberedMemberLogin() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(memberRememberKey) || "{}");
+        if (!saved.username && !saved.password) return;
+        document.querySelector("#username").value = saved.username || "";
+        document.querySelector("#password").value = saved.password || "";
+        document.querySelector("#rememberMemberLogin").checked = true;
+      } catch {}
+    }
+
+    function saveRememberedMemberLogin(username, password) {
+      if (!document.querySelector("#rememberMemberLogin").checked) {
+        localStorage.removeItem(memberRememberKey);
+        return;
+      }
+      localStorage.setItem(memberRememberKey, JSON.stringify({ username, password }));
+    }
+
+    loadRememberedMemberLogin();
     document.querySelector("#loginForm").addEventListener("submit", async event => {
       event.preventDefault();
+      const username = document.querySelector("#username").value;
+      const password = document.querySelector("#password").value;
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: document.querySelector("#username").value,
-          password: document.querySelector("#password").value
+          username,
+          password
         })
       });
       const result = await response.json();
@@ -54,6 +80,7 @@
         return;
       }
       message.textContent = "로그인되었습니다. 쇼핑몰로 이동합니다.";
+      saveRememberedMemberLogin(username, password);
       setTimeout(() => location.href = "/", 700);
     });
     fetch("/api/auth/me").then(response => response.json()).then(result => {
