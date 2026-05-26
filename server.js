@@ -338,6 +338,50 @@ async function saveCustomerCenterSettings(settings) {
   return normalized;
 }
 
+const defaultHeroSlides = [
+  {
+    className: "luxury-watch",
+    image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1800&q=90",
+    title: "26SS Celebrity Daily Bag",
+    text: "명품관 무드로 선별한 데일리 백과 액세서리 셀렉션.",
+    buttonText: "바로가기",
+    buttonUrl: "#products"
+  },
+  {
+    className: "luxury-bag",
+    image: "https://images.pexels.com/photos/12643950/pexels-photo-12643950.jpeg?auto=compress&cs=tinysrgb&w=1800",
+    title: "Louis Vuitton Gallery",
+    text: "쇼윈도에 진열된 명품 백처럼 고급스럽게 구성한 컬렉션.",
+    buttonText: "가방 보기",
+    buttonUrl: "#products"
+  },
+  {
+    className: "luxury-sneakers",
+    image: "https://images.unsplash.com/photo-1556906781-9a412961c28c?auto=format&fit=crop&w=1800&q=90",
+    title: "Premium Sneakers",
+    text: "스니커즈, 슈즈, 데일리 아이템을 한 번에 둘러보세요.",
+    buttonText: "스니커즈 보기",
+    buttonUrl: "#products"
+  },
+  {
+    className: "luxury-jewelry",
+    image: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Rolex-Submariner.jpg",
+    title: "ROLEX WATCH",
+    text: "서브마리너 무드의 클래식한 명품 시계 셀렉션.",
+    buttonText: "시계 보기",
+    buttonUrl: "#products"
+  }
+];
+
+const defaultCategoryCards = [
+  { title: "WOMEN", text: "아우터 · 니트 · 팬츠", image: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80" },
+  { title: "MAN", text: "셔츠 · 아우터 · 팬츠", image: "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80" },
+  { title: "BAG", text: "토트 · 숄더 · 미니백", image: "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80" },
+  { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80" },
+  { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80" },
+  { title: "WATCH", text: "클래식 · 데일리", image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80" }
+];
+
 const defaultSiteSettings = {
   footerBrandTitle: "ELIN",
   footerBrandText: "Online Select Shop\nMon-Fri 11:00 - 18:00",
@@ -347,8 +391,30 @@ const defaultSiteSettings = {
     { label: "이용약관", url: "/terms.html" },
     { label: "개인정보처리방침", url: "/privacy.html" },
     { label: "배송/교환 안내", url: "/customer.html" }
-  ]
+  ],
+  heroSlides: defaultHeroSlides,
+  categoryCards: defaultCategoryCards
 };
+
+function cleanVisualItems(items, fallback, limit, hasButton = false) {
+  const source = Array.isArray(items) ? items : fallback;
+  return Array.from({ length: limit }, (_, index) => {
+    const base = fallback[index] || {};
+    const item = source[index] || {};
+    const clean = {
+      ...base,
+      title: String(item.title || base.title || "").trim(),
+      text: String(item.text || base.text || "").trim(),
+      image: String(item.image || base.image || "").trim()
+    };
+    if (hasButton) {
+      clean.className = String(base.className || item.className || "").trim();
+      clean.buttonText = String(item.buttonText || base.buttonText || "").trim();
+      clean.buttonUrl = String(item.buttonUrl || base.buttonUrl || "").trim();
+    }
+    return clean;
+  });
+}
 
 function normalizeSiteSettings(input = {}) {
   const settings = { ...defaultSiteSettings, ...(input || {}) };
@@ -362,6 +428,8 @@ function normalizeSiteSettings(input = {}) {
     }))
     .filter(link => link.label || link.url)
     .slice(0, 10);
+  settings.heroSlides = cleanVisualItems(input.heroSlides, defaultHeroSlides, 4, true);
+  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 6);
   return settings;
 }
 

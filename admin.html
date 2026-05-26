@@ -328,9 +328,18 @@
           <button type="submit">고객센터 설정 저장</button>
         </form>
 
-        <form class="panel" id="siteSettingsForm" style="max-width:720px; margin-top:18px">
-          <h2>하단 푸터 설정</h2>
-          <p class="note">메인 페이지 하단의 브랜드 정보, 회사 정보, 링크를 변경합니다.</p>
+        <form class="panel" id="siteSettingsForm" style="max-width:960px; margin-top:18px">
+          <h2>메인 화면 / 하단 설정</h2>
+          <p class="note">메인 슬라이드, 카테고리 이미지, 하단 정보를 변경합니다.</p>
+
+          <h3>메인 슬라이드 이미지</h3>
+          <div class="list" id="heroSlideSettings"></div>
+
+          <h3 style="margin-top:22px">카테고리 이미지</h3>
+          <div class="list" id="categoryCardSettings"></div>
+
+          <hr style="border:0;border-top:1px solid #e6e0d8;margin:24px 0">
+          <h3>하단 푸터 설정</h3>
 
           <label for="footerBrandTitle">왼쪽 제목</label>
           <input id="footerBrandTitle" placeholder="ELIN" />
@@ -365,6 +374,8 @@
     let customerGuideItems = [];
     let customerFaqs = [];
     let footerLinks = [];
+    let heroSlides = [];
+    let categoryCards = [];
     let knownOrderIds = new Set();
     let knownMemberIds = new Set();
     let knownInquiryIds = new Set();
@@ -478,6 +489,34 @@
       setValue("memberHeroImage", "");
       renderMemberHeroPreview("");
     });
+    document.querySelector("#siteSettingsForm").addEventListener("change", async event => {
+      const input = event.target;
+      if (!input.matches("[data-visual-upload]")) return;
+      const file = input.files[0];
+      if (!file) return;
+      if (!supportedImageTypes.includes(file.type)) {
+        alert("JPG, PNG, WEBP 이미지만 등록할 수 있습니다. HEIC 사진은 JPG로 변환해서 올려주세요.");
+        input.value = "";
+        return;
+      }
+      if (file.size > 8_000_000) {
+        alert("이미지는 8MB 이하로 선택해주세요.");
+        input.value = "";
+        return;
+      }
+      try {
+        const imageData = await readImageFile(file);
+        const targetId = input.dataset.target;
+        setValue(targetId, imageData);
+        renderVisualPreview(targetId, imageData);
+      } catch (error) {
+        alert(error.message || "이미지를 읽지 못했습니다. JPG 파일로 다시 올려주세요.");
+      }
+      input.value = "";
+    });
+    document.querySelector("#siteSettingsForm").addEventListener("input", event => {
+      if (event.target.matches("[data-visual-image]")) renderVisualPreview(event.target.id, event.target.value);
+    });
     document.querySelector("#productSearch").addEventListener("input", renderProducts);
     document.querySelector("#productCategory").addEventListener("change", renderProducts);
     document.querySelector("#orderSearch").addEventListener("input", renderOrders);
@@ -545,9 +584,9 @@
         body: JSON.stringify(readSiteSettingsForm())
       });
       const result = await response.json();
-      if (!response.ok) return alert(result.error || "푸터 설정 저장에 실패했습니다.");
+      if (!response.ok) return alert(result.error || "메인/푸터 설정 저장에 실패했습니다.");
       fillSiteSettingsForm(result);
-      alert("푸터 설정이 저장되었습니다.");
+      alert("메인/푸터 설정이 저장되었습니다.");
     });
 
     async function refresh(options = {}) {
@@ -860,6 +899,18 @@
 
     function readSiteSettingsForm() {
       return {
+        heroSlides: heroSlides.map((_, index) => ({
+          title: formValue(`hero-title-${index}`),
+          text: formValue(`hero-text-${index}`),
+          image: formValue(`hero-image-${index}`),
+          buttonText: formValue(`hero-button-text-${index}`),
+          buttonUrl: formValue(`hero-button-url-${index}`)
+        })),
+        categoryCards: categoryCards.map((_, index) => ({
+          title: formValue(`category-title-${index}`),
+          text: formValue(`category-text-${index}`),
+          image: formValue(`category-image-${index}`)
+        })),
         footerBrandTitle: formValue("footerBrandTitle"),
         footerBrandText: formValue("footerBrandText"),
         footerCompanyTitle: formValue("footerCompanyTitle"),
@@ -877,7 +928,59 @@
       setValue("footerCompanyTitle", settings.footerCompanyTitle);
       setValue("footerCompanyText", settings.footerCompanyText);
       footerLinks = Array.isArray(settings.footerLinks) ? settings.footerLinks : [];
+      heroSlides = Array.isArray(settings.heroSlides) ? settings.heroSlides : [];
+      categoryCards = Array.isArray(settings.categoryCards) ? settings.categoryCards : [];
+      renderMainVisualSettings();
       renderFooterLinks();
+    }
+
+    function visualPreviewHtml(src) {
+      return src
+        ? `<img src="${escapeAttr(src)}" alt="미리보기" />`
+        : `<span>이미지를 업로드하거나 URL을 입력하세요.</span>`;
+    }
+
+    function renderVisualPreview(targetId, src) {
+      const preview = document.querySelector(`#${targetId}-preview`);
+      if (!preview) return;
+      preview.classList.toggle("empty", !src);
+      preview.innerHTML = visualPreviewHtml(src);
+    }
+
+    function renderMainVisualSettings() {
+      document.querySelector("#heroSlideSettings").innerHTML = heroSlides.map((slide, index) => `
+        <div class="panel" style="padding:12px">
+          <strong>슬라이드 ${index + 1}</strong>
+          <label>제목</label>
+          <input id="hero-title-${index}" value="${escapeAttr(slide.title)}" placeholder="예: ROLEX WATCH" />
+          <label>설명</label>
+          <input id="hero-text-${index}" value="${escapeAttr(slide.text)}" placeholder="예: 명품 시계 셀렉션" />
+          <label>버튼 문구</label>
+          <input id="hero-button-text-${index}" value="${escapeAttr(slide.buttonText)}" placeholder="예: 시계 보기" />
+          <label>버튼 주소</label>
+          <input id="hero-button-url-${index}" value="${escapeAttr(slide.buttonUrl)}" placeholder="예: #products" />
+          <label>이미지 업로드</label>
+          <input type="file" accept="image/jpeg,image/png,image/webp" data-visual-upload data-target="hero-image-${index}" />
+          <label>이미지 URL 또는 업로드 데이터</label>
+          <textarea id="hero-image-${index}" data-visual-image placeholder="이미지 주소 또는 업로드 데이터">${escapeAttr(slide.image)}</textarea>
+          <div class="image-preview ${slide.image ? "" : "empty"}" id="hero-image-${index}-preview">${visualPreviewHtml(slide.image)}</div>
+        </div>
+      `).join("");
+
+      document.querySelector("#categoryCardSettings").innerHTML = categoryCards.map((category, index) => `
+        <div class="panel" style="padding:12px">
+          <strong>카테고리 ${index + 1}</strong>
+          <label>제목</label>
+          <input id="category-title-${index}" value="${escapeAttr(category.title)}" placeholder="예: WATCH" />
+          <label>설명</label>
+          <input id="category-text-${index}" value="${escapeAttr(category.text)}" placeholder="예: 클래식 · 데일리" />
+          <label>이미지 업로드</label>
+          <input type="file" accept="image/jpeg,image/png,image/webp" data-visual-upload data-target="category-image-${index}" />
+          <label>이미지 URL 또는 업로드 데이터</label>
+          <textarea id="category-image-${index}" data-visual-image placeholder="이미지 주소 또는 업로드 데이터">${escapeAttr(category.image)}</textarea>
+          <div class="image-preview ${category.image ? "" : "empty"}" id="category-image-${index}-preview">${visualPreviewHtml(category.image)}</div>
+        </div>
+      `).join("");
     }
 
     function renderFooterLinks() {
