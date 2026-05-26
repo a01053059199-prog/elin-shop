@@ -45,7 +45,6 @@
     .image-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
     .image-tools button { width: auto; height: 34px; padding: 0 12px; font-size: 13px; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
-    .stock-low { color: #b71f2a; font-weight: 900; }
     .order-alert { display: none; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0; padding: 14px 16px; border-radius: 8px; background: #fff0f1; border: 1px solid #f0b7bd; color: #8c111b; }
     .order-alert.show { display: flex; }
     .order-alert strong { display: block; margin-bottom: 3px; }
@@ -127,9 +126,6 @@
 
           <label for="price">판매가</label>
           <input id="price" type="number" required />
-
-          <label for="stock">재고</label>
-          <input id="stock" type="number" required />
 
           <label for="colors">색상 옵션</label>
           <textarea id="colors" rows="3" placeholder="블랙&#10;화이트&#10;브라운"></textarea>
@@ -1010,7 +1006,6 @@
     function renderDashboard() {
       const sales = orders.filter(order => order.status !== "취소").reduce((sum, order) => sum + Number(order.total || 0), 0);
       const count = status => orders.filter(order => order.status === status).length;
-      const lowStock = products.filter(product => Number(product.stock) <= 3).length;
       const unanswered = inquiries.filter(inquiry => inquiry.status !== "답변완료").length;
       document.querySelector("#dashboard").innerHTML = `
         <div class="metric"><strong>${orders.length}</strong><span>총 주문</span></div>
@@ -1019,7 +1014,6 @@
         <div class="metric"><strong>${money(sales)}</strong><span>총 매출</span></div>
         <div class="metric"><strong>${members.length}</strong><span>총 회원</span></div>
         <div class="metric"><strong>${unanswered}</strong><span>미답변 문의</span></div>
-        <div class="metric"><strong>${lowStock}</strong><span>재고 부족</span></div>
       `;
     }
 
@@ -1128,7 +1122,7 @@
           <img src="${productImages(product)[0] || product.image}" alt="${product.name}">
           <div>
             <strong>${product.name}</strong>
-            <div class="meta">${product.category} · ${money(product.price)} · <span class="${Number(product.stock) <= 3 ? "stock-low" : ""}">재고 ${product.stock}개</span></div>
+            <div class="meta">${product.category} · ${money(product.price)}</div>
             <div class="meta">색상 ${optionText(product.colors, "기본")} · 사이즈 ${optionText(product.sizes, "FREE")}</div>
           </div>
           <div class="actions">
@@ -1256,7 +1250,7 @@
         label: formValue("label") || "NEW",
         price: Number(formValue("price")),
         old: Number(formValue("price")),
-        stock: Number(formValue("stock")),
+        stock: 9999,
         colors: parseOptions(formValue("colors"), "기본"),
         sizes: parseOptions(formValue("sizes"), "FREE"),
         image: parseImages(formValue("image"))[0],
@@ -1293,7 +1287,6 @@
       setValue("keywords", product.keywords);
       setValue("label", product.label);
       setValue("price", product.price);
-      setValue("stock", product.stock);
       setValue("colors", optionText(product.colors, "기본"));
       setValue("sizes", optionText(product.sizes, "FREE"));
       setValue("image", productImages(product).join("\n"));

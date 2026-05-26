@@ -267,13 +267,13 @@ const defaultCustomerCenterSettings = {
   faqTitle: "자주 묻는 질문",
   faqs: [
     { title: "무통장 입금 확인은 어떻게 되나요?", text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다." },
-    { title: "배송은 얼마나 걸리나요?", text: "상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다." },
+    { title: "배송은 얼마나 걸리나요?", text: "상품 준비 후 순차 출고됩니다. 입금 확인 후 안내 순서대로 처리됩니다." },
     { title: "교환/반품은 가능한가요?", text: "상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다." }
   ],
   faq1Title: "무통장 입금 확인은 어떻게 되나요?",
   faq1Text: "주문서의 입금자명과 실제 입금자명이 같아야 빠르게 확인됩니다. 입금 확인 후 주문 상태가 배송준비로 변경됩니다.",
   faq2Title: "배송은 얼마나 걸리나요?",
-  faq2Text: "상품 준비 후 순차 출고됩니다. 거래처와 재고 상황에 따라 일정이 달라질 수 있습니다.",
+  faq2Text: "상품 준비 후 순차 출고됩니다. 입금 확인 후 안내 순서대로 처리됩니다.",
   faq3Title: "교환/반품은 가능한가요?",
   faq3Text: "상품 수령 후 7일 이내 문의를 접수해주세요. 착용 흔적, 오염, 택 제거 등 상품 가치가 훼손된 경우 제한될 수 있습니다.",
   loginRequiredText: "문의 접수는 로그인한 회원만 가능합니다.",
@@ -510,7 +510,7 @@ async function supabase(pathname, options = {}) {
 
 function cleanProduct(input) {
   const price = Number(input.price);
-  const stock = Number(input.stock || 0);
+  const stock = Number(input.stock || 9999);
   const images = Array.isArray(input.images)
     ? input.images
     : String(input.images || input.image || "").split(/\n+/);
@@ -536,7 +536,7 @@ function cleanProduct(input) {
     label: String(input.label || "NEW").trim(),
     price,
     old: price,
-    stock: Number.isFinite(stock) ? stock : 0,
+    stock: Number.isFinite(stock) ? stock : 9999,
     colors,
     sizes,
     image: mainImage,
@@ -621,7 +621,6 @@ async function createOrder(body, member) {
     const product = products.find(candidate => candidate.id === item.id);
     if (!product) throw new Error("존재하지 않는 상품이 포함되어 있습니다.");
     const qty = Math.max(1, Number(item.qty || 1));
-    if (Number(product.stock) < qty) throw new Error(`${product.name} 재고가 부족합니다.`);
     return {
       id: product.id,
       name: product.name,
@@ -632,22 +631,6 @@ async function createOrder(body, member) {
       size: String(item.size || "FREE").trim()
     };
   });
-
-  if (useSupabase) {
-    for (const item of normalized) {
-      const product = products.find(candidate => candidate.id === item.id);
-      await supabase(`products?id=eq.${encodeURIComponent(item.id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ stock: Number(product.stock) - item.qty })
-      });
-    }
-  } else {
-    normalized.forEach(item => {
-      const product = products.find(candidate => candidate.id === item.id);
-      product.stock -= item.qty;
-    });
-    await writeJson(productsFile, products);
-  }
 
   const order = {
     id: `ELIN-${Date.now()}`,

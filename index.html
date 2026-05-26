@@ -1204,11 +1204,11 @@
             <span class="badge">${escapeHtml(product.label || "NEW")}</span>
             <div class="quick">
               <button type="button" aria-label="${escapeHtml(product.name)} 관심상품">♡</button>
-              <button type="button" aria-label="${escapeHtml(product.name)} 장바구니" onclick="addToCart('${product.id}')" ${Number(product.stock) < 1 ? "disabled" : ""}>＋</button>
+              <button type="button" aria-label="${escapeHtml(product.name)} 장바구니" onclick="addToCart('${product.id}')">＋</button>
             </div>
           </div>
           <div class="product-info">
-            <div class="product-meta"><span>ELIN SELECT</span><span>재고 ${Number(product.stock || 0)}개</span></div>
+            <div class="product-meta"><span>ELIN SELECT</span><span>무통장입금 주문 가능</span></div>
             <h3 class="product-name"><a href="/product.html?id=${encodeURIComponent(product.id)}">${escapeHtml(product.name)}</a></h3>
             <div class="price"><span>${money(product.price)}</span></div>
           </div>
@@ -1237,7 +1237,7 @@
     function addToCart(id) {
       if (!requireMember()) return;
       const product = products.find(item => item.id === id);
-      if (!product || Number(product.stock) < 1) return;
+      if (!product) return;
       const color = parseOptions(product.colors, "기본")[0];
       const size = parseOptions(product.sizes, "FREE")[0];
       const existing = cart.find(item => item.id === id && item.color === color && item.size === size);
