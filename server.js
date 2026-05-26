@@ -19,6 +19,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 const useSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
+const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
 
 const adminSessions = new Set();
 const memberSessions = new Map();
@@ -104,8 +106,30 @@ function getCookies(req) {
   }).filter(([key]) => key));
 }
 
-function setCookie(name, value, maxAge = 86400) {
+function setCookie(name, value, maxAge = SESSION_MAX_AGE) {
   return `${name}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+}
+
+function sessionSignature(payload) {
+  return crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
+}
+
+function createSignedToken(type, data) {
+  const expires = Date.now() + SESSION_MAX_AGE * 1000;
+  const payload = Buffer.from(JSON.stringify({ type, data, expires })).toString("base64url");
+  return `${payload}.${sessionSignature(payload)}`;
+}
+
+function readSignedToken(token, expectedType) {
+  const [payload, signature] = String(token || "").split(".");
+  if (!payload || !signature || sessionSignature(payload) !== signature) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (parsed.type !== expectedType || Number(parsed.expires || 0) < Date.now()) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
 }
 
 async function adminSettings() {
@@ -469,12 +493,17 @@ async function requireAdmin(req) {
   const settings = await adminSettings();
   if (req.headers["x-admin-pin"] === settings.pin) return true;
   const token = getCookies(req).elin_admin_session;
-  return Boolean(token && adminSessions.has(token));
+  if (token && adminSessions.has(token)) return true;
+  const signed = readSignedToken(token, "admin");
+  return Boolean(signed?.username === settings.username);
 }
 
 function currentMember(req) {
   const token = getCookies(req).elin_member_session;
-  return token ? memberSessions.get(token) : undefined;
+  if (!token) return undefined;
+  const memoryMember = memberSessions.get(token);
+  if (memoryMember) return memoryMember;
+  return readSignedToken(token, "member") || undefined;
 }
 
 function publicMember(member) {
@@ -842,9 +871,10 @@ async function createMember(input) {
 }
 
 function startMemberSession(member, res) {
-  const token = crypto.randomBytes(24).toString("hex");
-  memberSessions.set(token, publicMember(member));
-  send(res, 200, { ok: true, member: publicMember(member) }, "application/json; charset=utf-8", {
+  const publicData = publicMember(member);
+  const token = createSignedToken("member", publicData);
+  memberSessions.set(token, publicData);
+  send(res, 200, { ok: true, member: publicData }, "application/json; charset=utf-8", {
     "Set-Cookie": setCookie("elin_member_session", token)
   });
 }
@@ -856,7 +886,7 @@ async function handleApi(req, res, url) {
     if (body.username !== settings.username || body.password !== settings.password) {
       return send(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다." });
     }
-    const token = crypto.randomBytes(24).toString("hex");
+    const token = createSignedToken("admin", { username: settings.username });
     adminSessions.add(token);
     return send(res, 200, { ok: true, username: settings.username }, "application/json; charset=utf-8", {
       "Set-Cookie": setCookie("elin_admin_session", token)
