@@ -380,10 +380,12 @@
     let knownInquiryIds = new Set();
     let notificationReady = false;
     let orderPollingTimer = null;
+    let alarmLoopTimer = null;
     let orderSoundReady = false;
     let audioContext = null;
     let alertTargetTab = "orders";
     const adminRememberKey = "elinAdminRemember";
+    const notifySoundKey = "elinAdminNotifySound";
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
 
@@ -436,6 +438,7 @@
     document.querySelector("#logoutBtn").addEventListener("click", async () => {
       await fetch("/api/admin/logout", { method: "POST" });
       if (orderPollingTimer) window.clearInterval(orderPollingTimer);
+      stopAlarmLoop();
       document.querySelector("#adminApp").classList.add("hidden");
       document.querySelector("#loginBox").classList.remove("hidden");
     });
@@ -549,8 +552,10 @@
     document.querySelector("#inquiryStatus").addEventListener("change", renderInquiries);
     document.querySelector("#enableNotifyBtn").addEventListener("click", enableOrderNotifications);
     document.querySelector("#orderAlertOpen").addEventListener("click", () => {
+      stopAlarmLoop();
       activateTab(alertTargetTab);
       document.querySelector("#orderAlert").classList.remove("show");
+      document.title = "ELIN 관리자";
       document.querySelector(`#${alertTargetTab}Tab`).scrollIntoView({ behavior: "smooth" });
     });
 
@@ -631,14 +636,17 @@
     function showAdmin() {
       document.querySelector("#loginBox").classList.add("hidden");
       document.querySelector("#adminApp").classList.remove("hidden");
+      orderSoundReady = localStorage.getItem(notifySoundKey) === "on";
+      updateNotifyState();
     }
 
     async function enableOrderNotifications() {
       orderSoundReady = true;
+      localStorage.setItem(notifySoundKey, "on");
       try {
         audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === "suspended") await audioContext.resume();
-        playOrderSound();
+        playOrderSound(3);
       } catch (_) {}
       if ("Notification" in window && Notification.permission === "default") {
         await Notification.requestPermission();
@@ -650,26 +658,57 @@
       const permission = "Notification" in window ? Notification.permission : "unsupported";
       const browserText = permission === "granted" ? "브라우저 알림 허용됨" : permission === "denied" ? "브라우저 알림 차단됨" : "브라우저 알림 대기";
       document.querySelector("#notifyState").textContent = `주문/회원/문의 자동 확인 중 · 소리 ${orderSoundReady ? "켜짐" : "꺼짐"} · ${browserText}`;
+      document.querySelector("#enableNotifyBtn").textContent = orderSoundReady ? "알림 소리 테스트" : "주문/회원/문의 알림 켜기";
     }
 
-    function playOrderSound() {
+    async function unlockOrderSound() {
       if (!orderSoundReady) return;
       try {
         audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === "suspended") await audioContext.resume();
+      } catch (_) {}
+    }
+
+    async function playOrderSound(count = 4) {
+      if (!orderSoundReady) return;
+      try {
+        audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === "suspended") await audioContext.resume();
         const now = audioContext.currentTime;
-        [0, 0.16].forEach((offset, index) => {
+        Array.from({ length: count }).forEach((_, index) => {
+          const offset = index * 0.18;
           const oscillator = audioContext.createOscillator();
           const gain = audioContext.createGain();
-          oscillator.type = "sine";
-          oscillator.frequency.setValueAtTime(index ? 980 : 740, now + offset);
+          oscillator.type = "square";
+          oscillator.frequency.setValueAtTime(index % 2 ? 1040 : 780, now + offset);
           gain.gain.setValueAtTime(0.0001, now + offset);
-          gain.gain.exponentialRampToValueAtTime(0.18, now + offset + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.35, now + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.16);
           oscillator.connect(gain).connect(audioContext.destination);
           oscillator.start(now + offset);
-          oscillator.stop(now + offset + 0.15);
+          oscillator.stop(now + offset + 0.17);
         });
       } catch (_) {}
+    }
+
+    document.addEventListener("pointerdown", unlockOrderSound, { passive: true });
+
+    function startAlarmLoop() {
+      stopAlarmLoop();
+      playOrderSound(6);
+      alarmLoopTimer = window.setInterval(() => {
+        if (document.querySelector("#orderAlert").classList.contains("show")) {
+          playOrderSound(6);
+        } else {
+          stopAlarmLoop();
+        }
+      }, 2500);
+    }
+
+    function stopAlarmLoop() {
+      if (!alarmLoopTimer) return;
+      window.clearInterval(alarmLoopTimer);
+      alarmLoopTimer = null;
     }
 
     function notifyBrowser(title, body, tag) {
@@ -736,7 +775,7 @@
         showInquiryAlert(newInquiries);
         notifyBrowser("ELIN 새 고객문의", `${newInquiries[0].name || "고객"}님 · ${newInquiries[0].subject || newInquiries[0].category || "문의"}`, newInquiries[0].id);
       }
-      playOrderSound();
+      startAlarmLoop();
       updateNotifyState();
     }
 
