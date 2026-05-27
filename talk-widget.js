@@ -17,7 +17,7 @@
         <a class="talk-action kakao" href="${kakaoTalkUrl}" target="_blank" rel="noopener">카카오톡 상담하기 <span>›</span></a>
         <a class="talk-action" href="/customer.html">1:1 문의 남기기 <span>›</span></a>
       </div>
-      <div class="talk-time">상담시간 평일 11:00 - 18:00<br>점심시간 13:00 - 14:00</div>
+      <div class="talk-time">상담시간 오전 10시 ~ 오후 8시<br>연중무휴</div>
     </div>
     <button class="talk-toggle" type="button" aria-expanded="false" aria-controls="talkPanel">
       <span class="talk-toggle-icon">TALK</span>
