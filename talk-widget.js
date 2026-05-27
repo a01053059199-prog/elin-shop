@@ -1,6 +1,7 @@
 (function () {
   if (document.querySelector(".talk-widget")) return;
 
+  const kakaoTalkUrl = "https://open.kakao.com/o/syAk2oti";
   const widget = document.createElement("div");
   widget.className = "talk-widget";
   widget.innerHTML = `
@@ -13,13 +14,13 @@
         <button class="talk-close" type="button" aria-label="톡상담 닫기">×</button>
       </div>
       <div class="talk-actions">
-        <a class="talk-action kakao" href="/customer.html">카카오톡 상담하기 <span>›</span></a>
+        <a class="talk-action kakao" href="${kakaoTalkUrl}" target="_blank" rel="noopener">카카오톡 상담하기 <span>›</span></a>
         <a class="talk-action" href="/customer.html">1:1 문의 남기기 <span>›</span></a>
       </div>
       <div class="talk-time">상담시간 평일 11:00 - 18:00<br>점심시간 13:00 - 14:00</div>
     </div>
     <button class="talk-toggle" type="button" aria-expanded="false" aria-controls="talkPanel">
-      <span class="talk-toggle-icon">톡</span>
+      <span class="talk-toggle-icon">TALK</span>
       <span>톡상담</span>
     </button>
   `;
