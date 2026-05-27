@@ -411,6 +411,12 @@ const defaultSiteSettings = {
   footerBrandText: "Online Select Shop\nMon-Fri 11:00 - 18:00",
   footerCompanyTitle: "Company",
   footerCompanyText: "상호명 ELIN · 대표 관리자 · 사업자등록번호 000-00-00000",
+  productGuidePurchaseTitle: "구매 전 안내",
+  productGuidePurchaseText: "상품 이미지는 모니터 환경에 따라 색상이 다르게 보일 수 있습니다.\n주문 전 옵션과 배송지를 꼭 확인해주세요.",
+  productGuideShippingTitle: "배송 안내",
+  productGuideShippingText: "입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.",
+  productGuideReturnTitle: "교환/반품 안내",
+  productGuideReturnText: "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.",
   footerLinks: [
     { label: "이용약관", url: "/terms.html" },
     { label: "개인정보처리방침", url: "/privacy.html" },
@@ -442,7 +448,18 @@ function cleanVisualItems(items, fallback, limit, hasButton = false) {
 
 function normalizeSiteSettings(input = {}) {
   const settings = { ...defaultSiteSettings, ...(input || {}) };
-  for (const key of ["footerBrandTitle", "footerBrandText", "footerCompanyTitle", "footerCompanyText"]) {
+  for (const key of [
+    "footerBrandTitle",
+    "footerBrandText",
+    "footerCompanyTitle",
+    "footerCompanyText",
+    "productGuidePurchaseTitle",
+    "productGuidePurchaseText",
+    "productGuideShippingTitle",
+    "productGuideShippingText",
+    "productGuideReturnTitle",
+    "productGuideReturnText"
+  ]) {
     settings[key] = String(settings[key] || "").trim();
   }
   settings.footerLinks = (Array.isArray(input.footerLinks) ? input.footerLinks : defaultSiteSettings.footerLinks)

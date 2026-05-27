@@ -503,6 +503,7 @@
     let product;
     let allProducts = [];
     let currentMember = null;
+    let siteSettings = {};
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({
@@ -545,6 +546,21 @@
       return options.map(option => `<option>${escapeHtml(option)}</option>`).join("");
     }
 
+    function lineHtml(value) {
+      return escapeHtml(value).replace(/\n/g, "<br>");
+    }
+
+    function productGuide() {
+      return {
+        purchaseTitle: siteSettings.productGuidePurchaseTitle || "구매 전 안내",
+        purchaseText: siteSettings.productGuidePurchaseText || "상품 이미지는 모니터 환경에 따라 색상이 다르게 보일 수 있습니다.\n주문 전 옵션과 배송지를 꼭 확인해주세요.",
+        shippingTitle: siteSettings.productGuideShippingTitle || "배송 안내",
+        shippingText: siteSettings.productGuideShippingText || "입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.",
+        returnTitle: siteSettings.productGuideReturnTitle || "교환/반품 안내",
+        returnText: siteSettings.productGuideReturnText || "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다."
+      };
+    }
+
     function showImage(index) {
       const images = parseImages(product);
       document.querySelector("#mainImage").src = images[index] || product.image;
@@ -561,7 +577,12 @@
     }
 
     async function load() {
-      allProducts = await (await fetch("/api/products")).json();
+      const [productsResponse, settingsResponse] = await Promise.all([
+        fetch("/api/products"),
+        fetch("/api/site-settings")
+      ]);
+      allProducts = await productsResponse.json();
+      if (settingsResponse.ok) siteSettings = await settingsResponse.json();
       product = allProducts.find(item => item.id === id);
       if (!product) {
         document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
@@ -576,6 +597,7 @@
       const colors = parseOptions(product.colors, "기본");
       const sizes = parseOptions(product.sizes, "FREE");
       const title = escapeHtml(product.name);
+      const guide = productGuide();
       const related = allProducts
         .filter(item => item.id !== product.id && item.category === product.category)
         .slice(0, 4);
@@ -689,7 +711,19 @@
           </section>
         ` : ""}
       `;
-      document.querySelectorAll(".accordion details").forEach(detail => {
+      const guideDetails = document.querySelectorAll(".accordion details");
+      const guideItems = [
+        [guide.purchaseTitle, guide.purchaseText],
+        [guide.shippingTitle, guide.shippingText],
+        [guide.returnTitle, guide.returnText]
+      ];
+      guideDetails.forEach((detail, index) => {
+        const summary = detail.querySelector("summary");
+        const paragraph = detail.querySelector("p");
+        if (summary) summary.textContent = guideItems[index][0];
+        if (paragraph) paragraph.innerHTML = lineHtml(guideItems[index][1]);
+      });
+      guideDetails.forEach(detail => {
         detail.open = true;
         detail.addEventListener("toggle", () => {
           if (!detail.open) detail.open = true;
