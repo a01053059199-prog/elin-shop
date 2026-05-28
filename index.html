@@ -1552,9 +1552,29 @@
         prev.disabled = strip.scrollLeft <= 2;
         next.disabled = strip.scrollLeft >= max;
       };
+      const moveNext = () => {
+        const max = strip.scrollWidth - strip.clientWidth - 2;
+        if (strip.scrollLeft >= max) {
+          strip.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          strip.scrollBy({ left: scrollAmount(), behavior: "smooth" });
+        }
+      };
+      let timer = window.setInterval(moveNext, 3200);
+      const restart = () => {
+        window.clearInterval(timer);
+        timer = window.setInterval(moveNext, 3200);
+      };
 
-      prev.addEventListener("click", () => strip.scrollBy({ left: -scrollAmount(), behavior: "smooth" }));
-      next.addEventListener("click", () => strip.scrollBy({ left: scrollAmount(), behavior: "smooth" }));
+      prev.addEventListener("click", () => {
+        strip.scrollBy({ left: -scrollAmount(), behavior: "smooth" });
+        restart();
+      });
+      next.addEventListener("click", () => {
+        moveNext();
+        restart();
+      });
+      strip.addEventListener("pointerdown", restart);
       strip.addEventListener("scroll", update, { passive: true });
       window.addEventListener("resize", update);
       update();
