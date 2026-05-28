@@ -38,6 +38,7 @@
     .product img { width: 80px; height: 80px; border-radius: 6px; object-fit: cover; background: #f3f0ea; }
     .meta { color: #6a6a6a; font-size: 13px; line-height: 1.6; }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .order-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .hidden { display: none; }
     .image-preview { width: 100%; min-height: 160px; border: 1px dashed #cfc7bc; border-radius: 8px; background: #f8f6f2; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; padding: 8px; color: #777; font-size: 13px; }
     .image-preview.empty { display: grid; place-items: center; grid-template-columns: 1fr; }
@@ -1313,7 +1314,10 @@
             <label>관리자 메모</label>
             <textarea id="memo-${order.id}" placeholder="관리자 메모">${order.admin_memo || ""}</textarea>
             <div style="height:10px"></div>
-            <button type="button" onclick="saveOrder('${order.id}')">주문 저장</button>
+            <div class="order-actions">
+              <button type="button" onclick="saveOrder('${order.id}')">주문 저장</button>
+              <button class="danger" type="button" onclick="deleteOrder('${order.id}')">삭제</button>
+            </div>
           </div>
         </article>
       `).join("") : "<p>검색 결과가 없습니다.</p>";
@@ -1461,6 +1465,17 @@
       if (!response.ok) {
         const result = await response.json();
         alert(result.error || "주문 저장에 실패했습니다.");
+        return;
+      }
+      await refresh();
+    };
+
+    window.deleteOrder = async id => {
+      if (!confirm("이 주문을 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.")) return;
+      const response = await fetch(`/api/orders/${id}`, { method: "DELETE", headers: headers() });
+      if (!response.ok) {
+        const result = await response.json();
+        alert(result.error || "주문 삭제에 실패했습니다.");
         return;
       }
       await refresh();

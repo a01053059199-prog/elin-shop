@@ -742,6 +742,15 @@ async function updateOrderStatus(id, input) {
   return order;
 }
 
+async function deleteOrder(id) {
+  if (useSupabase) {
+    await supabase(`orders?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    return;
+  }
+  const orders = await readJson(ordersFile);
+  await writeJson(ordersFile, orders.filter(order => order.id !== id));
+}
+
 async function listInquiries() {
   const inquiries = useSupabase ? await supabase("inquiries?select=*&order=created_at.desc") : await readJson(inquiriesFile);
   return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
@@ -1086,6 +1095,13 @@ async function handleApi(req, res, url) {
     const id = decodeURIComponent(url.pathname.split("/").pop());
     const body = await readBody(req);
     return send(res, 200, await updateOrderStatus(id, body));
+  }
+
+  if (url.pathname.startsWith("/api/orders/") && req.method === "DELETE") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    await deleteOrder(id);
+    return send(res, 200, { ok: true });
   }
 
   return send(res, 404, { error: "API 경로를 찾을 수 없습니다." });
