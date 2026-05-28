@@ -250,6 +250,12 @@
     .hero-slider.settings-pending .hero-slider-frame {
       visibility: hidden;
     }
+    .hero-slider.no-slides {
+      display: none;
+    }
+    .hero-slider.one-slide .hero-slider-controls {
+      display: none;
+    }
     .hero-slider-frame {
       position: relative;
       min-height: 430px;
@@ -266,6 +272,10 @@
       opacity: 0;
       visibility: hidden;
       transition: opacity .45s ease, visibility .45s ease;
+    }
+    .hero-slide[hidden],
+    .hero-slide.is-empty {
+      display: none !important;
     }
     .hero-slide::before {
       content: "";
@@ -1369,10 +1379,15 @@
 
     function applySiteSettings(settings = {}) {
       const slides = Array.isArray(settings.heroSlides) ? settings.heroSlides : [];
+      const heroSlider = document.querySelector(".hero-slider");
       document.querySelectorAll("[data-hero-slide]").forEach((slideElement, index) => {
         const slide = slides[index];
+        const image = String(slide?.image || "").trim();
+        slideElement.style.backgroundImage = image ? `url('${safeCssUrl(image)}')` : "";
+        slideElement.hidden = !image;
+        slideElement.classList.toggle("is-empty", !image);
+        slideElement.classList.remove("active");
         if (!slide) return;
-        slideElement.style.backgroundImage = slide.image ? `url('${safeCssUrl(slide.image)}')` : "";
         const title = slideElement.querySelector("h1");
         const text = slideElement.querySelector("p");
         const button = slideElement.querySelector(".btn");
@@ -1383,6 +1398,10 @@
           button.href = slide.buttonUrl || "#products";
         }
       });
+      const visibleSlides = [...document.querySelectorAll("[data-hero-slide]:not([hidden])")];
+      heroSlider?.classList.toggle("no-slides", visibleSlides.length === 0);
+      heroSlider?.classList.toggle("one-slide", visibleSlides.length === 1);
+      visibleSlides[0]?.classList.add("active");
 
       const categories = Array.isArray(settings.categoryCards) ? settings.categoryCards : [];
       document.querySelectorAll("[data-category-card]").forEach((cardElement, index) => {
@@ -1402,10 +1421,10 @@
         if (response.ok) applySiteSettings(await response.json());
       } catch (error) {
         console.warn("사이트 설정을 불러오지 못했습니다.", error);
+      } finally {
+        document.querySelector(".hero-slider")?.classList.remove("settings-pending");
       }
     }
-
-    document.querySelector(".hero-slider")?.classList.remove("settings-pending");
 
     async function loadProducts() {
       try {
@@ -1423,12 +1442,18 @@
     }
 
     function initHeroSlider() {
-      const slides = [...document.querySelectorAll(".hero-slide")];
+      const heroSlider = document.querySelector(".hero-slider");
+      const slides = [...document.querySelectorAll(".hero-slide:not([hidden]):not(.is-empty)")];
       const dots = document.querySelector("#heroDots");
       const prev = document.querySelector("#heroPrev");
       const next = document.querySelector("#heroNext");
       const pause = document.querySelector("#heroPause");
-      if (!slides.length || !dots || !prev || !next || !pause) return;
+      if (!slides.length) {
+        heroSlider?.classList.add("no-slides");
+        return;
+      }
+      heroSlider?.classList.toggle("one-slide", slides.length === 1);
+      if (!dots || !prev || !next || !pause) return;
 
       let index = 0;
       let playing = true;
