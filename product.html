@@ -562,6 +562,22 @@
       };
     }
 
+    function productInfoRowsHtml() {
+      const defaults = [
+        { label: "배송비", text: "기본 3,000원 / 100,000원 이상 무료배송" },
+        { label: "결제", text: "무통장 입금 확인 후 순차 출고" },
+        { label: "문의", text: "주문 전 상품 상태와 옵션을 확인해주세요." }
+      ];
+      const rows = Array.isArray(siteSettings.productInfoRows) ? siteSettings.productInfoRows : defaults;
+      return defaults.map((fallback, index) => {
+        const row = rows[index] || fallback;
+        const label = String(row.label || fallback.label || "").trim();
+        const text = String(row.text || fallback.text || "").trim();
+        if (!label && !text) return "";
+        return `<div class="info-row"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(text)}</span></div>`;
+      }).join("");
+    }
+
     function showImage(index) {
       const images = parseImages(product);
       document.querySelector("#mainImage").src = images[index] || product.image;
@@ -628,9 +644,7 @@
             </div>
 
             <div class="info-table">
-              <div class="info-row"><strong>배송비</strong><span>기본 3,000원 / 100,000원 이상 무료배송</span></div>
-              <div class="info-row"><strong>결제</strong><span>무통장 입금 확인 후 순차 출고</span></div>
-              <div class="info-row"><strong>문의</strong><span>주문 전 상품 상태와 옵션을 확인해주세요.</span></div>
+              ${productInfoRowsHtml()}
             </div>
 
             <label for="color">색상</label>

@@ -351,6 +351,37 @@
           <hr style="border:0;border-top:1px solid #e6e0d8;margin:24px 0">
           <h3>상품상세 안내 문구</h3>
 
+          <h4>구매 패널 상단 정보</h4>
+          <p class="note">상품 상세 오른쪽에 보이는 배송비, 결제, 문의 문구를 수정합니다.</p>
+          <div class="grid">
+            <div>
+              <label for="productInfoLabel0">1번 제목</label>
+              <input id="productInfoLabel0" placeholder="배송비" />
+            </div>
+            <div>
+              <label for="productInfoText0">1번 내용</label>
+              <input id="productInfoText0" placeholder="기본 3,000원 / 100,000원 이상 무료배송" />
+            </div>
+            <div>
+              <label for="productInfoLabel1">2번 제목</label>
+              <input id="productInfoLabel1" placeholder="결제" />
+            </div>
+            <div>
+              <label for="productInfoText1">2번 내용</label>
+              <input id="productInfoText1" placeholder="무통장 입금 확인 후 순차 출고" />
+            </div>
+            <div>
+              <label for="productInfoLabel2">3번 제목</label>
+              <input id="productInfoLabel2" placeholder="문의" />
+            </div>
+            <div>
+              <label for="productInfoText2">3번 내용</label>
+              <input id="productInfoText2" placeholder="주문 전 상품 상태와 옵션을 확인해주세요." />
+            </div>
+          </div>
+
+          <h4 style="margin-top:18px">하단 고정 안내</h4>
+
           <label for="productGuidePurchaseTitle">구매 안내 제목</label>
           <input id="productGuidePurchaseTitle" placeholder="구매 전 안내" />
 
@@ -1063,6 +1094,10 @@
         productGuideShippingText: formValue("productGuideShippingText"),
         productGuideReturnTitle: formValue("productGuideReturnTitle"),
         productGuideReturnText: formValue("productGuideReturnText"),
+        productInfoRows: [0, 1, 2].map(index => ({
+          label: formValue(`productInfoLabel${index}`),
+          text: formValue(`productInfoText${index}`)
+        })),
         footerBrandTitle: formValue("footerBrandTitle"),
         footerBrandText: formValue("footerBrandText"),
         footerCompanyTitle: formValue("footerCompanyTitle"),
@@ -1085,6 +1120,11 @@
       setValue("productGuideShippingText", settings.productGuideShippingText);
       setValue("productGuideReturnTitle", settings.productGuideReturnTitle);
       setValue("productGuideReturnText", settings.productGuideReturnText);
+      const productInfoRows = Array.isArray(settings.productInfoRows) ? settings.productInfoRows : [];
+      [0, 1, 2].forEach(index => {
+        setValue(`productInfoLabel${index}`, productInfoRows[index]?.label);
+        setValue(`productInfoText${index}`, productInfoRows[index]?.text);
+      });
       footerLinks = Array.isArray(settings.footerLinks) ? settings.footerLinks : [];
       heroSlides = Array.isArray(settings.heroSlides) ? settings.heroSlides : [];
       categoryCards = Array.isArray(settings.categoryCards) ? settings.categoryCards : [];

@@ -417,6 +417,11 @@ const defaultSiteSettings = {
   productGuideShippingText: "입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.",
   productGuideReturnTitle: "교환/반품 안내",
   productGuideReturnText: "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.",
+  productInfoRows: [
+    { label: "배송비", text: "기본 3,000원 / 100,000원 이상 무료배송" },
+    { label: "결제", text: "무통장 입금 확인 후 순차 출고" },
+    { label: "문의", text: "주문 전 상품 상태와 옵션을 확인해주세요." }
+  ],
   footerLinks: [
     { label: "이용약관", url: "/terms.html" },
     { label: "개인정보처리방침", url: "/privacy.html" },
@@ -471,6 +476,14 @@ function normalizeSiteSettings(input = {}) {
     }))
     .filter(link => link.label || link.url)
     .slice(0, 10);
+  settings.productInfoRows = Array.from({ length: 3 }, (_, index) => {
+    const fallback = defaultSiteSettings.productInfoRows[index] || {};
+    const source = Array.isArray(input.productInfoRows) ? input.productInfoRows[index] || {} : fallback;
+    return {
+      label: String(source.label || fallback.label || "").trim(),
+      text: String(source.text || fallback.text || "").trim()
+    };
+  });
   settings.heroSlides = cleanVisualItems(input.heroSlides, defaultHeroSlides, 4, true);
   settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 6);
   return settings;
