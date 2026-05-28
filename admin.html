@@ -39,6 +39,9 @@
     .meta { color: #6a6a6a; font-size: 13px; line-height: 1.6; }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .order-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .online-summary { margin-bottom: 12px; }
+    .online-title { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin: 0 0 12px; }
+    .online-dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 999px; background: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.12); vertical-align: middle; }
     .hidden { display: none; }
     .image-preview { width: 100%; min-height: 160px; border: 1px dashed #cfc7bc; border-radius: 8px; background: #f8f6f2; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; padding: 8px; color: #777; font-size: 13px; }
     .image-preview.empty { display: grid; place-items: center; grid-template-columns: 1fr; }
@@ -186,6 +189,13 @@
       </div>
 
       <div id="membersTab" class="hidden">
+        <section class="panel online-summary">
+          <div class="online-title">
+            <h2 style="margin:0">접속중인 회원</h2>
+            <strong id="activeMemberCount">0명</strong>
+          </div>
+          <div class="list" id="activeMemberList"></div>
+        </section>
         <div class="filters">
           <input id="memberSearch" placeholder="회원 아이디/이름/연락처/주소 검색" />
         </div>
@@ -391,6 +401,7 @@
     let products = [];
     let orders = [];
     let members = [];
+    let activeMembers = [];
     let inquiries = [];
     let customerGuideItems = [];
     let customerFaqs = [];
@@ -647,15 +658,18 @@
       products = await (await fetch("/api/products")).json();
       const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
       const nextMembers = await (await fetch("/api/admin/members", { headers: headers() })).json();
+      const nextActiveMembers = await (await fetch("/api/admin/active-members", { headers: headers() })).json();
       const nextInquiries = await (await fetch("/api/admin/inquiries", { headers: headers() })).json();
       handleNotifications(nextOrders, nextMembers, nextInquiries, options);
       orders = nextOrders;
       members = nextMembers;
+      activeMembers = nextActiveMembers;
       inquiries = nextInquiries;
       renderDashboard();
       renderProducts();
       renderOrders();
       renderMembers();
+      renderActiveMembers();
       renderInquiries();
     }
 
@@ -1161,6 +1175,7 @@
         <div class="metric"><strong>${count("배송중")}</strong><span>배송중</span></div>
         <div class="metric"><strong>${money(sales)}</strong><span>총 매출</span></div>
         <div class="metric"><strong>${members.length}</strong><span>총 회원</span></div>
+        <div class="metric"><strong>${activeMembers.length}</strong><span>접속중 회원</span></div>
         <div class="metric"><strong>${unanswered}</strong><span>미답변 문의</span></div>
       `;
     }
@@ -1321,6 +1336,20 @@
           </div>
         </article>
       `).join("") : "<p>검색 결과가 없습니다.</p>";
+    }
+
+    function renderActiveMembers() {
+      const count = activeMembers.length;
+      document.querySelector("#activeMemberCount").textContent = `${count}명`;
+      document.querySelector("#activeMemberList").innerHTML = count ? activeMembers.map(member => `
+        <article class="member">
+          <div>
+            <strong><span class="online-dot"></span>${member.name || "이름 없음"} <span class="meta">(${member.username || "-"})</span></strong>
+            <div class="meta">연락처 ${member.phone || "-"} · 주소 ${member.address || "-"}</div>
+            <div class="meta">로그인 ${member.loginAt ? new Date(member.loginAt).toLocaleString("ko-KR") : "-"} · 마지막 활동 ${member.lastSeenAt ? new Date(member.lastSeenAt).toLocaleString("ko-KR") : "-"}</div>
+          </div>
+        </article>
+      `).join("") : `<p class="meta">현재 로그인 유지 중인 회원이 없습니다.</p>`;
     }
 
     function renderMembers() {

@@ -525,8 +525,19 @@ function currentMember(req) {
   const token = getCookies(req).elin_member_session;
   if (!token) return undefined;
   const memoryMember = memberSessions.get(token);
-  if (memoryMember) return memoryMember;
-  return readSignedToken(token, "member") || undefined;
+  if (memoryMember) {
+    memoryMember.lastSeenAt = new Date().toISOString();
+    return memoryMember;
+  }
+  const signed = readSignedToken(token, "member");
+  if (signed) {
+    memberSessions.set(token, {
+      ...signed,
+      loginAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString()
+    });
+  }
+  return signed || undefined;
 }
 
 function publicMember(member) {
@@ -539,6 +550,27 @@ function publicMember(member) {
     phone: member.phone || "",
     address: member.address || ""
   };
+}
+
+function listActiveMembers() {
+  const unique = new Map();
+  for (const session of memberSessions.values()) {
+    if (!session?.id) continue;
+    const existing = unique.get(session.id);
+    if (!existing || String(session.lastSeenAt || "").localeCompare(String(existing.lastSeenAt || "")) > 0) {
+      unique.set(session.id, {
+        id: session.id,
+        username: session.username || "",
+        email: session.email || "",
+        name: session.name || "",
+        phone: session.phone || "",
+        address: session.address || "",
+        loginAt: session.loginAt || "",
+        lastSeenAt: session.lastSeenAt || ""
+      });
+    }
+  }
+  return [...unique.values()].sort((a, b) => String(b.lastSeenAt || b.loginAt).localeCompare(String(a.lastSeenAt || a.loginAt)));
 }
 
 async function supabase(pathname, options = {}) {
@@ -905,7 +937,11 @@ async function createMember(input) {
 function startMemberSession(member, res) {
   const publicData = publicMember(member);
   const token = createSignedToken("member", publicData);
-  memberSessions.set(token, publicData);
+  memberSessions.set(token, {
+    ...publicData,
+    loginAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString()
+  });
   send(res, 200, { ok: true, member: publicData }, "application/json; charset=utf-8", {
     "Set-Cookie": setCookie("elin_member_session", token)
   });
@@ -1029,6 +1065,11 @@ async function handleApi(req, res, url) {
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
     if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     return send(res, 200, await listMembers());
+  }
+
+  if (url.pathname === "/api/admin/active-members" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 200, listActiveMembers());
   }
 
   if (url.pathname === "/api/inquiries" && req.method === "POST") {
