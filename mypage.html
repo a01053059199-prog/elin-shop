@@ -160,6 +160,18 @@
 
     async function load() {
       await loadSettings();
+      const lastOrder = JSON.parse(sessionStorage.getItem("elinLastOrder") || "null");
+      if (lastOrder) {
+        const completeBox = document.createElement("section");
+        completeBox.className = "notice";
+        completeBox.innerHTML = `
+          <strong style="display:block;margin-bottom:8px">주문이 완료되었습니다.</strong>
+          <div class="meta">주문번호 ${escapeHtml(lastOrder.id)} · 입금계좌 ${escapeHtml(lastOrder.bank)} · 입금금액 ${money(lastOrder.total)}</div>
+          <div class="meta">입금 확인 후 관리자가 배송을 진행합니다.</div>
+        `;
+        document.querySelector("#memberBox").before(completeBox);
+        sessionStorage.removeItem("elinLastOrder");
+      }
       const me = await (await fetch("/api/auth/me")).json();
       if (!me.member) {
         document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">${escapeHtml(pageSettings.loginLinkText || "로그인하기")}</a>`;
@@ -183,6 +195,9 @@
       const orders = orderResponse.ok ? await orderResponse.json() : [];
       document.querySelector("#orders").innerHTML = orders.length ? orders.map(orderCard).join("") : `<p>${escapeHtml(pageSettings.emptyOrderText || "아직 주문내역이 없습니다.")}</p>`;
 
+      if (location.hash === "#orders") {
+        setTimeout(() => document.querySelector("#orders")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+      }
       const inquiryResponse = await fetch("/api/member/inquiries");
       const inquiries = inquiryResponse.ok ? await inquiryResponse.json() : [];
       document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>${escapeHtml(pageSettings.emptyInquiryText || "아직 문의내역이 없습니다.")} <a href="/customer.html">${escapeHtml(pageSettings.inquiryLinkText || "문의하기")}</a></p>`;

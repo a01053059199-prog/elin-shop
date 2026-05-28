@@ -109,6 +109,14 @@
         return;
       }
       localStorage.removeItem("elinCart");
+      sessionStorage.setItem("elinLastOrder", JSON.stringify({
+        id: result.id,
+        bank: result.customer?.bank || "",
+        depositor: result.customer?.depositor || "",
+        total: Number(result.total || 0)
+      }));
+      location.href = "/mypage.html#orders";
+      return;
       message.innerHTML = `
         <strong style="display:block;font-size:18px;margin-bottom:8px">주문이 완료되었습니다.</strong>
         <div>아래 계좌로 입금해주시면 관리자가 확인 후 배송을 진행합니다.</div>
