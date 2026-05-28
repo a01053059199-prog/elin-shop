@@ -1467,8 +1467,7 @@
       restart();
     }
 
-    initHeroSlider();
-    loadSiteSettings();
+    loadSiteSettings().then(initHeroSlider);
     loadProducts();
     loadMemberNav();
   </script>

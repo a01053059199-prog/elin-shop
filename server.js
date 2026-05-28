@@ -427,20 +427,22 @@ const defaultSiteSettings = {
 };
 
 function cleanVisualItems(items, fallback, limit, hasButton = false) {
-  const source = Array.isArray(items) ? items : fallback;
+  const hasCustomItems = Array.isArray(items);
+  const source = hasCustomItems ? items : fallback;
   return Array.from({ length: limit }, (_, index) => {
     const base = fallback[index] || {};
     const item = source[index] || {};
+    const hasItem = hasCustomItems && item && typeof item === "object";
     const clean = {
       ...base,
-      title: String(item.title || base.title || "").trim(),
-      text: String(item.text || base.text || "").trim(),
-      image: String(item.image || base.image || "").trim()
+      title: String(hasItem ? item.title || "" : base.title || "").trim(),
+      text: String(hasItem ? item.text || "" : base.text || "").trim(),
+      image: String(hasItem ? item.image || "" : base.image || "").trim()
     };
     if (hasButton) {
       clean.className = String(base.className || item.className || "").trim();
-      clean.buttonText = String(item.buttonText || base.buttonText || "").trim();
-      clean.buttonUrl = String(item.buttonUrl || base.buttonUrl || "").trim();
+      clean.buttonText = String(hasItem ? item.buttonText || "" : base.buttonText || "").trim();
+      clean.buttonUrl = String(hasItem ? item.buttonUrl || "" : base.buttonUrl || "").trim();
     }
     return clean;
   });
