@@ -365,7 +365,7 @@ async function saveCustomerCenterSettings(settings) {
 const defaultHeroSlides = [
   {
     className: "luxury-watch",
-    image: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1800&q=90",
+    image: "",
     title: "26SS Celebrity Daily Bag",
     text: "명품관 무드로 선별한 데일리 백과 액세서리 셀렉션.",
     buttonText: "바로가기",
@@ -373,7 +373,7 @@ const defaultHeroSlides = [
   },
   {
     className: "luxury-bag",
-    image: "https://images.pexels.com/photos/12643950/pexels-photo-12643950.jpeg?auto=compress&cs=tinysrgb&w=1800",
+    image: "",
     title: "Louis Vuitton Gallery",
     text: "쇼윈도에 진열된 명품 백처럼 고급스럽게 구성한 컬렉션.",
     buttonText: "가방 보기",
@@ -381,7 +381,7 @@ const defaultHeroSlides = [
   },
   {
     className: "luxury-sneakers",
-    image: "https://images.unsplash.com/photo-1556906781-9a412961c28c?auto=format&fit=crop&w=1800&q=90",
+    image: "",
     title: "Premium Sneakers",
     text: "스니커즈, 슈즈, 데일리 아이템을 한 번에 둘러보세요.",
     buttonText: "스니커즈 보기",
@@ -389,7 +389,7 @@ const defaultHeroSlides = [
   },
   {
     className: "luxury-jewelry",
-    image: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Rolex-Submariner.jpg",
+    image: "",
     title: "ROLEX WATCH",
     text: "서브마리너 무드의 클래식한 명품 시계 셀렉션.",
     buttonText: "시계 보기",
