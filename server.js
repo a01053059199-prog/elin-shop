@@ -489,7 +489,8 @@ async function siteSettings() {
   if (useSupabase) {
     try {
       const rows = await supabase("admin_settings?key=eq.site_settings&select=value");
-      if (rows?.[0]?.value) return normalizeSiteSettings(JSON.parse(rows[0].value));
+      const latest = rows?.[rows.length - 1];
+      if (latest?.value) return normalizeSiteSettings(JSON.parse(latest.value));
     } catch {}
   }
   return local;
@@ -499,9 +500,12 @@ async function saveSiteSettings(settings) {
   const normalized = normalizeSiteSettings(settings);
   await writeJson(siteSettingsFile, normalized);
   if (useSupabase) {
-    await supabase("admin_settings?on_conflict=key", {
+    try {
+      await supabase("admin_settings?key=eq.site_settings", { method: "DELETE" });
+    } catch {}
+    await supabase("admin_settings", {
       method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      headers: { Prefer: "return=minimal" },
       body: JSON.stringify([{ key: "site_settings", value: JSON.stringify(normalized) }])
     });
   }
