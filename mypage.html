@@ -24,10 +24,13 @@
     .meta { color: #6a6a6a; line-height: 1.7; font-size: 14px; }
     .member-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
     button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 11px 14px; font-weight: 900; cursor: pointer; }
-    .order strong, .inquiry strong { display: block; margin-bottom: 6px; }
+    .order strong, .inquiry strong { display: block; margin-bottom: 6px; font-size: 17px; line-height: 1.45; }
     .order-lines { margin: 10px 0; padding: 10px 0; border-block: 1px solid #eee8df; }
-    .answer { margin-top: 12px; padding: 12px; border-radius: 6px; background: #f5f1eb; white-space: pre-wrap; line-height: 1.7; }
-    .badge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; border-radius: 999px; background: #171717; color: #fff; font-size: 12px; font-weight: 900; }
+    .inquiry { display: grid; gap: 12px; }
+    .inquiry .meta { font-size: 13px; line-height: 1.55; }
+    .answer { margin-top: 0; padding: 14px 16px; border-radius: 6px; background: #f5f1eb; white-space: pre-wrap; line-height: 1.75; font-size: 15px; color: #222; }
+    .answer.reply { display: grid; gap: 10px; }
+    .badge { display: inline-flex; align-items: center; justify-self: start; min-height: 24px; padding: 3px 9px; border-radius: 999px; background: #171717; color: #fff; font-size: 12px; font-weight: 900; line-height: 1; }
     .badge.wait { background: #8a6b36; }
     .support { margin-top: 18px; color: #6a6a6a; font-size: 14px; }
     .support a { text-decoration: underline; color: #171717; }
@@ -36,6 +39,9 @@
       .brand { font-size: 28px; }
       .nav { font-size: 13px; }
       h1 { font-size: 24px; }
+      .panel, .order, .notice, .inquiry { padding: 15px; }
+      .order strong, .inquiry strong { font-size: 16px; }
+      .answer { padding: 12px; font-size: 14px; line-height: 1.7; }
     }
   </style>
   <link rel="stylesheet" href="/talk-widget.css" />
@@ -149,10 +155,9 @@
           <strong>${escapeHtml(inquiry.subject || "문의")}</strong>
           <div class="meta">${escapeHtml(inquiry.id)} · ${escapeHtml(inquiry.status || "접수")} · ${inquiry.createdAt ? new Date(inquiry.createdAt).toLocaleString("ko-KR") : "-"}</div>
           <div class="answer">${escapeHtml(inquiry.message || "")}</div>
-          <div class="answer">
+          <div class="answer reply">
             <span class="badge ${hasAnswer ? "" : "wait"}">${hasAnswer ? "답변완료" : "답변대기"}</span>
-            <div style="height:8px"></div>
-            ${hasAnswer ? escapeHtml(inquiry.answer) : "아직 관리자 답변이 등록되지 않았습니다."}
+            <div>${hasAnswer ? escapeHtml(inquiry.answer) : "아직 관리자 답변이 등록되지 않았습니다."}</div>
           </div>
         </article>
       `;
