@@ -405,12 +405,24 @@
       color: #fff;
       border-color: #111;
     }
-    .category-strip {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 12px;
+    .category-slider {
+      position: relative;
     }
+    .category-viewport {
+      overflow: hidden;
+    }
+    .category-strip {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+    }
+    .category-strip::-webkit-scrollbar { display: none; }
     .category-card {
+      flex: 0 0 calc((100% - 36px) / 4);
+      scroll-snap-align: start;
       min-height: 112px;
       padding: 16px;
       display: flex;
@@ -431,6 +443,26 @@
     .category-card span { position: relative; }
     .category-card strong { font-size: 17px; }
     .category-card span { margin-top: 5px; color: rgba(255,255,255,.8); font-size: 12px; }
+    .category-slider-controls {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .category-arrow {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #111;
+      font-size: 22px;
+      line-height: 1;
+    }
+    .category-arrow:disabled {
+      opacity: .35;
+      cursor: default;
+    }
     .product-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -751,7 +783,7 @@
       .search { display: none; }
       .hero-grid { grid-template-columns: 1fr; }
       .hero-side { grid-template-columns: 1fr 1fr; }
-      .category-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .category-card { flex-basis: calc((100% - 24px) / 3); }
       .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .footer-inner { grid-template-columns: 1fr; }
     }
@@ -868,11 +900,11 @@
         display: flex;
         gap: 10px;
         overflow-x: auto;
-        margin: 0 -12px;
-        padding: 0 12px 6px;
+        margin: 0;
+        padding: 0 0 6px;
       }
       .category-card {
-        flex: 0 0 118px;
+        flex: 0 0 calc((100% - 10px) / 2);
         min-height: 92px;
       }
       .category-card span { display: none; }
@@ -1085,13 +1117,21 @@
           <p class="section-note">원하는 상품군을 빠르게 찾아보세요.</p>
         </div>
       </div>
-      <div class="category-strip">
+      <div class="category-slider" aria-label="카테고리 슬라이드">
+        <div class="category-viewport">
+          <div class="category-strip" id="categoryStrip">
         <a class="category-card" data-category-card="0" href="#products" style="background-image:url('https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80')"><strong>WOMEN</strong><span>아우터 · 니트 · 팬츠</span></a>
         <a class="category-card" data-category-card="1" href="#products" style="background-image:url('https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80')"><strong>MAN</strong><span>셔츠 · 아우터 · 팬츠</span></a>
         <a class="category-card" data-category-card="2" href="#products" style="background-image:url('https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80')"><strong>BAG</strong><span>토트 · 숄더 · 미니백</span></a>
         <a class="category-card" data-category-card="3" href="#products" style="background-image:url('https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80')"><strong>SHOES</strong><span>스니커즈 · 로퍼 · 샌들</span></a>
         <a class="category-card" data-category-card="4" href="#products" style="background-image:url('https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80')"><strong>ACCESSORY</strong><span>주얼리 · 벨트 · 지갑</span></a>
         <a class="category-card" data-category-card="5" href="#products" style="background-image:url('https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80')"><strong>WATCH</strong><span>클래식 · 데일리</span></a>
+          </div>
+        </div>
+        <div class="category-slider-controls">
+          <button class="category-arrow" type="button" id="categoryPrev" aria-label="이전 카테고리">‹</button>
+          <button class="category-arrow" type="button" id="categoryNext" aria-label="다음 카테고리">›</button>
+        </div>
       </div>
     </section>
 
@@ -1497,7 +1537,31 @@
       restart();
     }
 
+    function initCategorySlider() {
+      const strip = document.querySelector("#categoryStrip");
+      const prev = document.querySelector("#categoryPrev");
+      const next = document.querySelector("#categoryNext");
+      if (!strip || !prev || !next) return;
+
+      const scrollAmount = () => {
+        const card = strip.querySelector(".category-card");
+        return card ? card.getBoundingClientRect().width + 12 : strip.clientWidth;
+      };
+      const update = () => {
+        const max = strip.scrollWidth - strip.clientWidth - 2;
+        prev.disabled = strip.scrollLeft <= 2;
+        next.disabled = strip.scrollLeft >= max;
+      };
+
+      prev.addEventListener("click", () => strip.scrollBy({ left: -scrollAmount(), behavior: "smooth" }));
+      next.addEventListener("click", () => strip.scrollBy({ left: scrollAmount(), behavior: "smooth" }));
+      strip.addEventListener("scroll", update, { passive: true });
+      window.addEventListener("resize", update);
+      update();
+    }
+
     loadSiteSettings().then(initHeroSlider);
+    initCategorySlider();
     loadProducts();
     loadMemberNav();
   </script>
