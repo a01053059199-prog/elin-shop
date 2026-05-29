@@ -194,6 +194,15 @@
       outline: 0;
       background: transparent;
     }
+    .home-layout {
+      display: flex;
+      flex-direction: column;
+    }
+    .home-layout .hero-slider { order: 1; }
+    .home-layout #weekly { order: 2; }
+    .home-layout .story { order: 3; }
+    .home-layout #category { order: 4; }
+    .home-layout #products { order: 5; }
     .hero-grid {
       max-width: 1240px;
       margin: 28px auto 0;
@@ -546,25 +555,56 @@
     }
     .story {
       margin-top: 58px;
-      background: #111;
-      color: #fff;
+      background: #f7f3ec;
+      color: #111;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
     }
     .story-inner {
-      max-width: 1040px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 58px 22px;
-      text-align: center;
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: 34px;
+      align-items: center;
+    }
+    .story-visual {
+      min-height: 320px;
+      background: url("https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1400&q=85") center/cover no-repeat;
     }
     .story h2 {
       margin: 0 0 18px;
-      font-size: 28px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 4vw, 54px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    .story-inner > h2,
+    .story-inner > p {
+      display: none;
     }
     .story p {
-      max-width: 780px;
-      margin: 0 auto;
-      color: rgba(255,255,255,.74);
+      max-width: 620px;
+      margin: 0 0 22px;
+      color: #555;
       line-height: 1.9;
       word-break: keep-all;
+    }
+    .story-points {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .story-points span {
+      padding: 14px 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.7);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: .04em;
     }
     .footer {
       margin-top: 58px;
@@ -942,8 +982,14 @@
       .price { display: block; font-size: 13px; }
       .price del { display: block; margin-top: 2px; font-size: 11px; }
       .story { margin-top: 38px; }
-      .story-inner { padding: 38px 18px; }
+      .story-inner {
+        padding: 38px 18px;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      .story-visual { min-height: 220px; }
       .story h2 { font-size: 22px; }
+      .story-points { grid-template-columns: 1fr; }
       .drawer-panel {
         top: auto;
         bottom: 0;
@@ -1039,6 +1085,7 @@
         <div class="nav-item"><a class="nav-link" href="#products">MAN <span>⌄</span></a><div class="mega"><div><h3>MAN</h3><a href="#products">아우터</a><a href="#products">셔츠</a><a href="#products">팬츠</a></div><div><h3>BAG</h3><a href="#products">토트</a><a href="#products">메신저</a></div><div><h3>SHOES</h3><a href="#products">스니커즈</a><a href="#products">로퍼</a></div></div></div>
         <div class="nav-item"><a class="nav-link" href="#products">WOMEN <span>⌄</span></a><div class="mega"><div><h3>WOMEN</h3><a href="#products">아우터</a><a href="#products">블라우스</a><a href="#products">팬츠</a></div><div><h3>BAG</h3><a href="#products">숄더백</a><a href="#products">미니백</a></div><div><h3>ACC</h3><a href="#products">주얼리</a><a href="#products">스카프</a></div></div></div>
         <div class="nav-item"><a class="nav-link" href="#products">BAG <span>⌄</span></a><div class="mega"><div><h3>BAG</h3><a href="#products">남성가방</a><a href="#products">여성가방</a></div><div><h3>WALLET</h3><a href="#products">남성지갑</a><a href="#products">여성지갑</a></div><div><h3>추천</h3><a href="#products">데일리백</a><a href="#products">클래식백</a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#products">WALLET <span>⌄</span></a><div class="mega"><div><h3>WALLET</h3><a href="#products">남성 지갑</a><a href="#products">여성 지갑</a></div><div><h3>SMALL GOODS</h3><a href="#products">카드지갑</a><a href="#products">키링</a></div><div><h3>추천</h3><a href="#products">클래식</a><a href="#products">선물 추천</a></div></div></div>
         <a class="nav-link" href="#products">SHOES</a>
         <a class="nav-link" href="#products">ACCESSORY</a>
         <a class="nav-link" href="#products">WATCH</a>
@@ -1054,7 +1101,7 @@
     </div>
   </header>
 
-  <main>
+  <main class="home-layout">
     <section class="hero-slider settings-pending" aria-label="메인 슬라이드 배너">
       <div class="hero-slider-frame">
         <article class="hero-slide active luxury-watch" data-hero-slide="0">
@@ -1154,6 +1201,16 @@
 
     <section class="story">
       <div class="story-inner">
+        <div class="story-visual" aria-hidden="true"></div>
+        <div class="story-copy">
+          <h2>ELIN Premium Select</h2>
+          <p>백화점 명품관처럼 시계, 가방, 슈즈, 액세서리를 한 화면에서 둘러볼 수 있도록 구성했습니다. 매주 업데이트되는 셀렉트 상품을 빠르게 확인하고, 회원 주문과 무통장 입금 방식으로 간편하게 구매할 수 있습니다.</p>
+          <div class="story-points">
+            <span>DAILY UPDATE</span>
+            <span>BANK TRANSFER</span>
+            <span>MEMBER ORDER</span>
+          </div>
+        </div>
         <h2>좋은 상품에는 기준이 있습니다</h2>
         <p>ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다. 상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.</p>
       </div>
