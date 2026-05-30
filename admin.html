@@ -474,6 +474,29 @@
       localStorage.setItem(adminRememberKey, JSON.stringify({ username, password }));
     }
 
+    async function loginWithSavedAdmin() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(adminRememberKey) || "{}");
+        if (!saved.username || !saved.password) return null;
+        const response = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({
+            username: saved.username,
+            password: saved.password
+          })
+        });
+        if (!response.ok) return null;
+        const result = await response.json();
+        setValue("username", saved.username);
+        setValue("password", saved.password);
+        document.querySelector("#rememberAdminLogin").checked = true;
+        return result;
+      } catch (_) {
+        return null;
+      }
+    }
+
     loadRememberedAdminLogin();
 
     document.querySelector("#loginBtn").addEventListener("click", async () => {
@@ -1592,9 +1615,11 @@
     };
 
     async function restoreSession() {
-      const result = await loadAdminInfo();
+      let result = await loadAdminInfo();
+      if (!result) result = await loginWithSavedAdmin();
       if (!result) return;
       showAdmin();
+      setValue("adminUsername", result.username || "admin");
       await loadMemberPageSettings();
       await loadCustomerCenterSettings();
       await loadSiteSettings();
