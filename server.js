@@ -418,6 +418,13 @@ const defaultSiteSettings = {
   productGuideShippingText: "입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.",
   productGuideReturnTitle: "교환/반품 안내",
   productGuideReturnText: "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.",
+  productExchangeTitle: "배송 및 교환 안내",
+  productExchangeRows: [
+    { label: "결제 방식", text: "현재 ELIN은 무통장 입금 방식으로 주문을 받습니다. 주문 후 안내된 계좌로 입금해 주세요." },
+    { label: "배송 기간", text: "입금 확인 후 영업일 기준 1~3일 내 출고됩니다. 도서산간 지역은 추가 시간이 소요될 수 있습니다." },
+    { label: "교환/반품", text: "상품 수령 후 7일 이내 접수 가능합니다. 착용, 세탁, 훼손, 구성품 누락 시 처리가 어려울 수 있습니다." },
+    { label: "고객센터", text: "주문조회 또는 고객센터 메뉴를 통해 문의를 남겨주세요." }
+  ],
   productInfoRows: [
     { label: "배송비", text: "기본 3,000원 / 100,000원 이상 무료배송" },
     { label: "결제", text: "무통장 입금 확인 후 순차 출고" },
@@ -466,7 +473,8 @@ function normalizeSiteSettings(input = {}) {
     "productGuideShippingTitle",
     "productGuideShippingText",
     "productGuideReturnTitle",
-    "productGuideReturnText"
+    "productGuideReturnText",
+    "productExchangeTitle"
   ]) {
     settings[key] = String(settings[key] || "").trim();
   }
@@ -480,6 +488,14 @@ function normalizeSiteSettings(input = {}) {
   settings.productInfoRows = Array.from({ length: 3 }, (_, index) => {
     const fallback = defaultSiteSettings.productInfoRows[index] || {};
     const source = Array.isArray(input.productInfoRows) ? input.productInfoRows[index] || {} : fallback;
+    return {
+      label: String(source.label || fallback.label || "").trim(),
+      text: String(source.text || fallback.text || "").trim()
+    };
+  });
+  settings.productExchangeRows = Array.from({ length: 4 }, (_, index) => {
+    const fallback = defaultSiteSettings.productExchangeRows[index] || {};
+    const source = Array.isArray(input.productExchangeRows) ? input.productExchangeRows[index] || {} : fallback;
     return {
       label: String(source.label || fallback.label || "").trim(),
       text: String(source.text || fallback.text || "").trim()

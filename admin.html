@@ -400,6 +400,44 @@
           <label for="productGuideReturnText">교환/반품 안내 내용</label>
           <textarea id="productGuideReturnText" placeholder="상품 수령 후 7일 이내 고객센터로 접수해주세요."></textarea>
 
+          <h4 style="margin-top:18px">배송 및 교환 안내 표</h4>
+          <label for="productExchangeTitle">표 제목</label>
+          <input id="productExchangeTitle" placeholder="배송 및 교환 안내" />
+          <div class="grid">
+            <div>
+              <label for="productExchangeLabel0">1번 제목</label>
+              <input id="productExchangeLabel0" placeholder="결제 방식" />
+            </div>
+            <div>
+              <label for="productExchangeText0">1번 내용</label>
+              <textarea id="productExchangeText0" placeholder="현재 ELIN은 무통장 입금 방식으로 주문을 받습니다."></textarea>
+            </div>
+            <div>
+              <label for="productExchangeLabel1">2번 제목</label>
+              <input id="productExchangeLabel1" placeholder="배송 기간" />
+            </div>
+            <div>
+              <label for="productExchangeText1">2번 내용</label>
+              <textarea id="productExchangeText1" placeholder="입금 확인 후 영업일 기준 1~3일 내 출고됩니다."></textarea>
+            </div>
+            <div>
+              <label for="productExchangeLabel2">3번 제목</label>
+              <input id="productExchangeLabel2" placeholder="교환/반품" />
+            </div>
+            <div>
+              <label for="productExchangeText2">3번 내용</label>
+              <textarea id="productExchangeText2" placeholder="상품 수령 후 7일 이내 접수 가능합니다."></textarea>
+            </div>
+            <div>
+              <label for="productExchangeLabel3">4번 제목</label>
+              <input id="productExchangeLabel3" placeholder="고객센터" />
+            </div>
+            <div>
+              <label for="productExchangeText3">4번 내용</label>
+              <textarea id="productExchangeText3" placeholder="고객센터 메뉴를 통해 문의를 남겨주세요."></textarea>
+            </div>
+          </div>
+
           <hr style="border:0;border-top:1px solid #e6e0d8;margin:24px 0">
           <h3>하단 푸터 설정</h3>
 
@@ -1148,6 +1186,11 @@
         productGuideShippingText: formValue("productGuideShippingText"),
         productGuideReturnTitle: formValue("productGuideReturnTitle"),
         productGuideReturnText: formValue("productGuideReturnText"),
+        productExchangeTitle: formValue("productExchangeTitle"),
+        productExchangeRows: [0, 1, 2, 3].map(index => ({
+          label: formValue(`productExchangeLabel${index}`),
+          text: formValue(`productExchangeText${index}`)
+        })),
         productInfoRows: [0, 1, 2].map(index => ({
           label: formValue(`productInfoLabel${index}`),
           text: formValue(`productInfoText${index}`)
@@ -1174,10 +1217,16 @@
       setValue("productGuideShippingText", settings.productGuideShippingText);
       setValue("productGuideReturnTitle", settings.productGuideReturnTitle);
       setValue("productGuideReturnText", settings.productGuideReturnText);
+      setValue("productExchangeTitle", settings.productExchangeTitle);
       const productInfoRows = Array.isArray(settings.productInfoRows) ? settings.productInfoRows : [];
       [0, 1, 2].forEach(index => {
         setValue(`productInfoLabel${index}`, productInfoRows[index]?.label);
         setValue(`productInfoText${index}`, productInfoRows[index]?.text);
+      });
+      const productExchangeRows = Array.isArray(settings.productExchangeRows) ? settings.productExchangeRows : [];
+      [0, 1, 2, 3].forEach(index => {
+        setValue(`productExchangeLabel${index}`, productExchangeRows[index]?.label);
+        setValue(`productExchangeText${index}`, productExchangeRows[index]?.text);
       });
       footerLinks = Array.isArray(settings.footerLinks) ? settings.footerLinks : [];
       heroSlides = Array.isArray(settings.heroSlides) ? settings.heroSlides : [];

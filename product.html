@@ -558,8 +558,24 @@
         shippingTitle: siteSettings.productGuideShippingTitle || "배송 안내",
         shippingText: siteSettings.productGuideShippingText || "입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.",
         returnTitle: siteSettings.productGuideReturnTitle || "교환/반품 안내",
-        returnText: siteSettings.productGuideReturnText || "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다."
+        returnText: siteSettings.productGuideReturnText || "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.",
+        exchangeTitle: siteSettings.productExchangeTitle || "배송 및 교환 안내",
+        exchangeRows: Array.isArray(siteSettings.productExchangeRows) ? siteSettings.productExchangeRows : [
+          { label: "결제 방식", text: "현재 ELIN은 무통장 입금 방식으로 주문을 받습니다. 주문 후 안내된 계좌로 입금해 주세요." },
+          { label: "배송 기간", text: "입금 확인 후 영업일 기준 1~3일 내 출고됩니다. 도서산간 지역은 추가 시간이 소요될 수 있습니다." },
+          { label: "교환/반품", text: "상품 수령 후 7일 이내 접수 가능합니다. 착용, 세탁, 훼손, 구성품 누락 시 처리가 어려울 수 있습니다." },
+          { label: "고객센터", text: "주문조회 또는 고객센터 메뉴를 통해 문의를 남겨주세요." }
+        ]
       };
+    }
+
+    function guideTableRowsHtml(rows) {
+      return rows.slice(0, 4).map(row => {
+        const label = String(row?.label || "").trim();
+        const text = String(row?.text || "").trim();
+        if (!label && !text) return "";
+        return `<tr><th>${escapeHtml(label)}</th><td>${lineHtml(text)}</td></tr>`;
+      }).join("");
     }
 
     function productInfoRowsHtml() {
@@ -701,12 +717,9 @@
         </section>
 
         <section class="section">
-          <h2>배송 및 교환 안내</h2>
+          <h2>${escapeHtml(guide.exchangeTitle)}</h2>
           <table class="guide-table">
-            <tr><th>결제 방식</th><td>현재 ELIN은 무통장 입금 방식으로 주문을 받습니다. 주문 후 안내된 계좌로 입금해 주세요.</td></tr>
-            <tr><th>배송 기간</th><td>입금 확인 후 영업일 기준 1~3일 내 출고됩니다. 도서산간 지역은 추가 시간이 소요될 수 있습니다.</td></tr>
-            <tr><th>교환/반품</th><td>상품 수령 후 7일 이내 접수 가능합니다. 착용, 세탁, 훼손, 구성품 누락 시 처리가 어려울 수 있습니다.</td></tr>
-            <tr><th>고객센터</th><td>주문조회 또는 고객센터 메뉴를 통해 문의를 남겨주세요.</td></tr>
+            ${guideTableRowsHtml(guide.exchangeRows)}
           </table>
         </section>
 
