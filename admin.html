@@ -452,6 +452,7 @@
     const adminRememberKey = "elinAdminRemember";
     const notifySoundKey = "elinAdminNotifySound";
     const pendingAlertKey = "elinAdminPendingAlert";
+    const seenMemberIdsKey = "elinAdminSeenMemberIds";
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
 
@@ -828,6 +829,19 @@
       }
     }
 
+    function loadSeenMemberIds() {
+      try {
+        const ids = JSON.parse(localStorage.getItem(seenMemberIdsKey) || "[]");
+        return new Set(Array.isArray(ids) ? ids : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveSeenMemberIds(ids) {
+      localStorage.setItem(seenMemberIdsKey, JSON.stringify([...ids]));
+    }
+
     function showOrderAlert(newOrders) {
       const latest = newOrders[0];
       displayAlert({
@@ -863,10 +877,18 @@
       const nextMemberIds = new Set(nextMembers.map(member => member.id));
       const nextInquiryIds = new Set(nextInquiries.map(inquiry => inquiry.id));
       if (options.initial || !notificationReady) {
+        const seenMemberIds = loadSeenMemberIds();
+        const missedMembers = seenMemberIds.size ? nextMembers.filter(member => !seenMemberIds.has(member.id)) : [];
         knownOrderIds = nextIds;
         knownMemberIds = nextMemberIds;
         knownInquiryIds = nextInquiryIds;
         notificationReady = true;
+        saveSeenMemberIds(nextMemberIds);
+        if (missedMembers.length) {
+          showMemberAlert(missedMembers);
+          notifyBrowser("ELIN 새 회원가입", `${missedMembers[0].name || "회원"}님 · ${missedMembers[0].username || "-"}`, missedMembers[0].id);
+          startAlarmLoop();
+        }
         updateNotifyState();
         return;
       }
@@ -876,6 +898,7 @@
       knownOrderIds = nextIds;
       knownMemberIds = nextMemberIds;
       knownInquiryIds = nextInquiryIds;
+      saveSeenMemberIds(nextMemberIds);
       if (!newOrders.length && !newMembers.length && !newInquiries.length) {
         updateNotifyState();
         return;
