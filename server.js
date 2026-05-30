@@ -20,6 +20,7 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 const useSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
+const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
 
 const adminSessions = new Set();
@@ -114,8 +115,8 @@ function sessionSignature(payload) {
   return crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
 }
 
-function createSignedToken(type, data) {
-  const expires = Date.now() + SESSION_MAX_AGE * 1000;
+function createSignedToken(type, data, maxAge = SESSION_MAX_AGE) {
+  const expires = Date.now() + maxAge * 1000;
   const payload = Buffer.from(JSON.stringify({ type, data, expires })).toString("base64url");
   return `${payload}.${sessionSignature(payload)}`;
 }
@@ -539,6 +540,11 @@ function currentMember(req) {
   if (!token) return undefined;
   const memoryMember = memberSessions.get(token);
   if (memoryMember) {
+    const lastSeen = Date.parse(memoryMember.lastSeenAt || memoryMember.loginAt || "");
+    if (lastSeen && Date.now() - lastSeen > MEMBER_SESSION_MAX_AGE * 1000) {
+      memberSessions.delete(token);
+      return undefined;
+    }
     memoryMember.lastSeenAt = new Date().toISOString();
     return memoryMember;
   }
@@ -567,8 +573,13 @@ function publicMember(member) {
 
 function listActiveMembers() {
   const unique = new Map();
-  for (const session of memberSessions.values()) {
+  for (const [token, session] of memberSessions.entries()) {
     if (!session?.id) continue;
+    const lastSeen = Date.parse(session.lastSeenAt || session.loginAt || "");
+    if (lastSeen && Date.now() - lastSeen > MEMBER_SESSION_MAX_AGE * 1000) {
+      memberSessions.delete(token);
+      continue;
+    }
     const existing = unique.get(session.id);
     if (!existing || String(session.lastSeenAt || "").localeCompare(String(existing.lastSeenAt || "")) > 0) {
       unique.set(session.id, {
@@ -949,15 +960,27 @@ async function createMember(input) {
 
 function startMemberSession(member, res) {
   const publicData = publicMember(member);
-  const token = createSignedToken("member", publicData);
+  const token = createSignedToken("member", publicData, MEMBER_SESSION_MAX_AGE);
   memberSessions.set(token, {
     ...publicData,
     loginAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString()
   });
   send(res, 200, { ok: true, member: publicData }, "application/json; charset=utf-8", {
-    "Set-Cookie": setCookie("elin_member_session", token)
+    "Set-Cookie": setCookie("elin_member_session", token, MEMBER_SESSION_MAX_AGE)
   });
+}
+
+function refreshMemberSession(member) {
+  const publicData = publicMember(member);
+  const token = createSignedToken("member", publicData, MEMBER_SESSION_MAX_AGE);
+  const now = new Date().toISOString();
+  memberSessions.set(token, {
+    ...publicData,
+    loginAt: member.loginAt || now,
+    lastSeenAt: now
+  });
+  return { "Set-Cookie": setCookie("elin_member_session", token, MEMBER_SESSION_MAX_AGE) };
 }
 
 async function handleApi(req, res, url) {
@@ -1060,7 +1083,8 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/auth/me" && req.method === "GET") {
-    return send(res, 200, { member: publicMember(currentMember(req)) });
+    const member = currentMember(req);
+    return send(res, 200, { member: publicMember(member) }, "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
   }
 
   if (url.pathname === "/api/member-page-settings" && req.method === "GET") {
@@ -1086,7 +1110,8 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/inquiries" && req.method === "POST") {
-    return send(res, 201, await createInquiry(await readBody(req), currentMember(req)));
+    const member = currentMember(req);
+    return send(res, 201, await createInquiry(await readBody(req), member), "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
   }
 
   if (url.pathname === "/api/admin/inquiries" && req.method === "GET") {
@@ -1104,13 +1129,13 @@ async function handleApi(req, res, url) {
     const member = currentMember(req);
     if (!member) return send(res, 401, { error: "로그인이 필요합니다." });
     const orders = await listOrders();
-    return send(res, 200, orders.filter(order => order.customer?.memberId === member.id));
+    return send(res, 200, orders.filter(order => order.customer?.memberId === member.id), "application/json; charset=utf-8", refreshMemberSession(member));
   }
 
   if (url.pathname === "/api/member/inquiries" && req.method === "GET") {
     const member = currentMember(req);
     if (!member) return send(res, 401, { error: "로그인이 필요합니다." });
-    return send(res, 200, await listMemberInquiries(member.id));
+    return send(res, 200, await listMemberInquiries(member.id), "application/json; charset=utf-8", refreshMemberSession(member));
   }
 
   if (url.pathname === "/api/products" && req.method === "GET") {
@@ -1141,7 +1166,8 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/orders" && req.method === "POST") {
-    return send(res, 201, await createOrder(await readBody(req), currentMember(req)));
+    const member = currentMember(req);
+    return send(res, 201, await createOrder(await readBody(req), member), "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
   }
 
   if (url.pathname.startsWith("/api/orders/") && req.method === "PATCH") {

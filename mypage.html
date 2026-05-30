@@ -93,6 +93,8 @@
       showBankInfo: true,
       showTracking: true
     };
+    const memberIdleLimit = 20 * 60 * 1000;
+    let memberIdleTimer = null;
     pageSettings = {
       heroImage: "",
       heroImageAlt: "Member page image",
@@ -207,6 +209,22 @@
       const inquiryResponse = await fetch("/api/member/inquiries");
       const inquiries = inquiryResponse.ok ? await inquiryResponse.json() : [];
       document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>${escapeHtml(pageSettings.emptyInquiryText || "아직 문의내역이 없습니다.")} <a href="/customer.html">${escapeHtml(pageSettings.inquiryLinkText || "문의하기")}</a></p>`;
+      startMemberIdleLogout();
+    }
+
+    function startMemberIdleLogout() {
+      const resetTimer = () => {
+        window.clearTimeout(memberIdleTimer);
+        memberIdleTimer = window.setTimeout(async () => {
+          await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+          alert("20분 동안 활동이 없어 자동 로그아웃되었습니다.");
+          location.href = "/login.html";
+        }, memberIdleLimit);
+      };
+      ["pointerdown", "keydown", "scroll", "touchstart"].forEach(eventName => {
+        window.addEventListener(eventName, resetTimer, { passive: true });
+      });
+      resetTimer();
     }
 
     function updateHeaderAuth(member) {
