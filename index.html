@@ -551,12 +551,24 @@
       margin-top: 58px;
       background: #111;
       color: #fff;
+      background-position: center;
+      background-size: cover;
+      position: relative;
+      overflow: hidden;
+    }
+    .story.has-image::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.58);
     }
     .story-inner {
       max-width: 1040px;
       margin: 0 auto;
       padding: 58px 22px;
       text-align: center;
+      position: relative;
+      z-index: 1;
     }
     .story h2 {
       margin: 0 0 18px;
@@ -568,6 +580,7 @@
       color: rgba(255,255,255,.74);
       line-height: 1.9;
       word-break: keep-all;
+      white-space: pre-line;
     }
     .story-visual,
     .story-copy {
@@ -590,6 +603,17 @@
       line-height: 1.8;
     }
     .footer strong { display: block; color: #111; margin-bottom: 8px; }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 8px;
+    }
+    .footer-links a {
+      color: #555;
+      text-decoration: none;
+    }
+    .footer-links a:hover { color: #111; text-decoration: underline; }
     .drawer {
       position: fixed;
       inset: 0;
@@ -1162,18 +1186,9 @@
 
     <section class="story">
       <div class="story-inner">
-        <div class="story-visual" aria-hidden="true"></div>
-        <div class="story-copy">
-          <h2>ELIN Premium Select</h2>
-          <p>백화점 명품관처럼 시계, 가방, 슈즈, 액세서리를 한 화면에서 둘러볼 수 있도록 구성했습니다. 매주 업데이트되는 셀렉트 상품을 빠르게 확인하고, 회원 주문과 무통장 입금 방식으로 간편하게 구매할 수 있습니다.</p>
-          <div class="story-points">
-            <span>DAILY UPDATE</span>
-            <span>BANK TRANSFER</span>
-            <span>MEMBER ORDER</span>
-          </div>
-        </div>
-        <h2>좋은 상품에는 기준이 있습니다</h2>
-        <p>ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다. 상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.</p>
+        <h2 id="storyTitle">좋은 상품에는 기준이 있습니다</h2>
+        <p id="storyText">ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.
+상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.</p>
       </div>
     </section>
 
@@ -1188,7 +1203,19 @@
     </section>
   </main>
 
-  <footer class="footer" id="reviews" hidden></footer>
+  <footer class="footer" id="reviews">
+    <div class="footer-inner">
+      <div>
+        <strong id="footerBrandTitle">ELIN</strong>
+        <div id="footerBrandText">Online Select Shop</div>
+      </div>
+      <div>
+        <strong id="footerCompanyTitle">Company</strong>
+        <div id="footerCompanyText"></div>
+        <div class="footer-links" id="footerLinks"></div>
+      </div>
+    </div>
+  </footer>
 
   <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
@@ -1435,7 +1462,45 @@
       return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     }
 
+    function lineHtml(value) {
+      return escapeHtml(value).replace(/\n/g, "<br>");
+    }
+
+    function applyFooterSettings(settings = {}) {
+      const brandTitle = document.querySelector("#footerBrandTitle");
+      const brandText = document.querySelector("#footerBrandText");
+      const companyTitle = document.querySelector("#footerCompanyTitle");
+      const companyText = document.querySelector("#footerCompanyText");
+      const links = document.querySelector("#footerLinks");
+      if (brandTitle) brandTitle.textContent = settings.footerBrandTitle || "ELIN";
+      if (brandText) brandText.innerHTML = lineHtml(settings.footerBrandText || "Online Select Shop");
+      if (companyTitle) companyTitle.textContent = settings.footerCompanyTitle || "Company";
+      if (companyText) companyText.innerHTML = lineHtml(settings.footerCompanyText || "");
+      if (links) {
+        const footerLinks = Array.isArray(settings.footerLinks) ? settings.footerLinks : [];
+        links.innerHTML = footerLinks
+          .filter(link => link?.label && link?.url)
+          .map(link => `<a href="${escapeHtml(link.url)}">${escapeHtml(link.label)}</a>`)
+          .join("");
+      }
+    }
+
+    function applyStorySettings(settings = {}) {
+      const story = document.querySelector(".story");
+      const title = document.querySelector("#storyTitle");
+      const text = document.querySelector("#storyText");
+      const image = String(settings.storyImage || "").trim();
+      if (title) title.textContent = settings.storyTitle || "좋은 상품에는 기준이 있습니다";
+      if (text) text.textContent = settings.storyText || "ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.\n상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.";
+      if (story) {
+        story.classList.toggle("has-image", Boolean(image));
+        story.style.backgroundImage = image ? `url('${safeCssUrl(image)}')` : "";
+      }
+    }
+
     function applySiteSettings(settings = {}) {
+      applyFooterSettings(settings);
+      applyStorySettings(settings);
       const slides = Array.isArray(settings.heroSlides) ? settings.heroSlides : [];
       const heroSlider = document.querySelector(".hero-slider");
       document.querySelectorAll("[data-hero-slide]").forEach((slideElement, index) => {
