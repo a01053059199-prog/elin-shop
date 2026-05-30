@@ -53,7 +53,7 @@
       <nav class="nav">
         <a href="/">쇼핑몰</a>
         <a href="/customer.html">고객센터</a>
-        <a href="/login.html">로그인</a>
+        <a id="memberAuthLink" href="/login.html">로그인</a>
       </nav>
     </div>
   </header>
@@ -178,6 +178,7 @@
         sessionStorage.removeItem("elinLastOrder");
       }
       const me = await (await fetch("/api/auth/me")).json();
+      updateHeaderAuth(me.member);
       if (!me.member) {
         document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">${escapeHtml(pageSettings.loginLinkText || "로그인하기")}</a>`;
         document.querySelector("#orders").innerHTML = "";
@@ -206,6 +207,23 @@
       const inquiryResponse = await fetch("/api/member/inquiries");
       const inquiries = inquiryResponse.ok ? await inquiryResponse.json() : [];
       document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>${escapeHtml(pageSettings.emptyInquiryText || "아직 문의내역이 없습니다.")} <a href="/customer.html">${escapeHtml(pageSettings.inquiryLinkText || "문의하기")}</a></p>`;
+    }
+
+    function updateHeaderAuth(member) {
+      const authLink = document.querySelector("#memberAuthLink");
+      if (!authLink) return;
+      if (!member) {
+        authLink.textContent = "로그인";
+        authLink.href = "/login.html";
+        authLink.onclick = null;
+        return;
+      }
+      authLink.textContent = "로그아웃";
+      authLink.href = "#";
+      authLink.onclick = event => {
+        event.preventDefault();
+        logout();
+      };
     }
 
     async function logout() {
