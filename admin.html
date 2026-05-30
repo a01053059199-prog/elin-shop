@@ -439,6 +439,7 @@
     let footerLinks = [];
     let heroSlides = [];
     let categoryCards = [];
+    let editingMemberId = "";
     let knownOrderIds = new Set();
     let knownMemberIds = new Set();
     let knownInquiryIds = new Set();
@@ -455,6 +456,13 @@
     const seenMemberIdsKey = "elinAdminSeenMemberIds";
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const headers = () => ({ "Content-Type": "application/json" });
+    const escapeHtml = value => String(value || "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[char]));
 
     function loadRememberedAdminLogin() {
       try {
@@ -1444,15 +1452,40 @@
         const text = `${member.username || ""} ${member.name || ""} ${member.phone || ""} ${member.address || ""} ${member.email || ""}`.toLowerCase();
         return !keyword || text.includes(keyword);
       });
-      document.querySelector("#memberList").innerHTML = filtered.length ? filtered.map(member => `
+      document.querySelector("#memberList").innerHTML = filtered.length ? filtered.map(member => editingMemberId === member.id ? `
         <article class="member">
           <div>
-            <strong>${member.name || "이름 없음"} <span class="meta">(${member.username || "-"})</span></strong>
-            <div class="meta">연락처 ${member.phone || "-"} · 주소 ${member.address || "-"}</div>
-            <div class="meta">이메일 ${member.email || "-"} · 가입일 ${member.createdAt ? new Date(member.createdAt).toLocaleString("ko-KR") : "-"}</div>
+            <strong>회원 정보 수정 <span class="meta">(${escapeHtml(member.username || "-")})</span></strong>
+            <label>아이디</label>
+            <input id="member-username-${member.id}" value="${escapeHtml(member.username)}" maxlength="20" />
+            <label>새 비밀번호</label>
+            <input id="member-password-${member.id}" type="password" placeholder="변경할 때만 입력" />
+            <label>이름</label>
+            <input id="member-name-${member.id}" value="${escapeHtml(member.name)}" />
+            <label>연락처</label>
+            <input id="member-phone-${member.id}" value="${escapeHtml(member.phone)}" />
+            <label>주소</label>
+            <input id="member-address-${member.id}" value="${escapeHtml(member.address)}" />
+            <label>이메일</label>
+            <input id="member-email-${member.id}" value="${escapeHtml(member.email)}" />
+          </div>
+          <div class="actions">
+            <button type="button" onclick="saveMember('${member.id}')">저장</button>
+            <button class="ghost" type="button" onclick="cancelMemberEdit()">취소</button>
+            <button class="danger" type="button" onclick="deleteMember('${member.id}')">삭제</button>
+          </div>
+        </article>
+      ` : `
+        <article class="member">
+          <div>
+            <strong>${escapeHtml(member.name || "이름 없음")} <span class="meta">(${escapeHtml(member.username || "-")})</span></strong>
+            <div class="meta">연락처 ${escapeHtml(member.phone || "-")} · 주소 ${escapeHtml(member.address || "-")}</div>
+            <div class="meta">이메일 ${escapeHtml(member.email || "-")} · 가입일 ${member.createdAt ? new Date(member.createdAt).toLocaleString("ko-KR") : "-"}</div>
           </div>
           <div class="actions">
             <button class="ghost" type="button" onclick="copyMember('${member.id}')">정보 복사</button>
+            <button type="button" onclick="editMember('${member.id}')">수정</button>
+            <button class="danger" type="button" onclick="deleteMember('${member.id}')">삭제</button>
           </div>
         </article>
       `).join("") : "<p>회원 정보가 없습니다.</p>";
@@ -1501,6 +1534,57 @@
       } catch {
         prompt("회원 정보", text);
       }
+    };
+
+    window.editMember = id => {
+      editingMemberId = id;
+      renderMembers();
+    };
+
+    window.cancelMemberEdit = () => {
+      editingMemberId = "";
+      renderMembers();
+    };
+
+    window.saveMember = async id => {
+      const payload = {
+        username: formValue(`member-username-${id}`),
+        password: formValue(`member-password-${id}`),
+        name: formValue(`member-name-${id}`),
+        phone: formValue(`member-phone-${id}`),
+        address: formValue(`member-address-${id}`),
+        email: formValue(`member-email-${id}`)
+      };
+      const response = await fetch(`/api/admin/members/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: headers(),
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || "회원 정보 수정에 실패했습니다.");
+        return;
+      }
+      editingMemberId = "";
+      await refresh();
+      alert("회원 정보를 수정했습니다.");
+    };
+
+    window.deleteMember = async id => {
+      const member = members.find(item => item.id === id);
+      if (!member || !confirm(`${member.name || member.username || "회원"} 정보를 삭제할까요?`)) return;
+      const response = await fetch(`/api/admin/members/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: headers()
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || "회원 삭제에 실패했습니다.");
+        return;
+      }
+      editingMemberId = "";
+      await refresh();
+      alert("회원 정보를 삭제했습니다.");
     };
 
     function formValue(id) { return document.querySelector(`#${id}`).value; }

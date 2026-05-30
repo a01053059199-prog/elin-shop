@@ -912,16 +912,20 @@ async function listMembers() {
     return await readJson(file);
   })();
   return members
-    .map(member => ({
-      id: member.id,
-      username: member.username || "",
-      email: member.email || "",
-      name: member.name || "",
-      phone: member.phone || "",
-      address: member.address || "",
-      createdAt: member.createdAt || member.created_at || ""
-    }))
+    .map(adminMemberView)
     .sort((a, b) => String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id)));
+}
+
+function adminMemberView(member) {
+  return {
+    id: member.id,
+    username: member.username || "",
+    email: member.email || "",
+    name: member.name || "",
+    phone: member.phone || "",
+    address: member.address || "",
+    createdAt: member.createdAt || member.created_at || ""
+  };
 }
 
 async function createMember(input) {
@@ -956,6 +960,63 @@ async function createMember(input) {
   members.push({ ...member, createdAt: new Date().toISOString() });
   await writeJson(file, members);
   return member;
+}
+
+async function updateMember(id, input) {
+  const username = String(input.username || "").trim().toLowerCase();
+  const email = String(input.email || `${username}@elin.local`).trim().toLowerCase();
+  const name = String(input.name || "").trim();
+  const phone = String(input.phone || "").trim();
+  const address = String(input.address || "").trim();
+  const password = String(input.password || "");
+  if (!/^[a-z0-9_]{4,20}$/.test(username) || !name) {
+    throw new Error("아이디는 영문/숫자/_ 조합 4~20자, 이름은 필수입니다.");
+  }
+  if (password && password.length < 4) throw new Error("비밀번호는 4자 이상으로 입력하세요.");
+  const existing = await findMemberByUsername(username);
+  if (existing && existing.id !== id) throw new Error("이미 사용 중인 아이디입니다.");
+
+  const patch = { username, email, name, phone, address };
+  if (password) patch.password_hash = hashPassword(password);
+
+  if (useSupabase) {
+    const [updated] = await supabase(`members?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(patch)
+    });
+    if (!updated) throw new Error("회원을 찾을 수 없습니다.");
+    for (const [token, session] of memberSessions.entries()) {
+      if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(updated) });
+    }
+    return adminMemberView(updated);
+  }
+
+  const file = path.join(dataDir, "members.json");
+  await ensureJson(file, []);
+  const members = await readJson(file);
+  const member = members.find(item => item.id === id);
+  if (!member) throw new Error("회원을 찾을 수 없습니다.");
+  Object.assign(member, patch);
+  await writeJson(file, members);
+  for (const [token, session] of memberSessions.entries()) {
+    if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(member) });
+  }
+  return adminMemberView(member);
+}
+
+async function deleteMember(id) {
+  if (useSupabase) {
+    await supabase(`members?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+  } else {
+    const file = path.join(dataDir, "members.json");
+    await ensureJson(file, []);
+    const members = await readJson(file);
+    await writeJson(file, members.filter(member => member.id !== id));
+  }
+  for (const [token, session] of memberSessions.entries()) {
+    if (session.id === id) memberSessions.delete(token);
+  }
 }
 
 function startMemberSession(member, res) {
@@ -1102,6 +1163,19 @@ async function handleApi(req, res, url) {
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
     if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     return send(res, 200, await listMembers());
+  }
+
+  if (url.pathname.startsWith("/api/admin/members/") && req.method === "PATCH") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    return send(res, 200, await updateMember(id, await readBody(req)));
+  }
+
+  if (url.pathname.startsWith("/api/admin/members/") && req.method === "DELETE") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    await deleteMember(id);
+    return send(res, 200, { ok: true });
   }
 
   if (url.pathname === "/api/admin/active-members" && req.method === "GET") {
