@@ -556,12 +556,7 @@
       min-height: 250px;
     }
     .story.has-image::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,.58);
-      z-index: 1;
-      pointer-events: none;
+      content: none;
     }
     .story-image {
       display: block;
@@ -581,14 +576,6 @@
       text-align: center;
       position: relative;
       z-index: 2;
-    }
-    .story.has-image .story-inner {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-content: center;
-      padding: 30px 22px;
-      pointer-events: none;
     }
     .story-text-box {
       max-width: 860px;
@@ -1218,7 +1205,7 @@
 
     <section class="story">
       <img class="story-image" id="storyImageDisplay" alt="본문 소개 이미지" hidden>
-      <div class="story-inner">
+      <div class="story-inner" id="storyTextArea" hidden>
         <div class="story-text-box">
           <h2 id="storyTitle">좋은 상품에는 기준이 있습니다</h2>
           <p id="storyText">ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.
@@ -1528,6 +1515,8 @@
       const image = String(settings.storyImage || "").trim();
       if (title) title.textContent = settings.storyTitle || "좋은 상품에는 기준이 있습니다";
       if (text) text.textContent = settings.storyText || "ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.\n상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.";
+      const textArea = document.querySelector("#storyTextArea");
+      if (textArea) textArea.hidden = true;
       if (story) {
         story.classList.toggle("has-image", Boolean(image));
         story.style.backgroundImage = "";

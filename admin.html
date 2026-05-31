@@ -348,13 +348,8 @@
           <h3 style="margin-top:22px">카테고리 이미지</h3>
           <div class="list" id="categoryCardSettings"></div>
 
-          <h3 style="margin-top:22px">본문 소개 영역</h3>
-          <p class="note">홈페이지 중간 검은 배경 영역의 이미지와 문구를 수정합니다.</p>
-          <label for="storyTitle">제목</label>
-          <input id="storyTitle" placeholder="좋은 상품에는 기준이 있습니다" />
-
-          <label for="storyText">내용</label>
-          <textarea id="storyText" placeholder="소개 문구를 입력하세요."></textarea>
+          <h3 style="margin-top:22px">본문 소개 이미지</h3>
+          <p class="note">홈페이지 중간 영역에 표시할 이미지만 등록합니다.</p>
 
           <label>이미지 업로드</label>
           <input type="file" accept="image/jpeg,image/png,image/webp" data-visual-upload data-target="storyImage" />
@@ -1196,8 +1191,6 @@
           image: formValue(`category-image-${index}`)
         })),
         productGuidePurchaseTitle: formValue("productGuidePurchaseTitle"),
-        storyTitle: formValue("storyTitle"),
-        storyText: formValue("storyText"),
         storyImage: formValue("storyImage"),
         productGuidePurchaseText: formValue("productGuidePurchaseText"),
         productGuideShippingTitle: formValue("productGuideShippingTitle"),
@@ -1229,8 +1222,6 @@
       setValue("footerBrandText", settings.footerBrandText);
       setValue("footerCompanyTitle", settings.footerCompanyTitle);
       setValue("footerCompanyText", settings.footerCompanyText);
-      setValue("storyTitle", settings.storyTitle);
-      setValue("storyText", settings.storyText);
       setValue("storyImage", settings.storyImage);
       renderVisualPreview("storyImage", settings.storyImage);
       setValue("productGuidePurchaseTitle", settings.productGuidePurchaseTitle);
