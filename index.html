@@ -558,13 +558,17 @@
     .story.has-image::before {
       content: none;
     }
+    .story.has-image {
+      min-height: 0;
+      background: transparent;
+    }
     .story-image {
       display: block;
       width: 100%;
       height: auto;
       max-height: 620px;
       object-fit: contain;
-      background: #111;
+      background: transparent;
     }
     .story-image[hidden] {
       display: none;
@@ -990,6 +994,15 @@
       .price { display: block; font-size: 13px; }
       .price del { display: block; margin-top: 2px; font-size: 11px; }
       .story { margin-top: 38px; }
+      .story.has-image {
+        margin-top: 28px;
+        min-height: 0;
+      }
+      .story.has-image .story-image {
+        width: 100%;
+        max-height: none;
+        object-fit: contain;
+      }
       .story-inner { padding: 38px 18px; }
       .story.has-image .story-inner { padding: 18px 14px; }
       .story-text-box { padding: 14px 12px; }
