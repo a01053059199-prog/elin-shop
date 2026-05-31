@@ -551,16 +551,28 @@
       margin-top: 58px;
       background: #111;
       color: #fff;
-      background-position: center;
-      background-size: cover;
       position: relative;
       overflow: hidden;
+      min-height: 250px;
     }
     .story.has-image::before {
       content: "";
       position: absolute;
       inset: 0;
       background: rgba(0,0,0,.58);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .story-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 620px;
+      object-fit: contain;
+      background: #111;
+    }
+    .story-image[hidden] {
+      display: none;
     }
     .story-inner {
       max-width: 1040px;
@@ -568,11 +580,28 @@
       padding: 58px 22px;
       text-align: center;
       position: relative;
-      z-index: 1;
+      z-index: 2;
+    }
+    .story.has-image .story-inner {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      padding: 30px 22px;
+      pointer-events: none;
+    }
+    .story-text-box {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 18px 24px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.34);
+      backdrop-filter: blur(1px);
     }
     .story h2 {
       margin: 0 0 18px;
       font-size: 28px;
+      line-height: 1.25;
     }
     .story p {
       max-width: 780px;
@@ -975,7 +1004,10 @@
       .price del { display: block; margin-top: 2px; font-size: 11px; }
       .story { margin-top: 38px; }
       .story-inner { padding: 38px 18px; }
-      .story h2 { font-size: 22px; }
+      .story.has-image .story-inner { padding: 18px 14px; }
+      .story-text-box { padding: 14px 12px; }
+      .story h2 { margin-bottom: 10px; font-size: 22px; }
+      .story p { font-size: 13px; line-height: 1.65; }
       .drawer-panel {
         top: auto;
         bottom: 0;
@@ -1185,10 +1217,13 @@
     </section>
 
     <section class="story">
+      <img class="story-image" id="storyImageDisplay" alt="본문 소개 이미지" hidden>
       <div class="story-inner">
-        <h2 id="storyTitle">좋은 상품에는 기준이 있습니다</h2>
-        <p id="storyText">ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.
+        <div class="story-text-box">
+          <h2 id="storyTitle">좋은 상품에는 기준이 있습니다</h2>
+          <p id="storyText">ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.
 상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.</p>
+        </div>
       </div>
     </section>
 
@@ -1489,12 +1524,18 @@
       const story = document.querySelector(".story");
       const title = document.querySelector("#storyTitle");
       const text = document.querySelector("#storyText");
+      const imageElement = document.querySelector("#storyImageDisplay");
       const image = String(settings.storyImage || "").trim();
       if (title) title.textContent = settings.storyTitle || "좋은 상품에는 기준이 있습니다";
       if (text) text.textContent = settings.storyText || "ELIN은 빠른 업데이트와 보기 쉬운 상품 구성, 회원 주문조회, 무통장 입금 주문 흐름을 갖춘 온라인 셀렉트샵입니다.\n상품 사진과 설명은 관리자에서 직접 등록하고 관리할 수 있습니다.";
       if (story) {
         story.classList.toggle("has-image", Boolean(image));
-        story.style.backgroundImage = image ? `url('${safeCssUrl(image)}')` : "";
+        story.style.backgroundImage = "";
+      }
+      if (imageElement) {
+        imageElement.hidden = !image;
+        if (image) imageElement.src = image;
+        else imageElement.removeAttribute("src");
       }
     }
 
