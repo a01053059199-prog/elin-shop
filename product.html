@@ -547,6 +547,10 @@
       return options.map(option => `<option>${escapeHtml(option)}</option>`).join("");
     }
 
+    function categoryGroup(category) {
+      return ["shoes", "shoes-men", "shoes-women"].includes(category) ? "shoes" : category;
+    }
+
     function lineHtml(value) {
       return escapeHtml(value).replace(/\n/g, "<br>");
     }
@@ -632,7 +636,7 @@
       const title = escapeHtml(product.name);
       const guide = productGuide();
       const related = allProducts
-        .filter(item => item.id !== product.id && item.category === product.category)
+        .filter(item => item.id !== product.id && categoryGroup(item.category) === categoryGroup(product.category))
         .slice(0, 4);
 
       document.querySelector("#productRoot").className = "";

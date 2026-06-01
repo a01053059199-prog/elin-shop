@@ -1330,6 +1330,13 @@
       const items = String(value || "").split(/[\n,]+/).map(item => item.trim()).filter(Boolean);
       return items.length ? items : [fallback];
     };
+    const categoryMatches = (productCategory, filter) => {
+      if (filter === "all") return true;
+      if (filter === "men") return productCategory === "men" || productCategory === "shoes-men";
+      if (filter === "women") return productCategory === "women" || productCategory === "shoes-women";
+      if (filter === "shoes") return productCategory === "shoes" || productCategory === "shoes-men" || productCategory === "shoes-women";
+      return productCategory === filter;
+    };
 
     function productCard(product) {
       const image = firstImage(product);
@@ -1354,7 +1361,7 @@
 
     function renderProducts() {
       const filtered = products.filter(product => {
-        const filterMatch = activeFilter === "all" || product.category === activeFilter;
+        const filterMatch = categoryMatches(product.category, activeFilter);
         const text = `${product.name} ${product.category} ${product.keywords || ""}`.toLowerCase();
         return filterMatch && (!searchTerm || text.includes(searchTerm.toLowerCase()));
       });

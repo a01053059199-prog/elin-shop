@@ -123,6 +123,8 @@
             <option value="men">남성</option>
             <option value="bag">가방</option>
             <option value="shoes">슈즈</option>
+            <option value="shoes-men">남성 슈즈</option>
+            <option value="shoes-women">여성 슈즈</option>
             <option value="accessory">악세서리</option>
             <option value="watch">워치</option>
           </select>
@@ -168,6 +170,8 @@
               <option value="men">남성</option>
               <option value="bag">가방</option>
               <option value="shoes">슈즈</option>
+              <option value="shoes-men">남성 슈즈</option>
+              <option value="shoes-women">여성 슈즈</option>
               <option value="accessory">악세서리</option>
               <option value="watch">워치</option>
             </select>
@@ -1363,6 +1367,23 @@
     function optionText(value, fallback) {
       return parseOptions(value, fallback).join(", ");
     }
+    function categoryLabel(value) {
+      return ({
+        women: "여성",
+        men: "남성",
+        bag: "가방",
+        shoes: "슈즈",
+        "shoes-men": "남성 슈즈",
+        "shoes-women": "여성 슈즈",
+        accessory: "악세서리",
+        watch: "워치"
+      })[value] || value || "상품";
+    }
+    function categoryMatches(productCategory, filter) {
+      if (!filter) return true;
+      if (filter === "shoes") return productCategory === "shoes" || productCategory === "shoes-men" || productCategory === "shoes-women";
+      return productCategory === filter;
+    }
 
     function productImages(product) {
       const images = parseImages(product.images);
@@ -1438,14 +1459,14 @@
       const category = document.querySelector("#productCategory").value;
       const filtered = products.filter(product => {
         const text = `${product.name} ${product.category} ${product.keywords || ""}`.toLowerCase();
-        return (!keyword || text.includes(keyword)) && (!category || product.category === category);
+        return (!keyword || text.includes(keyword)) && categoryMatches(product.category, category);
       });
       document.querySelector("#productList").innerHTML = filtered.map(product => `
         <article class="product">
           <img src="${productImages(product)[0] || product.image}" alt="${product.name}">
           <div>
             <strong>${product.name}</strong>
-            <div class="meta">${product.category} · ${money(product.price)}</div>
+            <div class="meta">${categoryLabel(product.category)} · ${money(product.price)}</div>
             <div class="meta">색상 ${optionText(product.colors, "기본")} · 사이즈 ${optionText(product.sizes, "FREE")}</div>
           </div>
           <div class="actions">
