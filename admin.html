@@ -1846,14 +1846,6 @@
           feedback.textContent = "✓";
           feedback.classList.add("show");
         }
-        setTimeout(() => {
-          const currentButton = document.getElementById(`order-save-${id}`);
-          const currentFeedback = document.getElementById(`order-save-feedback-${id}`);
-          if (currentButton) {
-            currentButton.textContent = "주문 확인";
-          }
-          if (currentFeedback) currentFeedback.classList.remove("show");
-        }, 2200);
         return;
       }
       button.disabled = false;
