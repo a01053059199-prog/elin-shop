@@ -548,7 +548,14 @@
     }
 
     function categoryGroup(category) {
-      return ["shoes", "shoes-men", "shoes-women"].includes(category) ? "shoes" : category;
+      const value = String(category || "");
+      if (value.startsWith("men-")) return "men";
+      if (value.startsWith("women-")) return "women";
+      if (value.startsWith("bag-")) return "bag";
+      if (value.startsWith("shoes-")) return "shoes";
+      if (value.startsWith("accessory-")) return "accessory";
+      if (value.startsWith("watch-")) return "watch";
+      return value;
     }
 
     function lineHtml(value) {

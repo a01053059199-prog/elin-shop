@@ -119,14 +119,45 @@
 
           <label for="category">카테고리</label>
           <select id="category">
-            <option value="women">여성</option>
-            <option value="men">남성</option>
-            <option value="bag">가방</option>
-            <option value="shoes">슈즈</option>
-            <option value="shoes-men">남성 슈즈</option>
-            <option value="shoes-women">여성 슈즈</option>
-            <option value="accessory">악세서리</option>
-            <option value="watch">워치</option>
+            <optgroup label="WOMEN">
+              <option value="women">여성 전체</option>
+              <option value="women-outer">아우터</option>
+              <option value="women-tshirt">티셔츠</option>
+              <option value="women-blouse">셔츠/블라우스</option>
+              <option value="women-knit">니트/가디건</option>
+              <option value="women-pants">진/팬츠</option>
+            </optgroup>
+            <optgroup label="MAN">
+              <option value="men">남성 전체</option>
+              <option value="men-outer">아우터</option>
+              <option value="men-tshirt">티셔츠</option>
+              <option value="men-shirt">셔츠</option>
+              <option value="men-knit">니트/가디건</option>
+              <option value="men-pants">진/팬츠</option>
+            </optgroup>
+            <optgroup label="BAG">
+              <option value="bag">가방 전체</option>
+              <option value="bag-men">남성가방</option>
+              <option value="bag-women">여성가방</option>
+            </optgroup>
+            <optgroup label="SHOES">
+              <option value="shoes">슈즈 전체</option>
+              <option value="shoes-men">남성 슈즈</option>
+              <option value="shoes-women">여성 슈즈</option>
+            </optgroup>
+            <optgroup label="ACCESSORY">
+              <option value="accessory">악세서리 전체</option>
+              <option value="accessory-belt">벨트</option>
+              <option value="accessory-hat">모자</option>
+              <option value="accessory-scarf">머플러/스카프</option>
+              <option value="accessory-glasses">안경/선글라스</option>
+              <option value="accessory-jewelry">쥬얼리</option>
+            </optgroup>
+            <optgroup label="WATCH">
+              <option value="watch">워치 전체</option>
+              <option value="watch-men">남성시계</option>
+              <option value="watch-women">여성시계</option>
+            </optgroup>
           </select>
 
           <label for="keywords">검색 키워드</label>
@@ -166,14 +197,33 @@
             <input id="productSearch" placeholder="상품명/카테고리 검색" />
             <select id="productCategory">
               <option value="">전체 카테고리</option>
-              <option value="women">여성</option>
-              <option value="men">남성</option>
-              <option value="bag">가방</option>
-              <option value="shoes">슈즈</option>
+              <option value="women">여성 전체</option>
+              <option value="women-outer">여성 아우터</option>
+              <option value="women-tshirt">여성 티셔츠</option>
+              <option value="women-blouse">여성 셔츠/블라우스</option>
+              <option value="women-knit">여성 니트/가디건</option>
+              <option value="women-pants">여성 진/팬츠</option>
+              <option value="men">남성 전체</option>
+              <option value="men-outer">남성 아우터</option>
+              <option value="men-tshirt">남성 티셔츠</option>
+              <option value="men-shirt">남성 셔츠</option>
+              <option value="men-knit">남성 니트/가디건</option>
+              <option value="men-pants">남성 진/팬츠</option>
+              <option value="bag">가방 전체</option>
+              <option value="bag-men">남성가방</option>
+              <option value="bag-women">여성가방</option>
+              <option value="shoes">슈즈 전체</option>
               <option value="shoes-men">남성 슈즈</option>
               <option value="shoes-women">여성 슈즈</option>
-              <option value="accessory">악세서리</option>
-              <option value="watch">워치</option>
+              <option value="accessory">악세서리 전체</option>
+              <option value="accessory-belt">벨트</option>
+              <option value="accessory-hat">모자</option>
+              <option value="accessory-scarf">머플러/스카프</option>
+              <option value="accessory-glasses">안경/선글라스</option>
+              <option value="accessory-jewelry">쥬얼리</option>
+              <option value="watch">워치 전체</option>
+              <option value="watch-men">남성시계</option>
+              <option value="watch-women">여성시계</option>
             </select>
           </div>
           <div class="list" id="productList"></div>
@@ -1369,19 +1419,43 @@
     }
     function categoryLabel(value) {
       return ({
-        women: "여성",
-        men: "남성",
-        bag: "가방",
-        shoes: "슈즈",
+        women: "여성 전체",
+        "women-outer": "여성 아우터",
+        "women-tshirt": "여성 티셔츠",
+        "women-blouse": "여성 셔츠/블라우스",
+        "women-knit": "여성 니트/가디건",
+        "women-pants": "여성 진/팬츠",
+        men: "남성 전체",
+        "men-outer": "남성 아우터",
+        "men-tshirt": "남성 티셔츠",
+        "men-shirt": "남성 셔츠",
+        "men-knit": "남성 니트/가디건",
+        "men-pants": "남성 진/팬츠",
+        bag: "가방 전체",
+        "bag-men": "남성가방",
+        "bag-women": "여성가방",
+        shoes: "슈즈 전체",
         "shoes-men": "남성 슈즈",
         "shoes-women": "여성 슈즈",
-        accessory: "악세서리",
-        watch: "워치"
+        accessory: "악세서리 전체",
+        "accessory-belt": "벨트",
+        "accessory-hat": "모자",
+        "accessory-scarf": "머플러/스카프",
+        "accessory-glasses": "안경/선글라스",
+        "accessory-jewelry": "쥬얼리",
+        watch: "워치 전체",
+        "watch-men": "남성시계",
+        "watch-women": "여성시계"
       })[value] || value || "상품";
     }
     function categoryMatches(productCategory, filter) {
       if (!filter) return true;
-      if (filter === "shoes") return productCategory === "shoes" || productCategory === "shoes-men" || productCategory === "shoes-women";
+      if (filter === "men") return productCategory === "men" || String(productCategory || "").startsWith("men-");
+      if (filter === "women") return productCategory === "women" || String(productCategory || "").startsWith("women-");
+      if (filter === "bag") return productCategory === "bag" || String(productCategory || "").startsWith("bag-");
+      if (filter === "shoes") return productCategory === "shoes" || String(productCategory || "").startsWith("shoes-");
+      if (filter === "accessory") return productCategory === "accessory" || String(productCategory || "").startsWith("accessory-");
+      if (filter === "watch") return productCategory === "watch" || String(productCategory || "").startsWith("watch-");
       return productCategory === filter;
     }
 
