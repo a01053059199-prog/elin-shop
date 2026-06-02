@@ -182,9 +182,7 @@
       const me = await (await fetch("/api/auth/me")).json();
       updateHeaderAuth(me.member);
       if (!me.member) {
-        document.querySelector("#memberBox").innerHTML = `${escapeHtml(pageSettings.loginRequiredText || "로그인이 필요합니다.")} <a href="/login.html">${escapeHtml(pageSettings.loginLinkText || "로그인하기")}</a>`;
-        document.querySelector("#orders").innerHTML = "";
-        document.querySelector("#inquiries").innerHTML = "";
+        location.replace("/login.html?next=/mypage.html");
         return;
       }
 
