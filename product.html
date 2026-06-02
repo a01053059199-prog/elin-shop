@@ -517,11 +517,11 @@
     }
 
     function parseImages(item) {
-      if (Array.isArray(item.images)) return item.images.filter(Boolean).slice(0, 10);
+      if (Array.isArray(item.images)) return item.images.filter(Boolean).slice(0, 15);
       if (item.images) {
         try {
           const parsed = JSON.parse(item.images);
-          if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, 10);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, 15);
         } catch (_) {}
       }
       return [item.image].filter(Boolean);

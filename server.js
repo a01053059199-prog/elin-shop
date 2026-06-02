@@ -23,6 +23,7 @@ const useSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
+const PRODUCT_IMAGE_LIMIT = 15;
 
 const adminSessions = new Set();
 const memberSessions = new Map();
@@ -664,7 +665,7 @@ function cleanProduct(input) {
   const images = Array.isArray(input.images)
     ? input.images
     : String(input.images || input.image || "").split(/\n+/);
-  const cleanImages = images.map(image => String(image || "").trim()).filter(Boolean).slice(0, 10);
+  const cleanImages = images.map(image => String(image || "").trim()).filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
   const parseOptions = (value, fallback) => {
     const items = Array.isArray(value)
       ? value

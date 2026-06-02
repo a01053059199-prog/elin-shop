@@ -182,14 +182,14 @@
 
           <label for="imageFile">상품 이미지 업로드</label>
           <input id="imageFile" type="file" accept="image/*" multiple />
-          <div class="hint">권장: 1MB 이하 JPG/PNG. 큰 이미지는 저장이 느릴 수 있습니다.</div>
+          <div class="hint">최대 15장까지 등록 가능합니다. 권장: 1MB 이하 JPG/PNG/WEBP. 큰 이미지는 저장이 느릴 수 있습니다.</div>
           <div class="image-preview" id="imagePreview">이미지 미리보기</div>
           <div class="image-tools">
             <button type="button" class="ghost" id="clearImages">이미지 전체 삭제</button>
           </div>
 
           <label for="image">이미지 URL 또는 업로드 데이터</label>
-          <textarea id="image" required rows="5" placeholder="이미지 URL을 한 줄에 하나씩 넣거나 위에서 파일을 선택하세요. 최대 10장"></textarea>
+          <textarea id="image" required rows="5" placeholder="이미지 URL을 한 줄에 하나씩 넣거나 위에서 파일을 선택하세요. 최대 15장"></textarea>
 
           <div style="height:12px"></div>
           <button type="submit">저장</button>
@@ -569,6 +569,7 @@
     let lastSoundError = "";
     let audioContext = null;
     let alertTargetTab = "orders";
+    const productImageLimit = 15;
     const adminRememberKey = "elinAdminRemember";
     const notifySoundKey = "elinAdminNotifySound";
     const pendingAlertKey = "elinAdminPendingAlert";
@@ -671,9 +672,9 @@
     const supportedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
     document.querySelector("#imageFile").addEventListener("change", async event => {
-      const files = [...event.target.files].slice(0, 10);
+      const files = [...event.target.files].slice(0, productImageLimit);
       if (!files.length) return;
-      if (event.target.files.length > 10) alert("상품 이미지는 최대 10장까지 등록할 수 있습니다.");
+      if (event.target.files.length > productImageLimit) alert(`상품 이미지는 최대 ${productImageLimit}장까지 등록할 수 있습니다.`);
       for (const file of files) {
         if (!supportedImageTypes.includes(file.type)) {
           alert("JPG, PNG, WEBP 이미지만 등록할 수 있습니다. HEIC 사진은 JPG로 변환해서 올려주세요.");
@@ -695,7 +696,7 @@
         return;
       }
       const current = parseImages(formValue("image"));
-      const images = [...current, ...uploaded].slice(0, 10);
+      const images = [...current, ...uploaded].slice(0, productImageLimit);
       setImages(images);
       event.target.value = "";
     });
@@ -1412,13 +1413,13 @@
     }
 
     function parseImages(value) {
-      if (Array.isArray(value)) return value.filter(Boolean).slice(0, 10);
+      if (Array.isArray(value)) return value.filter(Boolean).slice(0, productImageLimit);
       if (!value) return [];
       try {
         const parsed = JSON.parse(value);
-        if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, 10);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, productImageLimit);
       } catch (_) {}
-      return String(value).split(/\n+/).map(item => item.trim()).filter(Boolean).slice(0, 10);
+      return String(value).split(/\n+/).map(item => item.trim()).filter(Boolean).slice(0, productImageLimit);
     }
 
     function parseOptions(value, fallback) {
@@ -1479,7 +1480,7 @@
     function productImages(product) {
       const images = parseImages(product.images);
       if (!images.length && product.image) images.push(product.image);
-      return images.slice(0, 10);
+      return images.slice(0, productImageLimit);
     }
 
     function setImages(images) {
