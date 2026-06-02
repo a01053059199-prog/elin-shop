@@ -309,7 +309,7 @@
 
   <script src="/talk-widget.js"></script>
   <script>
-    const state = { reviews: [] };
+    const state = { reviews: [], member: null };
     const panel = document.querySelector("#reviewPanel");
     const message = document.querySelector("#message");
     const form = document.querySelector("#reviewForm");
@@ -386,11 +386,19 @@
       try {
         const res = await fetch("/api/auth/me");
         const data = await res.json();
-        if (data.member?.username) document.querySelector("#reviewUsername").value = data.member.username;
+        state.member = data.member || null;
+        if (state.member?.username) document.querySelector("#reviewUsername").value = state.member.username;
+        if (!state.member) {
+          document.querySelector("#openFormBtn").textContent = "로그인 후 후기 작성";
+        }
       } catch {}
     }
 
     document.querySelector("#openFormBtn").addEventListener("click", () => {
+      if (!state.member) {
+        location.href = "/login.html";
+        return;
+      }
       panel.classList.add("open");
       panel.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -415,6 +423,10 @@
 
     form.addEventListener("submit", async event => {
       event.preventDefault();
+      if (!state.member) {
+        location.href = "/login.html";
+        return;
+      }
       message.textContent = "후기를 등록하는 중입니다...";
       const payload = {
         username: document.querySelector("#reviewUsername").value,

@@ -909,6 +909,9 @@ async function listReviews() {
 }
 
 async function createReview(input, member) {
+  if (!member) {
+    throw new Error("로그인한 회원만 후기를 작성할 수 있습니다.");
+  }
   const rating = Math.max(1, Math.min(5, Number(input.rating || 5)));
   const review = {
     id: `REV-${Date.now()}`,
