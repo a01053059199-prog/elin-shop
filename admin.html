@@ -39,8 +39,7 @@
     .meta { color: #6a6a6a; font-size: 13px; line-height: 1.6; }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .order-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .order-actions .saved { background: #137a3a; }
-    .order-save-feedback { display: none; color: #137a3a; font-size: 13px; font-weight: 900; }
+    .order-save-feedback { display: none; width: 28px; height: 28px; border-radius: 999px; background: #16a34a; color: #fff; font-size: 17px; font-weight: 900; line-height: 28px; text-align: center; }
     .order-save-feedback.show { display: inline-block; }
     .online-summary { margin-bottom: 12px; }
     .online-title { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin: 0 0 12px; }
@@ -1603,9 +1602,9 @@
             <textarea id="memo-${order.id}" placeholder="관리자 메모">${order.admin_memo || ""}</textarea>
             <div style="height:10px"></div>
             <div class="order-actions">
-              <button id="order-save-${escapeAttr(order.id)}" type="button" onclick="saveOrder('${order.id}')">주문 저장</button>
+              <button id="order-save-${escapeAttr(order.id)}" type="button" onclick="saveOrder('${order.id}')">주문 확인</button>
               <button class="danger" type="button" onclick="deleteOrder('${order.id}')">삭제</button>
-              <span id="order-save-feedback-${escapeAttr(order.id)}" class="order-save-feedback" aria-live="polite">저장되었습니다.</span>
+              <span id="order-save-feedback-${escapeAttr(order.id)}" class="order-save-feedback" aria-live="polite">✓</span>
             </div>
           </div>
         </article>
@@ -1836,33 +1835,29 @@
       if (!button) return;
       if (state === "saving") {
         button.disabled = true;
-        button.classList.remove("saved");
         button.textContent = "저장 중...";
         if (feedback) feedback.classList.remove("show");
         return;
       }
       if (state === "saved") {
         button.disabled = false;
-        button.classList.add("saved");
-        button.textContent = "✓ 저장완료";
+        button.textContent = "주문 확인";
         if (feedback) {
-          feedback.textContent = "저장되었습니다.";
+          feedback.textContent = "✓";
           feedback.classList.add("show");
         }
         setTimeout(() => {
           const currentButton = document.getElementById(`order-save-${id}`);
           const currentFeedback = document.getElementById(`order-save-feedback-${id}`);
           if (currentButton) {
-            currentButton.classList.remove("saved");
-            currentButton.textContent = "주문 저장";
+            currentButton.textContent = "주문 확인";
           }
           if (currentFeedback) currentFeedback.classList.remove("show");
         }, 2200);
         return;
       }
       button.disabled = false;
-      button.classList.remove("saved");
-      button.textContent = "주문 저장";
+      button.textContent = "주문 확인";
     }
 
     window.saveOrder = async id => {
