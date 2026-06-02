@@ -15,6 +15,7 @@ COPY terms.html ./
 COPY privacy.html ./
 COPY shipping.html ./
 COPY customer.html ./
+COPY review.html ./
 COPY talk-widget.css ./
 COPY talk-widget.js ./
 COPY start-elin.bat ./

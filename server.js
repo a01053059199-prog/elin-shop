@@ -8,6 +8,7 @@ const dataDir = path.join(root, "data");
 const productsFile = path.join(dataDir, "products.json");
 const ordersFile = path.join(dataDir, "orders.json");
 const inquiriesFile = path.join(dataDir, "inquiries.json");
+const reviewsFile = path.join(dataDir, "reviews.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
@@ -53,6 +54,7 @@ async function ensureData() {
   await ensureJson(productsFile, seedProducts);
   await ensureJson(ordersFile, []);
   await ensureJson(inquiriesFile, []);
+  await ensureJson(reviewsFile, []);
   await ensureJson(adminSettingsFile, null);
   await ensureJson(memberPageSettingsFile, null);
   await ensureJson(customerCenterSettingsFile, null);
@@ -901,6 +903,33 @@ async function updateInquiry(id, input) {
   return inquiry;
 }
 
+async function listReviews() {
+  const reviews = await readJson(reviewsFile);
+  return reviews.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+async function createReview(input, member) {
+  const rating = Math.max(1, Math.min(5, Number(input.rating || 5)));
+  const review = {
+    id: `REV-${Date.now()}`,
+    rating,
+    title: String(input.title || "").trim(),
+    content: String(input.content || "").trim(),
+    productName: String(input.productName || "").trim(),
+    image: String(input.image || "").trim(),
+    name: String(input.name || member?.name || "고객").trim(),
+    memberId: member?.id || null
+  };
+  if (!review.title || !review.content) {
+    throw new Error("후기 제목과 내용을 입력해주세요.");
+  }
+  const reviews = await readJson(reviewsFile);
+  const localReview = { ...review, createdAt: new Date().toISOString() };
+  reviews.unshift(localReview);
+  await writeJson(reviewsFile, reviews);
+  return localReview;
+}
+
 async function findMemberByEmail(email) {
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return null;
@@ -1232,6 +1261,15 @@ async function handleApi(req, res, url) {
     const member = currentMember(req);
     if (!member) return send(res, 401, { error: "로그인이 필요합니다." });
     return send(res, 200, await listMemberInquiries(member.id), "application/json; charset=utf-8", refreshMemberSession(member));
+  }
+
+  if (url.pathname === "/api/reviews" && req.method === "GET") {
+    return send(res, 200, await listReviews());
+  }
+
+  if (url.pathname === "/api/reviews" && req.method === "POST") {
+    const member = currentMember(req);
+    return send(res, 201, await createReview(await readBody(req), member), "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
   }
 
   if (url.pathname === "/api/products" && req.method === "GET") {

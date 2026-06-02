@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ELIN 후기</title>
+  <link rel="stylesheet" href="/talk-widget.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #111;
+      background: #fbfaf8;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #e6ded4;
+      background: #fff;
+      min-height: 86px;
+      padding: 18px 24px;
+      position: relative;
+    }
+    .brand {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: 4px;
+    }
+    .nav {
+      position: absolute;
+      right: 28px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      gap: 22px;
+      color: #555;
+      font-size: 15px;
+    }
+    .wrap {
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 56px 0 90px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 22px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(38px, 7vw, 78px);
+      line-height: .95;
+      letter-spacing: -1px;
+    }
+    .lead {
+      margin: 0;
+      color: #666;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+    .write-btn,
+    .submit-btn,
+    .ghost-btn {
+      border: 1px solid #111;
+      background: #111;
+      color: #fff;
+      min-height: 50px;
+      padding: 0 24px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .ghost-btn {
+      background: #fff;
+      color: #111;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid #e6ded4;
+      background: #fff;
+      margin-bottom: 18px;
+    }
+    .summary div {
+      padding: 22px 24px;
+      border-right: 1px solid #e6ded4;
+    }
+    .summary div:last-child { border-right: 0; }
+    .summary b {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+    .summary span { color: #777; }
+    .panel {
+      display: none;
+      border: 1px solid #e1d8ce;
+      background: #fff;
+      padding: 26px;
+      margin: 24px 0;
+    }
+    .panel.open { display: block; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    label {
+      display: grid;
+      gap: 8px;
+      font-weight: 800;
+    }
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #d7cec4;
+      background: #fff;
+      border-radius: 0;
+      padding: 14px;
+      font: inherit;
+    }
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+    .wide { grid-column: 1 / -1; }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .hint {
+      color: #777;
+      font-size: 14px;
+      font-weight: 400;
+    }
+    .message {
+      margin-top: 14px;
+      color: #8a641f;
+      min-height: 22px;
+    }
+    .review-list {
+      display: grid;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .review-card {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 22px;
+      border: 1px solid #e6ded4;
+      background: #fff;
+      padding: 20px;
+    }
+    .review-image {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #f0ece6;
+      object-fit: cover;
+    }
+    .review-empty-image {
+      display: grid;
+      place-items: center;
+      color: #999;
+      font-size: 13px;
+    }
+    .stars {
+      color: #111;
+      letter-spacing: 2px;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .review-title {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    .review-meta {
+      color: #777;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+    .review-content {
+      color: #333;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+    .empty {
+      border: 1px dashed #d7cec4;
+      background: #fff;
+      padding: 46px 20px;
+      text-align: center;
+      color: #777;
+    }
+    @media (max-width: 760px) {
+      .topbar {
+        min-height: 78px;
+        justify-content: flex-start;
+        padding: 18px;
+      }
+      .brand { font-size: 42px; }
+      .nav {
+        right: 18px;
+        gap: 14px;
+        font-size: 14px;
+      }
+      .nav a:first-child { display: none; }
+      .wrap {
+        width: calc(100% - 32px);
+        padding: 34px 0 90px;
+      }
+      .hero {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+      .write-btn { width: 100%; }
+      .summary {
+        grid-template-columns: 1fr;
+      }
+      .summary div {
+        border-right: 0;
+        border-bottom: 1px solid #e6ded4;
+      }
+      .summary div:last-child { border-bottom: 0; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-actions { flex-direction: column; }
+      .review-card {
+        grid-template-columns: 1fr;
+      }
+      .review-image {
+        max-height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">ELIN</a>
+    <nav class="nav" aria-label="상단 메뉴">
+      <a href="/">쇼핑몰</a>
+      <a href="/customer.html">고객센터</a>
+      <a href="/mypage.html">마이페이지</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <h1>REVIEW</h1>
+        <p class="lead">구매하신 상품의 착용감, 사이즈, 배송 후기를 남겨주세요.</p>
+      </div>
+      <button class="write-btn" id="openFormBtn" type="button">후기 작성</button>
+    </section>
+
+    <section class="summary" aria-label="후기 요약">
+      <div><b id="reviewCount">0</b><span>전체 후기</span></div>
+      <div><b id="reviewAverage">0.0</b><span>평균 평점</span></div>
+      <div><b>PHOTO</b><span>사진 후기 등록 가능</span></div>
+    </section>
+
+    <section class="panel" id="reviewPanel">
+      <form id="reviewForm">
+        <div class="form-grid">
+          <label>이름
+            <input id="reviewName" name="name" placeholder="이름" autocomplete="name" />
+          </label>
+          <label>상품명
+            <input id="reviewProduct" name="productName" placeholder="구매한 상품명" />
+          </label>
+          <label>평점
+            <select id="reviewRating" name="rating">
+              <option value="5">★★★★★ 5점</option>
+              <option value="4">★★★★☆ 4점</option>
+              <option value="3">★★★☆☆ 3점</option>
+              <option value="2">★★☆☆☆ 2점</option>
+              <option value="1">★☆☆☆☆ 1점</option>
+            </select>
+          </label>
+          <label>사진 업로드
+            <input id="reviewFile" type="file" accept="image/*" />
+            <span class="hint">권장: 1MB 이하 JPG/PNG. 사진 없이도 작성 가능합니다.</span>
+          </label>
+          <label class="wide">제목
+            <input id="reviewTitle" name="title" placeholder="후기 제목을 입력해주세요" required />
+          </label>
+          <label class="wide">내용
+            <textarea id="reviewContent" name="content" placeholder="사이즈, 착용감, 배송 상태 등을 자세히 적어주세요." required></textarea>
+          </label>
+          <label class="wide">이미지 URL 또는 업로드 데이터
+            <textarea id="reviewImage" name="image" placeholder="이미지 URL을 넣거나 위에서 파일을 선택하세요."></textarea>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="submit-btn" type="submit">후기 등록</button>
+          <button class="ghost-btn" id="cancelFormBtn" type="button">취소</button>
+        </div>
+        <div class="message" id="message"></div>
+      </form>
+    </section>
+
+    <section class="review-list" id="reviewList" aria-label="후기 목록"></section>
+  </main>
+
+  <script src="/talk-widget.js"></script>
+  <script>
+    const state = { reviews: [] };
+    const panel = document.querySelector("#reviewPanel");
+    const message = document.querySelector("#message");
+    const form = document.querySelector("#reviewForm");
+    const imageInput = document.querySelector("#reviewImage");
+    const fileInput = document.querySelector("#reviewFile");
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, match => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[match]));
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+      return new Date(value).toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    function starText(rating) {
+      const count = Math.max(1, Math.min(5, Number(rating || 5)));
+      return "★★★★★".slice(0, count) + "☆☆☆☆☆".slice(0, 5 - count);
+    }
+
+    function renderReviews() {
+      const list = document.querySelector("#reviewList");
+      const count = state.reviews.length;
+      const average = count
+        ? state.reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / count
+        : 0;
+      document.querySelector("#reviewCount").textContent = count;
+      document.querySelector("#reviewAverage").textContent = average.toFixed(1);
+
+      if (!count) {
+        list.innerHTML = `<div class="empty">아직 등록된 후기가 없습니다. 첫 후기를 남겨주세요.</div>`;
+        return;
+      }
+
+      list.innerHTML = state.reviews.map(review => {
+        const image = String(review.image || "").trim();
+        return `
+          <article class="review-card">
+            ${image
+              ? `<img class="review-image" src="${escapeHtml(image)}" alt="${escapeHtml(review.title)}">`
+              : `<div class="review-image review-empty-image">NO IMAGE</div>`}
+            <div>
+              <div class="stars">${starText(review.rating)}</div>
+              <h2 class="review-title">${escapeHtml(review.title)}</h2>
+              <div class="review-meta">
+                ${escapeHtml(review.name || "고객")} · ${escapeHtml(review.productName || "상품 후기")} · ${formatDate(review.createdAt)}
+              </div>
+              <div class="review-content">${escapeHtml(review.content)}</div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    async function loadReviews() {
+      const res = await fetch("/api/reviews");
+      state.reviews = res.ok ? await res.json() : [];
+      renderReviews();
+    }
+
+    async function loadMember() {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (data.member?.name) document.querySelector("#reviewName").value = data.member.name;
+      } catch {}
+    }
+
+    document.querySelector("#openFormBtn").addEventListener("click", () => {
+      panel.classList.add("open");
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    document.querySelector("#cancelFormBtn").addEventListener("click", () => {
+      panel.classList.remove("open");
+      message.textContent = "";
+    });
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      if (file.size > 1_500_000) {
+        message.textContent = "이미지가 큽니다. 1MB 안팎의 이미지 사용을 권장합니다.";
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        imageInput.value = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      message.textContent = "후기를 등록하는 중입니다...";
+      const payload = {
+        name: document.querySelector("#reviewName").value,
+        productName: document.querySelector("#reviewProduct").value,
+        rating: document.querySelector("#reviewRating").value,
+        title: document.querySelector("#reviewTitle").value,
+        content: document.querySelector("#reviewContent").value,
+        image: imageInput.value
+      };
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        message.textContent = data.error || "후기 등록에 실패했습니다.";
+        return;
+      }
+      form.reset();
+      imageInput.value = "";
+      message.textContent = "후기가 등록되었습니다.";
+      panel.classList.remove("open");
+      await loadReviews();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    loadMember();
+    loadReviews();
+  </script>
+</body>
+</html>
