@@ -791,7 +791,7 @@ async function listOrders() {
 }
 
 async function createOrder(body, member) {
-  const products = await listProducts();
+  const products = await listProductSummaries();
   const items = Array.isArray(body.items) ? body.items : [];
   if (!body.customer?.name || !body.customer?.phone || !body.customer?.address || items.length === 0) {
     throw new Error("주문자 정보와 상품이 필요합니다.");

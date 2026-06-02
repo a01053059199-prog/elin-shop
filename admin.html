@@ -837,7 +837,7 @@
 
     async function refresh(options = {}) {
       if (!options.polling) {
-        products = await (await fetch("/api/products")).json();
+        products = await (await fetch("/api/products?summary=1")).json();
       }
       const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
       const nextMembers = await (await fetch("/api/admin/members", { headers: headers() })).json();
@@ -1808,8 +1808,9 @@
       renderImagePreview("");
     });
 
-    window.editProduct = id => {
-      const product = products.find(item => item.id === id);
+    window.editProduct = async id => {
+      const response = await fetch(`/api/products/${encodeURIComponent(id)}`);
+      const product = response.ok ? await response.json() : products.find(item => item.id === id);
       if (!product) return;
       setValue("productId", product.id);
       setValue("name", product.name);
