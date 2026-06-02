@@ -37,7 +37,6 @@
   <main>
     <section>
       <h1>주문서 작성</h1>
-      <p class="note">현재 버전은 무통장/수기 확인 주문으로 저장됩니다. 결제 PG 키를 받으면 카드 결제를 붙일 수 있습니다.</p>
       <form class="panel" id="orderForm">
         <label for="name">주문자명</label>
         <input id="name" required autocomplete="name" />
@@ -48,7 +47,7 @@
       <label for="memo">배송 메모</label>
       <textarea id="memo" placeholder="공동현관 비밀번호, 요청사항 등"></textarea>
       <label for="depositor">입금자명</label>
-      <input id="depositor" required placeholder="주문자와 다르면 실제 입금자명을 입력하세요" />
+      <input id="depositor" required placeholder="실제 입금자명을 입력하세요" />
       <label for="bank">입금 계좌</label>
       <select id="bank">
         <option value="신한은행 110-000-000000 ELIN">신한은행 110-000-000000 ELIN</option>
@@ -81,6 +80,7 @@
     ];
     const defaultDepositNotice = "주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다.";
     const escapeHtml = value => String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
+    const cleanText = value => String(value || "").replace(/�+/g, "").replace(/\s{2,}/g, " ").trim();
 
     function render() {
       itemsEl.innerHTML = cart.length ? cart.map(item => `
@@ -97,9 +97,11 @@
         .map(account => String(account || "").trim())
         .filter(Boolean);
       bankSelect.innerHTML = (accounts.length ? accounts : defaultBankAccounts)
+        .map(account => cleanText(account))
+        .filter(Boolean)
         .map(account => `<option value="${escapeHtml(account)}">${escapeHtml(account)}</option>`)
         .join("");
-      depositNotice.textContent = settings.checkoutDepositNotice || defaultDepositNotice;
+      depositNotice.textContent = cleanText(settings.checkoutDepositNotice) || defaultDepositNotice;
     }
 
     async function loadCheckoutSettings() {
@@ -158,7 +160,7 @@
         <div>입금금액: <strong>${money(Number(result.total || 0))}</strong></div>
         <div>입금자명: <strong>${result.customer.depositor}</strong></div>
         <div style="height:10px"></div>
-        <div style="color:#6a6a6a">입금자명이 다르면 확인이 늦어질 수 있습니다.</div>
+        <div style="color:#6a6a6a">입금자명이 주문자명과 다를 경우 확인이 늦어질 수 있습니다.</div>
       `;
       message.scrollIntoView({ behavior: "smooth", block: "center" });
     });
