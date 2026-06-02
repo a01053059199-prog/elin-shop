@@ -621,13 +621,18 @@
     }
 
     async function load() {
-      const [productsResponse, settingsResponse] = await Promise.all([
-        fetch("/api/products"),
+      const [productResponse, productsResponse, settingsResponse] = await Promise.all([
+        fetch(`/api/products/${encodeURIComponent(id)}`),
+        fetch("/api/products?summary=1"),
         fetch("/api/site-settings")
       ]);
+      if (!productResponse.ok) {
+        document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
+        return;
+      }
+      product = await productResponse.json();
       allProducts = await productsResponse.json();
       if (settingsResponse.ok) siteSettings = await settingsResponse.json();
-      product = allProducts.find(item => item.id === id);
       if (!product) {
         document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
         return;

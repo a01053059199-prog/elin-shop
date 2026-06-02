@@ -1724,7 +1724,7 @@
 
     async function loadProducts() {
       try {
-        const response = await fetch("/api/products");
+        const response = await fetch("/api/products?summary=1");
         if (response.ok) products.splice(0, products.length, ...(await response.json()));
       } catch (error) {
         console.warn("서버 상품 데이터를 불러오지 못해 기본 상품을 사용합니다.", error);

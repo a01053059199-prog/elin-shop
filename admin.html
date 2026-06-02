@@ -837,7 +837,9 @@
     });
 
     async function refresh(options = {}) {
-      products = await (await fetch("/api/products")).json();
+      if (!options.polling) {
+        products = await (await fetch("/api/products")).json();
+      }
       const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
       const nextMembers = await (await fetch("/api/admin/members", { headers: headers() })).json();
       const nextActiveMembers = await (await fetch("/api/admin/active-members", { headers: headers() })).json();
@@ -848,7 +850,7 @@
       activeMembers = nextActiveMembers;
       inquiries = nextInquiries;
       renderDashboard();
-      renderProducts();
+      if (!options.polling) renderProducts();
       renderOrders();
       renderMembers();
       renderActiveMembers();
@@ -1498,7 +1500,7 @@
         const image = new Image();
         const objectUrl = URL.createObjectURL(file);
         image.onload = () => {
-          const maxSize = 1200;
+          const maxSize = 1000;
           const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
           const canvas = document.createElement("canvas");
           canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -1506,7 +1508,7 @@
           const context = canvas.getContext("2d");
           context.drawImage(image, 0, 0, canvas.width, canvas.height);
           URL.revokeObjectURL(objectUrl);
-          resolve(canvas.toDataURL("image/jpeg", 0.82));
+          resolve(canvas.toDataURL("image/jpeg", 0.76));
         };
         image.onerror = () => {
           URL.revokeObjectURL(objectUrl);

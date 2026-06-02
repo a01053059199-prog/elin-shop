@@ -712,6 +712,35 @@ async function listProducts() {
   return await readJson(productsFile);
 }
 
+async function listProductSummaries() {
+  if (useSupabase) {
+    return await supabase("products?select=id,name,category,keywords,label,price,image,colors,sizes,created_at&order=created_at.desc");
+  }
+  const products = await readJson(productsFile);
+  return products.map(product => ({
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    keywords: product.keywords,
+    label: product.label,
+    price: product.price,
+    image: product.image || (Array.isArray(product.images) ? product.images[0] : ""),
+    colors: product.colors,
+    sizes: product.sizes,
+    created_at: product.created_at,
+    createdAt: product.createdAt
+  }));
+}
+
+async function getProduct(id) {
+  if (useSupabase) {
+    const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+    return product || null;
+  }
+  const products = await readJson(productsFile);
+  return products.find(product => product.id === id) || null;
+}
+
 async function createProduct(input) {
   const product = cleanProduct(input);
   if (useSupabase) {
@@ -1296,7 +1325,17 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/products" && req.method === "GET") {
+    if (url.searchParams.get("summary") === "1") {
+      return send(res, 200, await listProductSummaries());
+    }
     return send(res, 200, await listProducts());
+  }
+
+  if (url.pathname.startsWith("/api/products/") && req.method === "GET") {
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    const product = await getProduct(id);
+    if (!product) return send(res, 404, { error: "상품을 찾을 수 없습니다." });
+    return send(res, 200, product);
   }
 
   if (url.pathname === "/api/products" && req.method === "POST") {
