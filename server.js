@@ -409,6 +409,12 @@ const defaultCategoryCards = [
   { title: "WATCH", text: "클래식 · 데일리", image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80" }
 ];
 
+const defaultCheckoutBankAccounts = [
+  "신한은행 110-000-000000 ELIN",
+  "국민은행 000000-00-000000 ELIN",
+  "카카오뱅크 3333-00-0000000 ELIN"
+];
+
 const defaultSiteSettings = {
   footerBrandTitle: "ELIN",
   footerBrandText: "Online Select Shop\nMon-Fri 11:00 - 18:00",
@@ -435,6 +441,8 @@ const defaultSiteSettings = {
     { label: "결제", text: "무통장 입금 확인 후 순차 출고" },
     { label: "문의", text: "주문 전 상품 상태와 옵션을 확인해주세요." }
   ],
+  checkoutBankAccounts: defaultCheckoutBankAccounts,
+  checkoutDepositNotice: "주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다.",
   footerLinks: [
     { label: "이용약관", url: "/terms.html" },
     { label: "개인정보처리방침", url: "/privacy.html" },
@@ -482,9 +490,19 @@ function normalizeSiteSettings(input = {}) {
     "productGuideShippingText",
     "productGuideReturnTitle",
     "productGuideReturnText",
-    "productExchangeTitle"
+    "productExchangeTitle",
+    "checkoutDepositNotice"
   ]) {
     settings[key] = String(settings[key] || "").trim();
+  }
+  settings.checkoutBankAccounts = (Array.isArray(input.checkoutBankAccounts)
+    ? input.checkoutBankAccounts
+    : String(input.checkoutBankAccounts || "").split(/\n+/))
+    .map(account => String(account || "").trim())
+    .filter(Boolean)
+    .slice(0, 10);
+  if (!settings.checkoutBankAccounts.length) {
+    settings.checkoutBankAccounts = [...defaultCheckoutBankAccounts];
   }
   settings.footerLinks = (Array.isArray(input.footerLinks) ? input.footerLinks : defaultSiteSettings.footerLinks)
     .map(link => ({

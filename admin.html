@@ -419,7 +419,17 @@
           <hr style="border:0;border-top:1px solid #e6e0d8;margin:24px 0">
           <h3>상품상세 안내 문구</h3>
 
-          <h4>구매 패널 상단 정보</h4>
+          <h4>주문서 입금 안내</h4>
+          <p class="note">주문서에 보이는 입금 계좌 목록과 안내 문구를 수정합니다.</p>
+
+          <label for="checkoutBankAccounts">입금 계좌 목록</label>
+          <textarea id="checkoutBankAccounts" rows="4" placeholder="신한은행 110-000-000000 ELIN&#10;국민은행 000000-00-000000 ELIN"></textarea>
+          <p class="note">한 줄에 계좌 1개씩 입력하세요. 첫 번째 계좌가 주문서 기본 선택값입니다.</p>
+
+          <label for="checkoutDepositNotice">입금 안내 문구</label>
+          <textarea id="checkoutDepositNotice" rows="3" placeholder="주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다."></textarea>
+
+          <h4 style="margin-top:18px">구매 패널 상단 정보</h4>
           <p class="note">상품 상세 오른쪽에 보이는 배송비, 결제, 문의 문구를 수정합니다.</p>
           <div class="grid">
             <div>
@@ -1264,6 +1274,8 @@
           label: formValue(`productInfoLabel${index}`),
           text: formValue(`productInfoText${index}`)
         })),
+        checkoutBankAccounts: formValue("checkoutBankAccounts").split(/\n+/).map(account => account.trim()).filter(Boolean),
+        checkoutDepositNotice: formValue("checkoutDepositNotice"),
         footerBrandTitle: formValue("footerBrandTitle"),
         footerBrandText: formValue("footerBrandText"),
         footerCompanyTitle: formValue("footerCompanyTitle"),
@@ -1289,6 +1301,8 @@
       setValue("productGuideReturnTitle", settings.productGuideReturnTitle);
       setValue("productGuideReturnText", settings.productGuideReturnText);
       setValue("productExchangeTitle", settings.productExchangeTitle);
+      setValue("checkoutBankAccounts", (Array.isArray(settings.checkoutBankAccounts) ? settings.checkoutBankAccounts : []).join("\n"));
+      setValue("checkoutDepositNotice", settings.checkoutDepositNotice);
       const productInfoRows = Array.isArray(settings.productInfoRows) ? settings.productInfoRows : [];
       [0, 1, 2].forEach(index => {
         setValue(`productInfoLabel${index}`, productInfoRows[index]?.label);

@@ -55,7 +55,7 @@
         <option value="국민은행 000000-00-000000 ELIN">국민은행 000000-00-000000 ELIN</option>
         <option value="카카오뱅크 3333-00-0000000 ELIN">카카오뱅크 3333-00-0000000 ELIN</option>
       </select>
-      <div class="message show" style="display:block">주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다.</div>
+      <div class="message show" id="depositNotice" style="display:block">주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다.</div>
       <div class="message" id="message"></div>
       </form>
     </section>
@@ -72,6 +72,15 @@
     const itemsEl = document.querySelector("#items");
     const totalEl = document.querySelector("#total");
     const message = document.querySelector("#message");
+    const bankSelect = document.querySelector("#bank");
+    const depositNotice = document.querySelector("#depositNotice");
+    const defaultBankAccounts = [
+      "신한은행 110-000-000000 ELIN",
+      "국민은행 000000-00-000000 ELIN",
+      "카카오뱅크 3333-00-0000000 ELIN"
+    ];
+    const defaultDepositNotice = "주문 저장 후 선택한 계좌로 입금해 주세요. 관리자가 입금 확인 후 배송을 진행합니다.";
+    const escapeHtml = value => String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
 
     function render() {
       itemsEl.innerHTML = cart.length ? cart.map(item => `
@@ -81,6 +90,29 @@
         </div>
       `).join("") : "<p>장바구니가 비어 있습니다.</p>";
       totalEl.textContent = money(cart.reduce((sum, item) => sum + item.price * item.qty, 0));
+    }
+
+    function applyCheckoutSettings(settings = {}) {
+      const accounts = (Array.isArray(settings.checkoutBankAccounts) ? settings.checkoutBankAccounts : defaultBankAccounts)
+        .map(account => String(account || "").trim())
+        .filter(Boolean);
+      bankSelect.innerHTML = (accounts.length ? accounts : defaultBankAccounts)
+        .map(account => `<option value="${escapeHtml(account)}">${escapeHtml(account)}</option>`)
+        .join("");
+      depositNotice.textContent = settings.checkoutDepositNotice || defaultDepositNotice;
+    }
+
+    async function loadCheckoutSettings() {
+      try {
+        const response = await fetch("/api/site-settings");
+        if (!response.ok) {
+          applyCheckoutSettings();
+          return;
+        }
+        applyCheckoutSettings(await response.json());
+      } catch {
+        applyCheckoutSettings();
+      }
     }
 
     document.querySelector("#orderForm").addEventListener("submit", async event => {
@@ -155,6 +187,7 @@
       location.href = "/";
     });
     render();
+    loadCheckoutSettings();
     loadMember();
   </script>
   <script src="/talk-widget.js"></script>
