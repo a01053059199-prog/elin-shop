@@ -287,6 +287,7 @@
       font-weight: 800;
     }
     .empty {
+      display: none;
       padding: 80px 20px;
       text-align: center;
       background: #fff;
@@ -621,9 +622,8 @@
     }
 
     async function load() {
-      const [productResponse, productsResponse, settingsResponse] = await Promise.all([
+      const [productResponse, settingsResponse] = await Promise.all([
         fetch(`/api/products/${encodeURIComponent(id)}`),
-        fetch("/api/products?summary=1"),
         fetch("/api/site-settings")
       ]);
       if (!productResponse.ok) {
@@ -631,7 +631,6 @@
         return;
       }
       product = await productResponse.json();
-      allProducts = await productsResponse.json();
       if (settingsResponse.ok) siteSettings = await settingsResponse.json();
       if (!product) {
         document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
@@ -639,6 +638,53 @@
       }
       document.title = `ELIN | ${product.name}`;
       renderProduct();
+      loadRelatedProducts();
+    }
+
+    async function loadRelatedProducts() {
+      try {
+        const cached = sessionStorage.getItem("elinProductSummaries");
+        if (cached) {
+          allProducts = JSON.parse(cached);
+          renderRelatedProducts();
+        }
+        const response = await fetch("/api/products?summary=1");
+        if (!response.ok) return;
+        allProducts = await response.json();
+        sessionStorage.setItem("elinProductSummaries", JSON.stringify(allProducts));
+        renderRelatedProducts();
+      } catch (_) {}
+    }
+
+    function renderRelatedProducts() {
+      let section = document.querySelector("#relatedProductsSection");
+      let grid = document.querySelector("#relatedProductsGrid");
+      if (!product) return;
+      if (!section || !grid) {
+        section = document.createElement("section");
+        section.className = "section";
+        section.id = "relatedProductsSection";
+        section.style.display = "none";
+        section.innerHTML = `<h2>함께 보면 좋은 상품</h2><div class="related-grid" id="relatedProductsGrid"></div>`;
+        document.querySelector("#productRoot").appendChild(section);
+        grid = document.querySelector("#relatedProductsGrid");
+      }
+      const related = allProducts
+        .filter(item => item.id !== product.id && categoryGroup(item.category) === categoryGroup(product.category))
+        .slice(0, 4);
+      if (!related.length) {
+        section.style.display = "none";
+        grid.innerHTML = "";
+        return;
+      }
+      section.style.display = "";
+      grid.innerHTML = related.map(item => `
+        <a class="related" href="/product.html?id=${encodeURIComponent(item.id)}">
+          <img src="${parseImages(item)[0] || item.image}" alt="${escapeHtml(item.name)}" loading="lazy">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${money(item.price)}</span>
+        </a>
+      `).join("");
     }
 
     function renderProduct() {
