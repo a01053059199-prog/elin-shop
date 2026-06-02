@@ -267,8 +267,8 @@
     <section class="panel" id="reviewPanel">
       <form id="reviewForm">
         <div class="form-grid">
-          <label>이름
-            <input id="reviewName" name="name" placeholder="이름" autocomplete="name" />
+          <label>아이디
+            <input id="reviewUsername" name="username" placeholder="아이디" autocomplete="username" />
           </label>
           <label>상품명
             <input id="reviewProduct" name="productName" placeholder="구매한 상품명" />
@@ -367,7 +367,7 @@
               <div class="stars">${starText(review.rating)}</div>
               <h2 class="review-title">${escapeHtml(review.title)}</h2>
               <div class="review-meta">
-                ${escapeHtml(review.name || "고객")} · ${escapeHtml(review.productName || "상품 후기")} · ${formatDate(review.createdAt)}
+                ${escapeHtml(review.username || review.name || "고객")} · ${escapeHtml(review.productName || "상품 후기")} · ${formatDate(review.createdAt)}
               </div>
               <div class="review-content">${escapeHtml(review.content)}</div>
             </div>
@@ -386,7 +386,7 @@
       try {
         const res = await fetch("/api/auth/me");
         const data = await res.json();
-        if (data.member?.name) document.querySelector("#reviewName").value = data.member.name;
+        if (data.member?.username) document.querySelector("#reviewUsername").value = data.member.username;
       } catch {}
     }
 
@@ -417,7 +417,7 @@
       event.preventDefault();
       message.textContent = "후기를 등록하는 중입니다...";
       const payload = {
-        name: document.querySelector("#reviewName").value,
+        username: document.querySelector("#reviewUsername").value,
         productName: document.querySelector("#reviewProduct").value,
         rating: document.querySelector("#reviewRating").value,
         title: document.querySelector("#reviewTitle").value,

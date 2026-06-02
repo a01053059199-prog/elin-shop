@@ -917,7 +917,8 @@ async function createReview(input, member) {
     content: String(input.content || "").trim(),
     productName: String(input.productName || "").trim(),
     image: String(input.image || "").trim(),
-    name: String(input.name || member?.name || "고객").trim(),
+    username: String(input.username || input.name || member?.username || "고객").trim(),
+    name: String(input.username || input.name || member?.username || "고객").trim(),
     memberId: member?.id || null
   };
   if (!review.title || !review.content) {
