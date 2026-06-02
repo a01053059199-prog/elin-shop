@@ -1472,7 +1472,7 @@
       });
       resultNote.textContent = `총 ${filtered.length}개의 상품을 준비했습니다.`;
       productGrid.innerHTML = filtered.map(productCard).join("");
-      newGrid.innerHTML = products.slice(0, 8).map(productCard).join("");
+      newGrid.innerHTML = filtered.slice(0, 8).map(productCard).join("");
     }
 
     function requireMember() {
@@ -1554,6 +1554,8 @@
 
     function setProductFilter(filter, scroll = true) {
       activeFilter = filter || "all";
+      searchTerm = "";
+      document.querySelector("#searchInput").value = "";
       document.querySelectorAll(".chip").forEach(chip => {
         const chipFilter = chip.dataset.filter;
         const activeChip = chipFilter === activeFilter || (chipFilter === "shoes" && ["shoes-men", "shoes-women"].includes(activeFilter));
