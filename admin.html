@@ -238,7 +238,6 @@
           <select id="orderStatus">
             <option value="">전체 상태</option>
             <option>입금대기</option>
-            <option>입금확인</option>
             <option>배송준비</option>
             <option>배송중</option>
             <option>배송완료</option>
@@ -1592,7 +1591,7 @@
           <div>
             <label>상태</label>
             <select id="status-${order.id}">
-              ${["입금대기", "입금확인", "배송준비", "배송중", "배송완료", "취소"].map(status => `<option ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
+              ${["입금대기", "배송준비", "배송중", "배송완료", "취소"].map(status => `<option ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}
             </select>
             <label>배송사</label>
             <select id="company-${order.id}">
