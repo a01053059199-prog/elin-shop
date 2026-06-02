@@ -184,6 +184,43 @@
       border-bottom: 1px solid var(--line);
       font-weight: 800;
     }
+    .mobile-panel details {
+      border-bottom: 1px solid var(--line);
+    }
+    .mobile-panel summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 45px;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 13px;
+      list-style: none;
+    }
+    .mobile-panel summary::-webkit-details-marker {
+      display: none;
+    }
+    .mobile-panel summary::after {
+      content: "⌄";
+      color: #777;
+      font-size: 13px;
+    }
+    .mobile-panel details[open] summary::after {
+      transform: rotate(180deg);
+    }
+    .mobile-panel .mobile-sub {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 12px;
+      padding: 0 0 10px;
+    }
+    .mobile-panel .mobile-sub a {
+      border: 0;
+      padding: 7px 0;
+      color: #555;
+      font-size: 12px;
+      font-weight: 700;
+    }
     .search {
       display: flex;
       align-items: center;
@@ -1118,7 +1155,57 @@
     </nav>
     <div class="mobile-panel" id="mobilePanel">
       <a href="#products">BEST & NEW</a>
-      <a href="#category">카테고리</a>
+      <details>
+        <summary>MAN</summary>
+        <div class="mobile-sub">
+          <a href="#weekly" data-nav-filter="men-outer">아우터</a>
+          <a href="#weekly" data-nav-filter="men-tshirt">티셔츠</a>
+          <a href="#weekly" data-nav-filter="men-shirt">셔츠</a>
+          <a href="#weekly" data-nav-filter="men-knit">니트/가디건</a>
+          <a href="#weekly" data-nav-filter="men-pants">진/팬츠</a>
+        </div>
+      </details>
+      <details>
+        <summary>WOMEN</summary>
+        <div class="mobile-sub">
+          <a href="#weekly" data-nav-filter="women-outer">아우터</a>
+          <a href="#weekly" data-nav-filter="women-tshirt">티셔츠</a>
+          <a href="#weekly" data-nav-filter="women-blouse">셔츠/블라우스</a>
+          <a href="#weekly" data-nav-filter="women-knit">니트/가디건</a>
+          <a href="#weekly" data-nav-filter="women-pants">진/팬츠</a>
+        </div>
+      </details>
+      <details>
+        <summary>BAG</summary>
+        <div class="mobile-sub">
+          <a href="#weekly" data-nav-filter="bag-men">남성가방</a>
+          <a href="#weekly" data-nav-filter="bag-women">여성가방</a>
+        </div>
+      </details>
+      <details>
+        <summary>SHOES</summary>
+        <div class="mobile-sub">
+          <a href="#weekly" data-nav-filter="shoes-men">남성 슈즈</a>
+          <a href="#weekly" data-nav-filter="shoes-women">여성 슈즈</a>
+        </div>
+      </details>
+      <details>
+        <summary>ACCESSORY</summary>
+        <div class="mobile-sub">
+          <a href="#weekly" data-nav-filter="accessory-belt">벨트</a>
+          <a href="#weekly" data-nav-filter="accessory-hat">모자</a>
+          <a href="#weekly" data-nav-filter="accessory-scarf">머플러/스카프</a>
+          <a href="#weekly" data-nav-filter="accessory-glasses">안경/선글라스</a>
+          <a href="#weekly" data-nav-filter="accessory-jewelry">쥬얼리</a>
+        </div>
+      </details>
+      <details>
+        <summary>WATCH</summary>
+        <div class="mobile-sub">
+          <a href="#weekly" data-nav-filter="watch-men">남성시계</a>
+          <a href="#weekly" data-nav-filter="watch-women">여성시계</a>
+        </div>
+      </details>
       <a href="/mypage.html">마이페이지</a>
       <a href="/review.html">REVIEW</a>
       <a href="/customer.html">NOTICE</a>
@@ -1475,6 +1562,7 @@
       link.addEventListener("click", event => {
         event.preventDefault();
         setProductFilter(link.dataset.navFilter);
+        document.querySelector("#mobilePanel")?.classList.remove("open");
       });
     });
     document.querySelector("#searchForm").addEventListener("submit", event => {
