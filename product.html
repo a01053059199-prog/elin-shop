@@ -704,12 +704,12 @@
             <div class="thumbs">
               ${images.map((image, index) => `
                 <button type="button" class="${index === 0 ? "active" : ""}" onclick="showImage(${index})" aria-label="상품 이미지 ${index + 1}">
-                  <img src="${image}" alt="${title} 썸네일 ${index + 1}">
+                  <img src="${image}" alt="${title} 썸네일 ${index + 1}" loading="lazy" decoding="async">
                 </button>
               `).join("")}
             </div>
             <div class="main-image">
-              <img id="mainImage" src="${images[0] || product.image}" alt="${title}">
+              <img id="mainImage" src="${images[0] || product.image}" alt="${title}" decoding="async" fetchpriority="high">
             </div>
           </div>
 
@@ -773,7 +773,7 @@
           </div>
           <div class="detail-images">
             ${images.map((image, index) => `
-              <figure><img src="${image}" alt="${title} 상세 이미지 ${index + 1}"></figure>
+              <figure><img src="${image}" alt="${title} 상세 이미지 ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></figure>
             `).join("")}
           </div>
         </section>
@@ -791,7 +791,7 @@
             <div class="related-grid">
               ${related.map(item => `
                 <a class="related" href="/product.html?id=${encodeURIComponent(item.id)}">
-                  <img src="${parseImages(item)[0] || item.image}" alt="${escapeHtml(item.name)}">
+                  <img src="${parseImages(item)[0] || item.image}" alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
                   <strong>${escapeHtml(item.name)}</strong>
                   <span>${money(item.price)}</span>
                 </a>
@@ -844,7 +844,7 @@
     function showCartAdded(item, cart) {
       const totalQty = cart.reduce((sum, cartItem) => sum + Number(cartItem.qty || 0), 0);
       document.querySelector("#cartAddedProduct").innerHTML = `
-        <img src="${item.image}" alt="${item.name}">
+        <img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async">
         <div>
           <strong>${item.name}</strong>
           <span>${item.category || "상품"} · ${item.color || "기본"} / ${item.size || "FREE"}</span>

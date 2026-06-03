@@ -1460,12 +1460,14 @@
       return productCategory === filter;
     };
 
-    function productCard(product) {
+    function productCard(product, index = 0) {
       const image = firstImage(product);
+      const loading = index < 4 ? "eager" : "lazy";
+      const priority = index < 2 ? " fetchpriority=\"high\"" : "";
       return `
         <article class="product">
           <div class="product-media">
-            <a href="/product.html?id=${encodeURIComponent(product.id)}"><img src="${image}" alt="${escapeHtml(product.name)}" loading="lazy"></a>
+            <a href="/product.html?id=${encodeURIComponent(product.id)}"><img src="${image}" alt="${escapeHtml(product.name)}" loading="${loading}" decoding="async"${priority}></a>
             <span class="badge">${escapeHtml(product.label || "NEW")}</span>
             <div class="quick">
               <button type="button" aria-label="${escapeHtml(product.name)} 관심상품">♡</button>
@@ -1487,8 +1489,8 @@
         return filterMatch && productMatchesSearch(product, searchTerm);
       });
       resultNote.textContent = `총 ${filtered.length}개의 상품을 준비했습니다.`;
-      productGrid.innerHTML = filtered.map(productCard).join("");
-      newGrid.innerHTML = filtered.slice(0, 8).map(productCard).join("");
+      productGrid.innerHTML = filtered.map((product, index) => productCard(product, index)).join("");
+      newGrid.innerHTML = filtered.slice(0, 8).map((product, index) => productCard(product, index)).join("");
     }
 
     function requireMember() {

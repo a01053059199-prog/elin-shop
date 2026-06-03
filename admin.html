@@ -690,9 +690,10 @@
       let uploaded;
       try {
         uploaded = await Promise.all(files.map(file => readImageFile(file, {
-          maxSize: 1000,
-          targetBytes: 360_000,
-          minQuality: 0.5
+          maxSize: 900,
+          targetBytes: 180_000,
+          minQuality: 0.42,
+          quality: 0.74
         })));
       } catch (error) {
         alert(error.message || "이미지를 읽지 못했습니다. JPG 파일로 다시 올려주세요.");
@@ -1516,10 +1517,10 @@
         const objectUrl = URL.createObjectURL(file);
         image.onload = () => {
           try {
-            const targetBytes = options.targetBytes || 650_000;
-            const minQuality = options.minQuality || 0.55;
-            let maxSize = options.maxSize || 1400;
-            let quality = options.quality || 0.82;
+            const targetBytes = options.targetBytes || 300_000;
+            const minQuality = options.minQuality || 0.45;
+            let maxSize = options.maxSize || 1100;
+            let quality = options.quality || 0.76;
             let result = "";
 
             for (let attempt = 0; attempt < 12; attempt += 1) {
@@ -1537,7 +1538,7 @@
               if (quality > minQuality) {
                 quality = Math.max(minQuality, quality - 0.12);
               } else {
-                maxSize = Math.max(640, Math.round(maxSize * 0.82));
+                maxSize = Math.max(520, Math.round(maxSize * 0.82));
               }
             }
 
@@ -1567,7 +1568,7 @@
       preview.classList.remove("empty");
       preview.innerHTML = images.map((image, index) => `
         <div class="preview-item">
-          <img src="${image}" alt="상품 이미지 ${index + 1}">
+          <img src="${image}" alt="상품 이미지 ${index + 1}" loading="lazy" decoding="async">
           <button type="button" onclick="removeImage(${index})" aria-label="이미지 ${index + 1} 삭제">×</button>
         </div>
       `).join("");
@@ -1594,7 +1595,7 @@
       });
       document.querySelector("#productList").innerHTML = filtered.map(product => `
         <article class="product">
-          <img src="${productImages(product)[0] || product.image}" alt="${product.name}">
+          <img src="${productImages(product)[0] || product.image}" alt="${product.name}" loading="lazy" decoding="async">
           <div>
             <strong>${product.name}</strong>
             <div class="meta">${categoryLabel(product.category)} · ${money(product.price)}</div>
