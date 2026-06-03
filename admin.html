@@ -644,9 +644,11 @@
       saveRememberedAdminLogin(loginUsername, loginPassword);
       showAdmin();
       setValue("adminUsername", result.username || "admin");
-      await loadMemberPageSettings();
-      await loadCustomerCenterSettings();
-      await loadSiteSettings();
+      await Promise.all([
+        loadMemberPageSettings(),
+        loadCustomerCenterSettings(),
+        loadSiteSettings()
+      ]);
       await refresh({ initial: true });
       restorePendingAlert();
       startOrderPolling();
@@ -840,13 +842,18 @@
     });
 
     async function refresh(options = {}) {
+      const requests = [
+        fetch("/api/orders", { headers: headers() }).then(response => response.json()),
+        fetch("/api/admin/members", { headers: headers() }).then(response => response.json()),
+        fetch("/api/admin/active-members", { headers: headers() }).then(response => response.json()),
+        fetch("/api/admin/inquiries", { headers: headers() }).then(response => response.json())
+      ];
       if (!options.polling) {
-        products = await (await fetch("/api/products?summary=1")).json();
+        requests.unshift(fetch("/api/products?summary=1").then(response => response.json()));
       }
-      const nextOrders = await (await fetch("/api/orders", { headers: headers() })).json();
-      const nextMembers = await (await fetch("/api/admin/members", { headers: headers() })).json();
-      const nextActiveMembers = await (await fetch("/api/admin/active-members", { headers: headers() })).json();
-      const nextInquiries = await (await fetch("/api/admin/inquiries", { headers: headers() })).json();
+      const results = await Promise.all(requests);
+      if (!options.polling) products = results.shift();
+      const [nextOrders, nextMembers, nextActiveMembers, nextInquiries] = results;
       handleNotifications(nextOrders, nextMembers, nextInquiries, options);
       orders = nextOrders;
       members = nextMembers;
@@ -1943,9 +1950,11 @@
       if (!result) return;
       showAdmin();
       setValue("adminUsername", result.username || "admin");
-      await loadMemberPageSettings();
-      await loadCustomerCenterSettings();
-      await loadSiteSettings();
+      await Promise.all([
+        loadMemberPageSettings(),
+        loadCustomerCenterSettings(),
+        loadSiteSettings()
+      ]);
       await refresh({ initial: true });
       restorePendingAlert();
       startOrderPolling();

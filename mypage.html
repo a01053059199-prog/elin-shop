@@ -195,7 +195,9 @@
     }
 
     async function load() {
-      await loadSettings();
+      const settingsPromise = loadSettings();
+      const mePromise = fetch("/api/auth/me").then(response => response.json()).catch(() => ({ member: null }));
+      await settingsPromise;
       const lastOrder = JSON.parse(sessionStorage.getItem("elinLastOrder") || "null");
       if (lastOrder) {
         const completeBox = document.createElement("section");
@@ -208,7 +210,7 @@
         document.querySelector("#memberBox").before(completeBox);
         sessionStorage.removeItem("elinLastOrder");
       }
-      const me = await (await fetch("/api/auth/me")).json();
+      const me = await mePromise;
       updateHeaderAuth(me.member);
       if (!me.member) {
         location.replace("/login.html?next=/mypage.html");
@@ -226,14 +228,16 @@
         </div>
       `;
 
-      const orderResponse = await fetch("/api/member/orders");
+      const [orderResponse, inquiryResponse] = await Promise.all([
+        fetch("/api/member/orders"),
+        fetch("/api/member/inquiries")
+      ]);
       const orders = orderResponse.ok ? await orderResponse.json() : [];
       document.querySelector("#orders").innerHTML = orders.length ? orders.map(orderCard).join("") : `<p>${escapeHtml(pageSettings.emptyOrderText || "아직 주문내역이 없습니다.")}</p>`;
 
       if (location.hash === "#orders") {
         setTimeout(() => document.querySelector("#orders")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
       }
-      const inquiryResponse = await fetch("/api/member/inquiries");
       const inquiries = inquiryResponse.ok ? await inquiryResponse.json() : [];
       document.querySelector("#inquiries").innerHTML = inquiries.length ? inquiries.map(inquiryCard).join("") : `<p>${escapeHtml(pageSettings.emptyInquiryText || "아직 문의내역이 없습니다.")} <a href="/customer.html">${escapeHtml(pageSettings.inquiryLinkText || "문의하기")}</a></p>`;
       startMemberIdleLogout();

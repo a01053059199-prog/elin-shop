@@ -47,8 +47,15 @@ const mime = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg"
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2"
 };
+
+const cacheableStaticExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico", ".woff", ".woff2"]);
 
 async function ensureData() {
   await fs.mkdir(dataDir, { recursive: true });
@@ -1389,7 +1396,9 @@ async function serveStatic(req, res, url) {
   if (!filePath.startsWith(root)) return send(res, 403, "Forbidden", "text/plain; charset=utf-8");
   try {
     const content = await fs.readFile(filePath);
-    send(res, 200, content, mime[path.extname(filePath)] || "application/octet-stream");
+    const ext = path.extname(filePath);
+    const cacheControl = cacheableStaticExts.has(ext) ? "public, max-age=86400" : "no-store";
+    send(res, 200, content, mime[ext] || "application/octet-stream", { "Cache-Control": cacheControl });
   } catch {
     send(res, 404, "Not found", "text/plain; charset=utf-8");
   }
