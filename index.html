@@ -1424,6 +1424,23 @@
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const firstImage = product => Array.isArray(product.images) && product.images.length ? product.images[0] : product.image;
     const escapeHtml = value => String(value || "").replace(/[&<>"']/g, match => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[match]));
+    const normalizeSearch = value => String(value || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+    const productSearchText = product => normalizeSearch([
+      product.name,
+      product.category,
+      product.keywords,
+      Array.isArray(product.colors) ? product.colors.join(" ") : product.colors,
+      Array.isArray(product.sizes) ? product.sizes.join(" ") : product.sizes
+    ].filter(Boolean).join(" "));
+    const productMatchesSearch = (product, term) => {
+      const query = normalizeSearch(term);
+      if (!query) return true;
+      const text = productSearchText(product);
+      return query.split(" ").every(word => text.includes(word));
+    };
     const parseOptions = (value, fallback) => {
       if (Array.isArray(value)) {
         const items = value.map(item => String(item || "").trim()).filter(Boolean);
@@ -1467,8 +1484,7 @@
     function renderProducts() {
       const filtered = products.filter(product => {
         const filterMatch = categoryMatches(product.category, activeFilter);
-        const text = `${product.name} ${product.category} ${product.keywords || ""}`.toLowerCase();
-        return filterMatch && (!searchTerm || text.includes(searchTerm.toLowerCase()));
+        return filterMatch && productMatchesSearch(product, searchTerm);
       });
       resultNote.textContent = `총 ${filtered.length}개의 상품을 준비했습니다.`;
       productGrid.innerHTML = filtered.map(productCard).join("");
@@ -1565,6 +1581,14 @@
       if (scroll) document.querySelector("#weekly")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    function setSearchTerm(value, scroll = false) {
+      activeFilter = "all";
+      searchTerm = value.trim();
+      document.querySelectorAll(".chip").forEach(chip => chip.classList.toggle("active", chip.dataset.filter === "all"));
+      renderProducts();
+      if (scroll) document.querySelector("#weekly").scrollIntoView();
+    }
+
     document.querySelectorAll(".chip").forEach(button => {
       button.addEventListener("click", () => setProductFilter(button.dataset.filter, false));
     });
@@ -1577,9 +1601,10 @@
     });
     document.querySelector("#searchForm").addEventListener("submit", event => {
       event.preventDefault();
-      searchTerm = document.querySelector("#searchInput").value.trim();
-      renderProducts();
-      document.querySelector("#weekly").scrollIntoView();
+      setSearchTerm(document.querySelector("#searchInput").value, true);
+    });
+    document.querySelector("#searchInput").addEventListener("input", event => {
+      setSearchTerm(event.target.value);
     });
     document.querySelector("#cartBtn").addEventListener("click", openDrawer);
     document.querySelector("#mobileCartBtn").addEventListener("click", openDrawer);
