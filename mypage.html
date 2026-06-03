@@ -26,6 +26,9 @@
     button { border: 0; border-radius: 4px; background: #171717; color: #fff; padding: 11px 14px; font-weight: 900; cursor: pointer; }
     .order strong, .inquiry strong { display: block; margin-bottom: 6px; font-size: 17px; line-height: 1.45; }
     .order-lines { margin: 10px 0; padding: 10px 0; border-block: 1px solid #eee8df; }
+    .order-detail { display: grid; gap: 7px; margin-top: 12px; color: #555; line-height: 1.65; font-size: 15px; }
+    .order-detail div { display: grid; grid-template-columns: 118px 1fr; gap: 10px; }
+    .order-detail b { color: #171717; font-weight: 900; }
     .inquiry { display: grid; gap: 12px; }
     .inquiry .meta { font-size: 13px; line-height: 1.55; }
     .answer { margin-top: 0; padding: 14px 16px; border-radius: 6px; background: #f5f1eb; white-space: pre-wrap; line-height: 1.75; font-size: 15px; color: #222; }
@@ -41,6 +44,7 @@
       h1 { font-size: 24px; }
       .panel, .order, .notice, .inquiry { padding: 15px; }
       .order strong, .inquiry strong { font-size: 16px; }
+      .order-detail div { grid-template-columns: 1fr; gap: 2px; }
       .answer { padding: 12px; font-size: 14px; line-height: 1.7; }
     }
   </style>
@@ -134,7 +138,7 @@
       return rows.join(" · ");
     }
 
-    function orderCard(order) {
+    function legacyOrderCard(order) {
       const itemText = (order.items || []).map(item => `${escapeHtml(item.name)} ${escapeHtml(item.color || "기본")}/${escapeHtml(item.size || "FREE")} ${Number(item.qty || 0)}개`).join(", ");
       const lines = [];
       if (pageSettings.showOrderStatus) lines.push(`${escapeHtml(order.status || "주문접수")} · ${new Date(order.createdAt || order.created_at).toLocaleString("ko-KR")}`);
@@ -146,6 +150,31 @@
           ${lines.map(line => `<div class="meta">${line}</div>`).join("")}
           <div class="order-lines meta">${itemText}</div>
           <div><strong>${money(order.total)}</strong></div>
+        </article>
+      `;
+    }
+
+    function orderCard(order) {
+      const itemText = (order.items || []).map(item => {
+        const optionText = [item.color, item.size].filter(Boolean).join("/");
+        return `${escapeHtml(item.name || "상품")} ${optionText ? escapeHtml(optionText) + " " : ""}${Number(item.qty || 0)}개`;
+      }).join(", ") || "상품 정보 없음";
+      const orderDate = order.createdAt || order.created_at ? new Date(order.createdAt || order.created_at).toLocaleString("ko-KR") : "-";
+      const trackingText = [order.tracking_company, order.tracking_number].filter(Boolean).join(" ") || "미입력";
+      const addressText = order.customer?.address || "미입력";
+      const memoText = order.customer?.memo || "없음";
+      return `
+        <article class="order">
+          <strong>${escapeHtml(order.id)}</strong>
+          <div class="order-detail">
+            <div><b>주문 일시</b><span>${escapeHtml(orderDate)}</span></div>
+            <div><b>제품명</b><span>${itemText}</span></div>
+            <div><b>진행 상황</b><span>${escapeHtml(order.status || "입금대기")}</span></div>
+            <div><b>배송 송장 정보</b><span>${escapeHtml(trackingText)}</span></div>
+            <div><b>배송 주소</b><span>${escapeHtml(addressText)}</span></div>
+            <div><b>배송 요청사항</b><span>${escapeHtml(memoText)}</span></div>
+            <div><b>구매가</b><span><strong>${money(order.total)}</strong></span></div>
+          </div>
         </article>
       `;
     }
