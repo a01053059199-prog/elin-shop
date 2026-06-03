@@ -77,15 +77,22 @@
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: cover;
+      object-fit: contain;
+      background: #f1eee8;
     }
     .main-image {
       background: #f1eee8;
       border-radius: 4px;
       overflow: hidden;
       min-height: 520px;
+      display: grid;
+      place-items: center;
     }
-    .main-image img { aspect-ratio: 4 / 5; height: auto; }
+    .main-image img {
+      height: auto;
+      max-height: 760px;
+      aspect-ratio: auto;
+    }
     .buy-panel {
       position: sticky;
       top: 18px;
@@ -241,7 +248,7 @@
     }
     .detail-images img {
       height: auto;
-      aspect-ratio: 4 / 5;
+      aspect-ratio: auto;
     }
     .guide-table {
       width: 100%;
@@ -270,7 +277,7 @@
     .related img {
       width: 100%;
       aspect-ratio: 1 / 1.15;
-      object-fit: cover;
+      object-fit: contain;
       background: #f1eee8;
       border-radius: 4px;
     }
@@ -285,6 +292,132 @@
       margin-top: 4px;
       font-size: 13px;
       font-weight: 800;
+    }
+    .product-reviews {
+      text-align: left;
+    }
+    .review-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .review-head h2 {
+      margin: 0;
+      text-align: left;
+      font-size: 22px;
+    }
+    .review-head span {
+      color: #777;
+      font-size: 14px;
+    }
+    .review-login-box,
+    .review-form,
+    .review-card {
+      background: #fff;
+      border: 1px solid #e6e0d8;
+      border-radius: 6px;
+      padding: 18px;
+    }
+    .review-login-box {
+      text-align: center;
+      color: #555;
+    }
+    .review-login-box a {
+      display: inline-block;
+      margin-left: 8px;
+      font-weight: 900;
+      text-decoration: underline;
+    }
+    .review-form {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .review-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 12px;
+    }
+    .review-form textarea {
+      width: 100%;
+      min-height: 130px;
+      border: 1px solid #ddd5cb;
+      border-radius: 4px;
+      padding: 13px;
+      resize: vertical;
+      font: inherit;
+      background: #fff;
+    }
+    .review-form button {
+      justify-self: start;
+      min-width: 130px;
+      height: 46px;
+      border: 0;
+      border-radius: 4px;
+      background: #171717;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .review-message {
+      color: #777;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .review-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .review-preview img,
+    .review-card-images img {
+      width: 86px;
+      height: 86px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #e6e0d8;
+      background: #f3f0ea;
+    }
+    .review-list {
+      display: grid;
+      gap: 12px;
+    }
+    .review-card {
+      display: grid;
+      gap: 10px;
+    }
+    .review-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #777;
+      font-size: 13px;
+    }
+    .review-stars {
+      color: #171717;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+    .review-card-content {
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+    .review-card-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .review-empty {
+      padding: 28px;
+      text-align: center;
+      color: #777;
+      background: #fff;
+      border: 1px solid #e6e0d8;
+      border-radius: 6px;
     }
     .empty {
       display: none;
@@ -343,7 +476,7 @@
     .cart-added-product img {
       width: 88px;
       height: 88px;
-      object-fit: cover;
+      object-fit: contain;
       border: 1px solid #e6e0d8;
       background: #f3f0ea;
     }
@@ -400,6 +533,7 @@
       .thumbs button { width: 100%; }
       .main-image { min-height: 0; }
       .related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .review-row { grid-template-columns: 1fr; }
     }
     @media (max-width: 520px) {
       .bar { align-items: flex-start; flex-direction: column; }
@@ -506,6 +640,8 @@
     let allProducts = [];
     let currentMember = null;
     let siteSettings = {};
+    let productReviews = [];
+    let reviewImages = [];
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({
@@ -621,10 +757,113 @@
       if (target) target.textContent = money(total);
     }
 
+    function formatDate(value) {
+      if (!value) return "";
+      return new Date(value).toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    function reviewStars(rating) {
+      const count = Math.max(1, Math.min(5, Number(rating || 5)));
+      return "★★★★★".slice(0, count) + "☆☆☆☆☆".slice(0, 5 - count);
+    }
+
+    function parseReviewImages(review) {
+      if (Array.isArray(review.images)) return review.images.filter(Boolean).slice(0, 5);
+      if (review.images) {
+        try {
+          const parsed = JSON.parse(review.images);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, 5);
+        } catch (_) {}
+      }
+      return [review.image].filter(Boolean);
+    }
+
+    function reviewMatchesProduct(review) {
+      return String(review.productId || review.product_id || "") === String(product.id)
+        || String(review.productName || review.product_name || "") === String(product.name);
+    }
+
+    function reviewCard(review) {
+      const images = parseReviewImages(review);
+      return `
+        <article class="review-card">
+          <div class="review-card-head">
+            <strong>${escapeHtml(review.username || review.name || "member")}</strong>
+            <span>${formatDate(review.createdAt || review.created_at)}</span>
+          </div>
+          <div class="review-stars">${reviewStars(review.rating)}</div>
+          <div class="review-card-content">${escapeHtml(review.content || "")}</div>
+          ${images.length ? `<div class="review-card-images">${images.map((image, index) => `<img src="${escapeHtml(image)}" alt="후기 이미지 ${index + 1}" loading="lazy" decoding="async">`).join("")}</div>` : ""}
+        </article>
+      `;
+    }
+
+    function dataUrlBytes(dataUrl) {
+      const base64 = String(dataUrl || "").split(",")[1] || "";
+      return Math.ceil(base64.length * 0.75);
+    }
+
+    function compressReviewImage(file) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        image.onload = () => {
+          try {
+            let maxSize = 900;
+            let quality = 0.74;
+            const targetBytes = 180_000;
+            const minQuality = 0.42;
+            let result = "";
+            for (let attempt = 0; attempt < 12; attempt += 1) {
+              const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+              const canvas = document.createElement("canvas");
+              canvas.width = Math.max(1, Math.round(image.width * scale));
+              canvas.height = Math.max(1, Math.round(image.height * scale));
+              const context = canvas.getContext("2d");
+              context.fillStyle = "#fff";
+              context.fillRect(0, 0, canvas.width, canvas.height);
+              context.drawImage(image, 0, 0, canvas.width, canvas.height);
+              result = canvas.toDataURL("image/jpeg", quality);
+              if (dataUrlBytes(result) <= targetBytes) break;
+              if (quality > minQuality) quality = Math.max(minQuality, quality - 0.1);
+              else maxSize = Math.max(560, Math.round(maxSize * 0.82));
+            }
+            URL.revokeObjectURL(objectUrl);
+            resolve(result);
+          } catch (error) {
+            URL.revokeObjectURL(objectUrl);
+            reject(error);
+          }
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("이미지를 읽지 못했습니다."));
+        };
+        image.src = objectUrl;
+      });
+    }
+
+    async function loadProductReviews() {
+      try {
+        const response = await fetch("/api/reviews");
+        if (!response.ok) return;
+        const reviews = await response.json();
+        productReviews = reviews.filter(reviewMatchesProduct);
+        renderProductReviews();
+      } catch (_) {}
+    }
+
     async function load() {
-      const [productResponse, settingsResponse] = await Promise.all([
+      const [productResponse, settingsResponse, memberResponse] = await Promise.all([
         fetch(`/api/products/${encodeURIComponent(id)}`),
-        fetch("/api/site-settings")
+        fetch("/api/site-settings"),
+        fetch("/api/auth/me")
       ]);
       if (!productResponse.ok) {
         document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
@@ -632,12 +871,17 @@
       }
       product = await productResponse.json();
       if (settingsResponse.ok) siteSettings = await settingsResponse.json();
+      if (memberResponse.ok) {
+        const memberData = await memberResponse.json();
+        currentMember = memberData.member || null;
+      }
       if (!product) {
         document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
         return;
       }
       document.title = `ELIN | ${product.name}`;
       renderProduct();
+      loadProductReviews();
       loadRelatedProducts();
     }
 
@@ -685,6 +929,76 @@
           <span>${money(item.price)}</span>
         </a>
       `).join("");
+    }
+
+    function renderProductReviews() {
+      const list = document.querySelector("#productReviewList");
+      const count = document.querySelector("#productReviewCount");
+      if (!list || !count) return;
+      count.textContent = `${productReviews.length}개`;
+      list.innerHTML = productReviews.length
+        ? productReviews.map(reviewCard).join("")
+        : `<div class="review-empty">등록된 상품 후기가 없습니다.</div>`;
+    }
+
+    function bindProductReviewForm() {
+      const form = document.querySelector("#productReviewForm");
+      const fileInput = document.querySelector("#reviewImages");
+      const preview = document.querySelector("#reviewPreview");
+      const message = document.querySelector("#reviewMessage");
+      if (!form) return;
+
+      fileInput?.addEventListener("change", async () => {
+        const files = Array.from(fileInput.files || []).slice(0, 5);
+        if (!files.length) return;
+        message.textContent = "이미지를 줄이는 중입니다...";
+        try {
+          const compressed = await Promise.all(files.map(compressReviewImage));
+          reviewImages = reviewImages.concat(compressed).slice(0, 5);
+          preview.innerHTML = reviewImages.map((image, index) => `<img src="${image}" alt="후기 이미지 ${index + 1}">`).join("");
+          message.textContent = "이미지가 첨부되었습니다.";
+        } catch (error) {
+          message.textContent = error.message || "이미지 첨부에 실패했습니다.";
+        }
+        fileInput.value = "";
+      });
+
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!currentMember) {
+          location.href = "/login.html";
+          return;
+        }
+        const content = document.querySelector("#reviewContent").value.trim();
+        if (!content) {
+          message.textContent = "후기 내용을 입력해주세요.";
+          return;
+        }
+        message.textContent = "후기를 등록하는 중입니다...";
+        const response = await fetch("/api/reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: product.id,
+            productName: product.name,
+            rating: document.querySelector("#reviewRating").value,
+            content,
+            images: reviewImages,
+            image: reviewImages[0] || ""
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          message.textContent = data.error || "후기 등록에 실패했습니다.";
+          return;
+        }
+        productReviews.unshift(data);
+        reviewImages = [];
+        form.reset();
+        preview.innerHTML = "";
+        message.textContent = "후기가 등록되었습니다.";
+        renderProductReviews();
+      });
     }
 
     function renderProduct() {
@@ -785,6 +1099,49 @@
           </table>
         </section>
 
+        <section class="section product-reviews" id="productReviews">
+          <div class="review-head">
+            <h2>상품 후기</h2>
+            <span id="productReviewCount">0개</span>
+          </div>
+          ${currentMember ? `
+            <form class="review-form" id="productReviewForm">
+              <div class="review-row">
+                <div>
+                  <label for="reviewRating">평점</label>
+                  <select id="reviewRating">
+                    <option value="5">★★★★★ 아주 좋아요</option>
+                    <option value="4">★★★★ 좋습니다</option>
+                    <option value="3">★★★ 보통입니다</option>
+                    <option value="2">★★ 아쉬워요</option>
+                    <option value="1">★ 별로예요</option>
+                  </select>
+                </div>
+                <div>
+                  <label>작성 아이디</label>
+                  <input value="${escapeHtml(currentMember.username || currentMember.name || "")}" readonly>
+                </div>
+              </div>
+              <label for="reviewContent">후기 내용</label>
+              <textarea id="reviewContent" placeholder="상품 후기를 작성해주세요."></textarea>
+              <label for="reviewImages">후기 사진</label>
+              <input id="reviewImages" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+              <div class="review-message">사진은 최대 5장까지 자동 압축되어 등록됩니다.</div>
+              <div class="review-preview" id="reviewPreview"></div>
+              <button type="submit">후기 등록</button>
+              <div class="review-message" id="reviewMessage"></div>
+            </form>
+          ` : `
+            <div class="review-login-box">
+              후기는 로그인 후 작성할 수 있습니다.
+              <a href="/login.html">로그인</a>
+            </div>
+          `}
+          <div class="review-list" id="productReviewList">
+            <div class="review-empty">후기를 불러오는 중입니다.</div>
+          </div>
+        </section>
+
         ${related.length ? `
           <section class="section">
             <h2>함께 보면 좋은 상품</h2>
@@ -818,6 +1175,8 @@
           if (!detail.open) detail.open = true;
         });
       });
+      renderProductReviews();
+      bindProductReviewForm();
     }
 
     function requireMember() {
