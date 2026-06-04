@@ -726,8 +726,7 @@
           maxSize: 900,
           targetBytes: 180_000,
           minQuality: 0.42,
-          quality: 0.74,
-          cleanTopRight: true
+          quality: 0.74
         })));
       } catch (error) {
         alert(error.message || "이미지를 읽지 못했습니다. JPG 파일로 다시 올려주세요.");
@@ -2113,13 +2112,7 @@
       event.preventDefault();
       const id = formValue("productId");
       let images = parseImages(formValue("image")).slice(0, productImageLimit);
-      try {
-        images = await Promise.all(images.map(cleanSavedProductImage));
-        setImages(images);
-      } catch (error) {
-        alert(error.message || "상품 이미지 보정에 실패했습니다. 이미지를 다시 업로드해주세요.");
-        return;
-      }
+      setImages(images);
       const payload = {
         name: formValue("name"),
         category: formValue("category"),
