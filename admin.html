@@ -51,6 +51,7 @@
     .preview-item { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
     .preview-item button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border-radius: 999px; background: rgba(23,23,23,.82); color: #fff; font-size: 14px; line-height: 1; }
     .preview-item .clean-btn { top: auto; right: 4px; bottom: 4px; width: auto; height: 24px; padding: 0 7px; border-radius: 999px; font-size: 11px; background: rgba(181,22,38,.9); }
+    .preview-item .crop-btn { top: auto; left: 4px; bottom: 4px; width: auto; height: 24px; padding: 0 7px; border-radius: 999px; font-size: 11px; background: rgba(17,17,17,.86); }
     .image-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
     .image-tools button { width: auto; height: 34px; padding: 0 12px; font-size: 13px; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
@@ -558,17 +559,17 @@
   <div class="clean-modal hidden" id="imageCleanModal" aria-hidden="true">
     <div class="clean-box">
       <div class="clean-head">
-        <h3>사진 숫자 제거</h3>
+        <h3 id="imageCleanTitle">사진 편집</h3>
         <button type="button" class="ghost" id="closeImageClean">닫기</button>
       </div>
-      <div class="hint">사진에서 숫자가 있는 부분을 마우스나 손가락으로 드래그한 뒤 적용하세요.</div>
+      <div class="hint" id="imageCleanHint">사진에서 수정할 부분을 마우스나 손가락으로 드래그한 뒤 적용하세요.</div>
       <div class="clean-stage" id="imageCleanStage">
         <img id="imageCleanTarget" alt="숫자 제거할 상품 이미지">
         <div class="clean-selection" id="imageCleanSelection"></div>
       </div>
       <div class="clean-actions">
         <button type="button" class="ghost" id="resetImageClean">선택 다시하기</button>
-        <button type="button" id="applyImageClean">선택 영역 제거</button>
+        <button type="button" id="applyImageClean">적용</button>
       </div>
     </div>
   </div>
@@ -596,6 +597,7 @@
     let audioContext = null;
     let alertTargetTab = "orders";
     let cleanImageIndex = -1;
+    let imageEditMode = "clean";
     let cleanSelection = null;
     let cleanDragStart = null;
     const productImageLimit = 15;
@@ -776,24 +778,27 @@
     });
     document.querySelector("#applyImageClean").addEventListener("click", async () => {
       if (!cleanSelection || cleanSelection.width < 0.005 || cleanSelection.height < 0.005) {
-        alert("숫자가 있는 영역을 먼저 드래그해서 선택해주세요.");
+        alert(imageEditMode === "crop" ? "자를 영역을 먼저 드래그해서 선택해주세요." : "숫자가 있는 영역을 먼저 드래그해서 선택해주세요.");
         return;
       }
       const images = parseImages(formValue("image"));
       const src = images[cleanImageIndex];
       if (!src) return closeImageCleanModal();
       const button = document.querySelector("#applyImageClean");
+      const mode = imageEditMode;
       button.disabled = true;
       button.textContent = "처리 중...";
       try {
-        images[cleanImageIndex] = await cleanSelectedImageArea(src, cleanSelection);
+        images[cleanImageIndex] = mode === "crop"
+          ? await cropSelectedImageArea(src, cleanSelection)
+          : await cleanSelectedImageArea(src, cleanSelection);
         setImages(images);
         closeImageCleanModal();
       } catch (error) {
-        alert(error.message || "숫자 제거에 실패했습니다.");
+        alert(error.message || "이미지 편집에 실패했습니다.");
       } finally {
         button.disabled = false;
-        button.textContent = "선택 영역 제거";
+        button.textContent = mode === "crop" ? "선택 영역으로 자르기" : "선택 영역 제거";
       }
     });
     document.querySelector("#memberHeroImageFile").addEventListener("change", async event => {
@@ -1590,17 +1595,23 @@
       setImages(images);
     };
 
-    window.openImageClean = index => {
+    window.openImageClean = (index, mode = "clean") => {
       const images = parseImages(formValue("image"));
       const src = images[index];
       if (!src) return;
       if (!String(src).startsWith("data:image/")) {
-        alert("URL 이미지는 먼저 파일로 업로드한 뒤 숫자 제거를 사용할 수 있습니다.");
+        alert("URL 이미지는 먼저 파일로 업로드한 뒤 편집할 수 있습니다.");
         return;
       }
       cleanImageIndex = index;
+      imageEditMode = mode;
       cleanSelection = null;
       cleanDragStart = null;
+      document.querySelector("#imageCleanTitle").textContent = mode === "crop" ? "사진 자르기" : "사진 숫자 제거";
+      document.querySelector("#imageCleanHint").textContent = mode === "crop"
+        ? "남길 영역을 드래그한 뒤 자르기를 누르세요."
+        : "숫자가 있는 부분을 드래그한 뒤 제거를 누르세요.";
+      document.querySelector("#applyImageClean").textContent = mode === "crop" ? "선택 영역으로 자르기" : "선택 영역 제거";
       document.querySelector("#imageCleanTarget").src = src;
       document.querySelector("#imageCleanSelection").style.display = "none";
       document.querySelector("#imageCleanModal").classList.remove("hidden");
@@ -1609,6 +1620,7 @@
 
     function closeImageCleanModal() {
       cleanImageIndex = -1;
+      imageEditMode = "clean";
       cleanSelection = null;
       cleanDragStart = null;
       document.querySelector("#imageCleanModal").classList.add("hidden");
@@ -1778,6 +1790,37 @@
       });
     }
 
+    function cropSelectedImageArea(src, rect) {
+      if (!String(src || "").startsWith("data:image/")) return Promise.reject(new Error("업로드 이미지에서만 자르기를 사용할 수 있습니다."));
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          try {
+            const sourceWidth = image.naturalWidth || image.width;
+            const sourceHeight = image.naturalHeight || image.height;
+            const sx = Math.max(0, Math.round(rect.x * sourceWidth));
+            const sy = Math.max(0, Math.round(rect.y * sourceHeight));
+            const sw = Math.max(1, Math.round(rect.width * sourceWidth));
+            const sh = Math.max(1, Math.round(rect.height * sourceHeight));
+            const maxSize = 900;
+            const scale = Math.min(1, maxSize / Math.max(sw, sh));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(sw * scale));
+            canvas.height = Math.max(1, Math.round(sh * scale));
+            const context = canvas.getContext("2d");
+            context.fillStyle = "#fff";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", 0.8));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        image.onerror = () => reject(new Error("이미지를 불러오지 못했습니다."));
+        image.src = src;
+      });
+    }
+
     function cleanRectMark(context, width, height, rect) {
       const x = Math.max(0, Math.round(rect.x * width));
       const y = Math.max(0, Math.round(rect.y * height));
@@ -1824,7 +1867,8 @@
         <div class="preview-item">
           <img src="${image}" alt="상품 이미지" loading="lazy" decoding="async">
           <button type="button" onclick="removeImage(${index})" aria-label="이미지 ${index + 1} 삭제">×</button>
-          <button type="button" class="clean-btn" onclick="openImageClean(${index})">숫자 제거</button>
+          <button type="button" class="crop-btn" onclick="openImageClean(${index}, 'crop')">자르기</button>
+          <button type="button" class="clean-btn" onclick="openImageClean(${index}, 'clean')">숫자 제거</button>
         </div>
       `).join("");
     }
