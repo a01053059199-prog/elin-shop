@@ -24,9 +24,11 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
 const PRODUCT_IMAGE_LIMIT = 15;
+const PRODUCT_SUMMARY_CACHE_MS = 15000;
 
 const adminSessions = new Set();
 const memberSessions = new Map();
+let productSummaryCache = { at: 0, items: null };
 
 const seedProducts = [
   { id: "p1", name: "엘린 클래식 트위드 자켓", category: "women", keywords: "여성 의류 자켓", label: "BEST", price: 168000, old: 198000, stock: 12, image: "https://images.unsplash.com/photo-1548624149-f9b185c22e9d?auto=format&fit=crop&w=800&q=80" },
@@ -719,24 +721,36 @@ async function listProducts() {
   return await readJson(productsFile);
 }
 
+function clearProductSummaryCache() {
+  productSummaryCache = { at: 0, items: null };
+}
+
 async function listProductSummaries() {
-  if (useSupabase) {
-    return await supabase("products?select=id,name,category,keywords,label,price,image,colors,sizes,created_at&order=created_at.desc");
+  const now = Date.now();
+  if (productSummaryCache.items && now - productSummaryCache.at < PRODUCT_SUMMARY_CACHE_MS) {
+    return productSummaryCache.items;
   }
-  const products = await readJson(productsFile);
-  return products.map(product => ({
-    id: product.id,
-    name: product.name,
-    category: product.category,
-    keywords: product.keywords,
-    label: product.label,
-    price: product.price,
-    image: product.image || (Array.isArray(product.images) ? product.images[0] : ""),
-    colors: product.colors,
-    sizes: product.sizes,
-    created_at: product.created_at,
-    createdAt: product.createdAt
-  }));
+  let summaries;
+  if (useSupabase) {
+    summaries = await supabase("products?select=id,name,category,keywords,label,price,image,colors,sizes,created_at&order=created_at.desc");
+  } else {
+    const products = await readJson(productsFile);
+    summaries = products.map(product => ({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      keywords: product.keywords,
+      label: product.label,
+      price: product.price,
+      image: product.image || (Array.isArray(product.images) ? product.images[0] : ""),
+      colors: product.colors,
+      sizes: product.sizes,
+      created_at: product.created_at,
+      createdAt: product.createdAt
+    }));
+  }
+  productSummaryCache = { at: now, items: summaries };
+  return summaries;
 }
 
 async function getProduct(id) {
@@ -756,11 +770,13 @@ async function createProduct(input) {
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(product)
     });
+    clearProductSummaryCache();
     return created;
   }
   const products = await readJson(productsFile);
   products.unshift(product);
   await writeJson(productsFile, products);
+  clearProductSummaryCache();
   return product;
 }
 
@@ -773,6 +789,7 @@ async function updateProduct(id, input) {
       body: JSON.stringify(product)
     });
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
+    clearProductSummaryCache();
     return updated;
   }
   const products = await readJson(productsFile);
@@ -780,16 +797,19 @@ async function updateProduct(id, input) {
   if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
   products[index] = product;
   await writeJson(productsFile, products);
+  clearProductSummaryCache();
   return product;
 }
 
 async function deleteProduct(id) {
   if (useSupabase) {
     await supabase(`products?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    clearProductSummaryCache();
     return;
   }
   const products = await readJson(productsFile);
   await writeJson(productsFile, products.filter(product => product.id !== id));
+  clearProductSummaryCache();
 }
 
 async function listOrders() {

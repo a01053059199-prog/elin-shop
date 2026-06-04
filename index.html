@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ELIN | Online Select Shop</title>
+  <link rel="preload" href="/api/products?summary=1" as="fetch" crossorigin="anonymous" />
   <style>
     :root {
       --ink: #111;
@@ -1950,10 +1951,9 @@
       if (!hasCachedSiteSettings) initHeroSlider();
     });
     initCategorySlider();
-    if (applyCachedProducts()) {
-      renderProducts();
-      renderCart();
-    }
+    applyCachedProducts();
+    renderProducts();
+    renderCart();
     loadProducts();
     loadMemberNav();
   </script>
