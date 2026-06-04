@@ -50,9 +50,19 @@
     .image-preview img { width: 96px; height: 96px; border-radius: 6px; object-fit: contain; background: #eee8df; display: block; color: transparent; font-size: 0; }
     .preview-item { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
     .preview-item button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border-radius: 999px; background: rgba(23,23,23,.82); color: #fff; font-size: 14px; line-height: 1; }
+    .preview-item .clean-btn { top: auto; right: 4px; bottom: 4px; width: auto; height: 24px; padding: 0 7px; border-radius: 999px; font-size: 11px; background: rgba(181,22,38,.9); }
     .image-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
     .image-tools button { width: auto; height: 34px; padding: 0 12px; font-size: 13px; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
+    .clean-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 18px; background: rgba(0,0,0,.55); }
+    .clean-modal.hidden { display: none; }
+    .clean-box { width: min(920px, 96vw); max-height: 92vh; overflow: auto; border-radius: 10px; background: #fff; padding: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.24); }
+    .clean-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .clean-head h3 { margin: 0; }
+    .clean-stage { position: relative; display: grid; place-items: center; min-height: 320px; max-height: 68vh; overflow: hidden; border: 1px solid #e6e0d8; border-radius: 8px; background: #f8f6f2; touch-action: none; cursor: crosshair; }
+    .clean-stage img { max-width: 100%; max-height: 68vh; object-fit: contain; display: block; user-select: none; pointer-events: none; }
+    .clean-selection { position: absolute; display: none; border: 2px solid #16a34a; background: rgba(22,163,74,.18); box-shadow: 0 0 0 9999px rgba(0,0,0,.18); pointer-events: none; }
+    .clean-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 12px; }
     .order-alert { display: none; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0; padding: 14px 16px; border-radius: 8px; background: #fff0f1; border: 1px solid #f0b7bd; color: #8c111b; }
     .order-alert.show { display: flex; }
     .order-alert strong { display: block; margin-bottom: 3px; }
@@ -545,6 +555,24 @@
     </section>
   </main>
 
+  <div class="clean-modal hidden" id="imageCleanModal" aria-hidden="true">
+    <div class="clean-box">
+      <div class="clean-head">
+        <h3>사진 숫자 제거</h3>
+        <button type="button" class="ghost" id="closeImageClean">닫기</button>
+      </div>
+      <div class="hint">사진에서 숫자가 있는 부분을 마우스나 손가락으로 드래그한 뒤 적용하세요.</div>
+      <div class="clean-stage" id="imageCleanStage">
+        <img id="imageCleanTarget" alt="숫자 제거할 상품 이미지">
+        <div class="clean-selection" id="imageCleanSelection"></div>
+      </div>
+      <div class="clean-actions">
+        <button type="button" class="ghost" id="resetImageClean">선택 다시하기</button>
+        <button type="button" id="applyImageClean">선택 영역 제거</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let products = [];
     let orders = [];
@@ -567,6 +595,9 @@
     let lastSoundError = "";
     let audioContext = null;
     let alertTargetTab = "orders";
+    let cleanImageIndex = -1;
+    let cleanSelection = null;
+    let cleanDragStart = null;
     const productImageLimit = 15;
     const adminRememberKey = "elinAdminRemember";
     const notifySoundKey = "elinAdminNotifySound";
@@ -712,6 +743,58 @@
       setValue("image", "");
       document.querySelector("#imageFile").value = "";
       renderImagePreview("");
+    });
+
+    document.querySelector("#closeImageClean").addEventListener("click", closeImageCleanModal);
+    document.querySelector("#resetImageClean").addEventListener("click", () => {
+      cleanSelection = null;
+      cleanDragStart = null;
+      drawCleanSelection();
+    });
+    document.querySelector("#imageCleanStage").addEventListener("pointerdown", event => {
+      if (event.target.closest("button")) return;
+      cleanDragStart = imagePointFromEvent(event);
+      cleanSelection = { x: cleanDragStart.x, y: cleanDragStart.y, width: 0, height: 0 };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      drawCleanSelection();
+    });
+    document.querySelector("#imageCleanStage").addEventListener("pointermove", event => {
+      if (!cleanDragStart) return;
+      const point = imagePointFromEvent(event);
+      cleanSelection = {
+        x: Math.min(cleanDragStart.x, point.x),
+        y: Math.min(cleanDragStart.y, point.y),
+        width: Math.abs(point.x - cleanDragStart.x),
+        height: Math.abs(point.y - cleanDragStart.y)
+      };
+      drawCleanSelection();
+    });
+    document.querySelector("#imageCleanStage").addEventListener("pointerup", event => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      cleanDragStart = null;
+      drawCleanSelection();
+    });
+    document.querySelector("#applyImageClean").addEventListener("click", async () => {
+      if (!cleanSelection || cleanSelection.width < 0.005 || cleanSelection.height < 0.005) {
+        alert("숫자가 있는 영역을 먼저 드래그해서 선택해주세요.");
+        return;
+      }
+      const images = parseImages(formValue("image"));
+      const src = images[cleanImageIndex];
+      if (!src) return closeImageCleanModal();
+      const button = document.querySelector("#applyImageClean");
+      button.disabled = true;
+      button.textContent = "처리 중...";
+      try {
+        images[cleanImageIndex] = await cleanSelectedImageArea(src, cleanSelection);
+        setImages(images);
+        closeImageCleanModal();
+      } catch (error) {
+        alert(error.message || "숫자 제거에 실패했습니다.");
+      } finally {
+        button.disabled = false;
+        button.textContent = "선택 영역 제거";
+      }
     });
     document.querySelector("#memberHeroImageFile").addEventListener("change", async event => {
       const file = event.target.files[0];
@@ -1507,6 +1590,58 @@
       setImages(images);
     };
 
+    window.openImageClean = index => {
+      const images = parseImages(formValue("image"));
+      const src = images[index];
+      if (!src) return;
+      if (!String(src).startsWith("data:image/")) {
+        alert("URL 이미지는 먼저 파일로 업로드한 뒤 숫자 제거를 사용할 수 있습니다.");
+        return;
+      }
+      cleanImageIndex = index;
+      cleanSelection = null;
+      cleanDragStart = null;
+      document.querySelector("#imageCleanTarget").src = src;
+      document.querySelector("#imageCleanSelection").style.display = "none";
+      document.querySelector("#imageCleanModal").classList.remove("hidden");
+      document.querySelector("#imageCleanModal").setAttribute("aria-hidden", "false");
+    };
+
+    function closeImageCleanModal() {
+      cleanImageIndex = -1;
+      cleanSelection = null;
+      cleanDragStart = null;
+      document.querySelector("#imageCleanModal").classList.add("hidden");
+      document.querySelector("#imageCleanModal").setAttribute("aria-hidden", "true");
+      document.querySelector("#imageCleanTarget").removeAttribute("src");
+      document.querySelector("#imageCleanSelection").style.display = "none";
+    }
+
+    function imagePointFromEvent(event) {
+      const image = document.querySelector("#imageCleanTarget");
+      const box = image.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+      const y = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
+      return { x, y };
+    }
+
+    function drawCleanSelection() {
+      const selection = document.querySelector("#imageCleanSelection");
+      if (!cleanSelection) {
+        selection.style.display = "none";
+        return;
+      }
+      const image = document.querySelector("#imageCleanTarget");
+      const stage = document.querySelector("#imageCleanStage");
+      const imageBox = image.getBoundingClientRect();
+      const stageBox = stage.getBoundingClientRect();
+      selection.style.display = "block";
+      selection.style.left = `${imageBox.left - stageBox.left + cleanSelection.x * imageBox.width}px`;
+      selection.style.top = `${imageBox.top - stageBox.top + cleanSelection.y * imageBox.height}px`;
+      selection.style.width = `${cleanSelection.width * imageBox.width}px`;
+      selection.style.height = `${cleanSelection.height * imageBox.height}px`;
+    }
+
     function dataUrlBytes(dataUrl) {
       const base64 = String(dataUrl || "").split(",")[1] || "";
       return Math.ceil(base64.length * 0.75);
@@ -1619,6 +1754,63 @@
       });
     }
 
+    function cleanSelectedImageArea(src, rect) {
+      if (!String(src || "").startsWith("data:image/")) return Promise.reject(new Error("업로드 이미지에서만 숫자 영역을 제거할 수 있습니다."));
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = image.naturalWidth || image.width;
+            canvas.height = image.naturalHeight || image.height;
+            const context = canvas.getContext("2d");
+            context.fillStyle = "#fff";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            cleanRectMark(context, canvas.width, canvas.height, rect);
+            resolve(canvas.toDataURL("image/jpeg", 0.78));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        image.onerror = () => reject(new Error("이미지를 불러오지 못했습니다."));
+        image.src = src;
+      });
+    }
+
+    function cleanRectMark(context, width, height, rect) {
+      const x = Math.max(0, Math.round(rect.x * width));
+      const y = Math.max(0, Math.round(rect.y * height));
+      const patchWidth = Math.max(1, Math.round(rect.width * width));
+      const patchHeight = Math.max(1, Math.round(rect.height * height));
+      const sampleY = Math.min(height - 1, y + patchHeight + Math.max(2, Math.round(height * 0.01)));
+      const sampleX = Math.max(0, x - Math.round(patchWidth * 0.25));
+      const sampleWidth = Math.max(1, Math.min(width - sampleX, Math.round(patchWidth * 1.2)));
+      const sampleHeight = Math.max(1, Math.min(height - sampleY, Math.max(8, Math.round(patchHeight * 0.5))));
+      let r = 245;
+      let g = 241;
+      let b = 235;
+      let count = 0;
+      try {
+        const sample = context.getImageData(sampleX, sampleY, sampleWidth, sampleHeight).data;
+        r = 0;
+        g = 0;
+        b = 0;
+        for (let index = 0; index < sample.length; index += 16) {
+          r += sample[index];
+          g += sample[index + 1];
+          b += sample[index + 2];
+          count += 1;
+        }
+      } catch (_) {}
+      const fill = count ? `rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})` : "rgb(245,241,235)";
+      context.save();
+      context.fillStyle = fill;
+      context.globalAlpha = 0.985;
+      context.fillRect(Math.max(0, x - 3), Math.max(0, y - 3), patchWidth + 6, patchHeight + 6);
+      context.restore();
+    }
+
     function renderImagePreview(src) {
       const preview = document.querySelector("#imagePreview");
       const images = parseImages(src);
@@ -1632,6 +1824,7 @@
         <div class="preview-item">
           <img src="${image}" alt="상품 이미지" loading="lazy" decoding="async">
           <button type="button" onclick="removeImage(${index})" aria-label="이미지 ${index + 1} 삭제">×</button>
+          <button type="button" class="clean-btn" onclick="openImageClean(${index})">숫자 제거</button>
         </div>
       `).join("");
     }
