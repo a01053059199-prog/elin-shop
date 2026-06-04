@@ -968,19 +968,24 @@ async function createReview(input, member) {
     throw new Error("로그인한 회원만 후기를 작성할 수 있습니다.");
   }
   const rating = Math.max(1, Math.min(5, Number(input.rating || 5)));
+  const images = Array.isArray(input.images)
+    ? input.images.map(image => String(image || "").trim()).filter(Boolean).slice(0, 5)
+    : [];
   const review = {
     id: `REV-${Date.now()}`,
     rating,
-    title: String(input.title || "").trim(),
+    title: String(input.title || input.productName || "상품 후기").trim(),
     content: String(input.content || "").trim(),
+    productId: String(input.productId || "").trim(),
     productName: String(input.productName || "").trim(),
-    image: String(input.image || "").trim(),
+    image: String(input.image || images[0] || "").trim(),
+    images,
     username: String(input.username || input.name || member?.username || "고객").trim(),
     name: String(input.username || input.name || member?.username || "고객").trim(),
     memberId: member?.id || null
   };
-  if (!review.title || !review.content) {
-    throw new Error("후기 제목과 내용을 입력해주세요.");
+  if (!review.content) {
+    throw new Error("후기 내용을 입력해주세요.");
   }
   const reviews = await readJson(reviewsFile);
   const localReview = { ...review, createdAt: new Date().toISOString() };
@@ -1333,7 +1338,7 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/products" && req.method === "GET") {
     if (url.searchParams.get("summary") === "1") {
-      return send(res, 200, await listProductSummaries());
+      return send(res, 200, await listProductSummaries(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=5" });
     }
     return send(res, 200, await listProducts());
   }

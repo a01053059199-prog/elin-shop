@@ -1430,10 +1430,12 @@
     const cartAddedProduct = document.querySelector("#cartAddedProduct");
     const cartAddedView = document.querySelector("#cartAddedView");
     const products = [...fallbackProducts];
+    const productCacheKey = "elinProductSummaryCacheV2";
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
     let searchTerm = "";
     let currentMember = null;
+    let productRenderToken = 0;
 
     const money = value => Number(value || 0).toLocaleString("ko-KR") + "원";
     const firstImage = product => Array.isArray(product.images) && product.images.length ? product.images[0] : product.image;
@@ -1463,6 +1465,42 @@
       const items = String(value || "").split(/[\n,]+/).map(item => item.trim()).filter(Boolean);
       return items.length ? items : [fallback];
     };
+    function applyCachedProducts() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(productCacheKey) || "{}");
+        if (!Array.isArray(cached.products) || !cached.products.length) return false;
+        products.splice(0, products.length, ...cached.products);
+        return true;
+      } catch (_) {
+        localStorage.removeItem(productCacheKey);
+        return false;
+      }
+    }
+    function cacheProducts(items) {
+      if (!Array.isArray(items) || !items.length) return;
+      const slimItems = items.slice(0, 60).map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        keywords: item.keywords,
+        label: item.label,
+        price: item.price,
+        image: item.image || firstImage(item),
+        colors: item.colors,
+        sizes: item.sizes,
+        created_at: item.created_at,
+        createdAt: item.createdAt
+      }));
+      try {
+        localStorage.setItem(productCacheKey, JSON.stringify({ savedAt: Date.now(), products: slimItems }));
+      } catch (_) {
+        try {
+          localStorage.setItem(productCacheKey, JSON.stringify({ savedAt: Date.now(), products: slimItems.slice(0, 24) }));
+        } catch (error) {
+          console.warn("상품 캐시를 저장하지 못했습니다.", error);
+        }
+      }
+    }
     const categoryMatches = (productCategory, filter) => {
       if (filter === "all") return true;
       if (filter === "men") return productCategory === "men" || String(productCategory || "").startsWith("men-");
@@ -1498,12 +1536,20 @@
     }
 
     function renderProducts() {
+      productRenderToken += 1;
+      const renderToken = productRenderToken;
       const filtered = products.filter(product => {
         const filterMatch = categoryMatches(product.category, activeFilter);
         return filterMatch && productMatchesSearch(product, searchTerm);
       });
       resultNote.textContent = `총 ${filtered.length}개의 상품을 준비했습니다.`;
-      productGrid.innerHTML = filtered.map((product, index) => productCard(product, index)).join("");
+      productGrid.innerHTML = filtered.slice(0, 12).map((product, index) => productCard(product, index)).join("");
+      if (filtered.length > 12) {
+        window.requestAnimationFrame(() => {
+          if (renderToken !== productRenderToken) return;
+          productGrid.insertAdjacentHTML("beforeend", filtered.slice(12).map((product, index) => productCard(product, index + 12)).join(""));
+        });
+      }
       newGrid.innerHTML = filtered.slice(0, 8).map((product, index) => productCard(product, index)).join("");
     }
 
@@ -1783,7 +1829,11 @@
     async function loadProducts() {
       try {
         const response = await fetch("/api/products?summary=1");
-        if (response.ok) products.splice(0, products.length, ...(await response.json()));
+        if (response.ok) {
+          const freshProducts = await response.json();
+          products.splice(0, products.length, ...freshProducts);
+          cacheProducts(freshProducts);
+        }
       } catch (error) {
         console.warn("서버 상품 데이터를 불러오지 못해 기본 상품을 사용합니다.", error);
       }
@@ -1900,6 +1950,10 @@
       if (!hasCachedSiteSettings) initHeroSlider();
     });
     initCategorySlider();
+    if (applyCachedProducts()) {
+      renderProducts();
+      renderCart();
+    }
     loadProducts();
     loadMemberNav();
   </script>
