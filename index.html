@@ -1430,7 +1430,7 @@
     const cartAdded = document.querySelector("#cartAdded");
     const cartAddedProduct = document.querySelector("#cartAddedProduct");
     const cartAddedView = document.querySelector("#cartAddedView");
-    const products = [...fallbackProducts];
+    const products = [];
     const productCacheKey = "elinProductSummaryCacheV2";
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
@@ -1951,8 +1951,13 @@
       if (!hasCachedSiteSettings) initHeroSlider();
     });
     initCategorySlider();
-    applyCachedProducts();
-    renderProducts();
+    const hasCachedProducts = applyCachedProducts();
+    if (hasCachedProducts) renderProducts();
+    else {
+      productGrid.innerHTML = "";
+      newGrid.innerHTML = "";
+      resultNote.textContent = "상품을 불러오는 중입니다.";
+    }
     renderCart();
     loadProducts();
     loadMemberNav();
