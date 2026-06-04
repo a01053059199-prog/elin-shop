@@ -652,7 +652,8 @@
     let siteSettings = {};
     let productReviews = [];
     let reviewImages = [];
-    const productCacheKey = "elinProductSummaryCacheV2";
+    const productCacheKey = "elinProductSummaryCacheV3";
+    try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({

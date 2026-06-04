@@ -1431,7 +1431,8 @@
     const cartAddedProduct = document.querySelector("#cartAddedProduct");
     const cartAddedView = document.querySelector("#cartAddedView");
     const products = [];
-    const productCacheKey = "elinProductSummaryCacheV2";
+    const productCacheKey = "elinProductSummaryCacheV3";
+    try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
     let searchTerm = "";

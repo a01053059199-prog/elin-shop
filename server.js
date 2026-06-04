@@ -732,27 +732,60 @@ async function listProductSummaries() {
   if (productSummaryCache.items && now - productSummaryCache.at < PRODUCT_SUMMARY_CACHE_MS) {
     return productSummaryCache.items;
   }
-  let summaries;
-  if (useSupabase) {
-    summaries = await supabase("products?select=id,name,category,keywords,label,price,image,colors,sizes,created_at&order=created_at.desc");
-  } else {
-    const products = await readJson(productsFile);
-    summaries = products.map(product => ({
+  const summaryFromProduct = product => {
+    const image = product.image || (Array.isArray(product.images) ? product.images[0] : "");
+    const version = encodeURIComponent(Buffer.byteLength(String(image || ""), "utf8"));
+    return {
       id: product.id,
       name: product.name,
       category: product.category,
       keywords: product.keywords,
       label: product.label,
       price: product.price,
-      image: product.image || (Array.isArray(product.images) ? product.images[0] : ""),
+      image: image ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "",
       colors: product.colors,
       sizes: product.sizes,
       created_at: product.created_at,
       createdAt: product.createdAt
-    }));
+    };
+  };
+  let summaries;
+  if (useSupabase) {
+    const products = await supabase("products?select=id,name,category,keywords,label,price,image,images,colors,sizes,created_at&order=created_at.desc");
+    summaries = products.map(summaryFromProduct);
+  } else {
+    const products = await readJson(productsFile);
+    summaries = products.map(summaryFromProduct);
   }
   productSummaryCache = { at: now, items: summaries };
   return summaries;
+}
+
+function parseStoredImages(product) {
+  if (!product) return [];
+  if (Array.isArray(product.images)) return product.images.filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
+  if (product.images) {
+    try {
+      const parsed = JSON.parse(product.images);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
+    } catch (_) {
+      return String(product.images).split(/\n+/).map(item => item.trim()).filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
+    }
+  }
+  return [product.image].filter(Boolean);
+}
+
+function sendProductImage(res, source) {
+  const image = String(source || "").trim();
+  if (!image) return send(res, 404, "Not found", "text/plain; charset=utf-8");
+  if (/^https?:\/\//i.test(image)) {
+    res.writeHead(302, { Location: image, "Cache-Control": "public, max-age=3600" });
+    return res.end();
+  }
+  const match = image.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+  if (!match) return send(res, 404, "Not found", "text/plain; charset=utf-8");
+  const buffer = Buffer.from(match[2], "base64");
+  return send(res, 200, buffer, match[1], { "Cache-Control": "public, max-age=86400, immutable" });
 }
 
 async function getProduct(id) {
@@ -1371,6 +1404,15 @@ async function handleApi(req, res, url) {
       return send(res, 200, await listProductSummaries(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=5" });
     }
     return send(res, 200, await listProducts());
+  }
+
+  if (url.pathname.startsWith("/api/product-image/") && req.method === "GET") {
+    const parts = url.pathname.split("/");
+    const id = decodeURIComponent(parts[3] || "");
+    const imageIndex = Math.max(0, Math.min(PRODUCT_IMAGE_LIMIT - 1, Number(parts[4] || 0)));
+    const product = await getProduct(id);
+    if (!product) return send(res, 404, "Not found", "text/plain; charset=utf-8");
+    return sendProductImage(res, parseStoredImages(product)[imageIndex]);
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "GET") {
