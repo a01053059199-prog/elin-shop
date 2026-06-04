@@ -301,6 +301,7 @@
     }
     .product-reviews {
       text-align: left;
+      display: none !important;
     }
     .review-head {
       display: flex;
@@ -894,7 +895,6 @@
       }
       document.title = `ELIN | ${product.name}`;
       renderProduct();
-      loadProductReviews();
       loadRelatedProducts();
     }
 
@@ -913,10 +913,29 @@
       } catch (_) {}
     }
 
+    function relatedProducts(limit = 4) {
+      if (!product || !Array.isArray(allProducts)) return [];
+      const currentId = String(product.id);
+      const currentGroup = categoryGroup(product.category);
+      const candidates = allProducts.filter(item => String(item.id) !== currentId);
+      const sameCategory = candidates.filter(item => categoryGroup(item.category) === currentGroup);
+      const otherCategory = candidates.filter(item => categoryGroup(item.category) !== currentGroup);
+      return sameCategory.concat(otherCategory).slice(0, limit);
+    }
+
     function renderRelatedProducts() {
       let section = document.querySelector("#relatedProductsSection");
       let grid = document.querySelector("#relatedProductsGrid");
       if (!product) return;
+      if (!section || !grid) {
+        const existingGrid = Array.from(document.querySelectorAll(".related-grid")).find(item => !item.id);
+        if (existingGrid) {
+          grid = existingGrid;
+          grid.id = "relatedProductsGrid";
+          section = existingGrid.closest(".section");
+          if (section) section.id = "relatedProductsSection";
+        }
+      }
       if (!section || !grid) {
         section = document.createElement("section");
         section.className = "section";
@@ -926,9 +945,7 @@
         document.querySelector("#productRoot").appendChild(section);
         grid = document.querySelector("#relatedProductsGrid");
       }
-      const related = allProducts
-        .filter(item => item.id !== product.id && categoryGroup(item.category) === categoryGroup(product.category))
-        .slice(0, 4);
+      const related = relatedProducts();
       if (!related.length) {
         section.style.display = "none";
         grid.innerHTML = "";
@@ -1020,9 +1037,7 @@
       const sizes = parseOptions(product.sizes, "FREE");
       const title = escapeHtml(product.name);
       const guide = productGuide();
-      const related = allProducts
-        .filter(item => item.id !== product.id && categoryGroup(item.category) === categoryGroup(product.category))
-        .slice(0, 4);
+      const related = relatedProducts();
 
       document.querySelector("#productRoot").className = "";
       document.querySelector("#productRoot").innerHTML = `
@@ -1170,6 +1185,10 @@
           </section>
         ` : ""}
       `;
+      document.querySelectorAll(".related-grid").forEach(grid => {
+        const heading = grid.previousElementSibling;
+        if (heading) heading.textContent = "함께 보면 좋은 상품";
+      });
       const guideDetails = document.querySelectorAll(".accordion details");
       const guideItems = [
         [guide.purchaseTitle, guide.purchaseText],
@@ -1188,8 +1207,7 @@
           if (!detail.open) detail.open = true;
         });
       });
-      renderProductReviews();
-      bindProductReviewForm();
+      renderRelatedProducts();
     }
 
     function renderCachedProductFirst() {
