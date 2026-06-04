@@ -29,6 +29,7 @@ const PRODUCT_SUMMARY_CACHE_MS = 15000;
 const adminSessions = new Set();
 const memberSessions = new Map();
 let productSummaryCache = { at: 0, items: null };
+const productDetailCache = new Map();
 
 const seedProducts = [
   { id: "p1", name: "엘린 클래식 트위드 자켓", category: "women", keywords: "여성 의류 자켓", label: "BEST", price: 168000, old: 198000, stock: 12, image: "https://images.unsplash.com/photo-1548624149-f9b185c22e9d?auto=format&fit=crop&w=800&q=80" },
@@ -723,6 +724,7 @@ async function listProducts() {
 
 function clearProductSummaryCache() {
   productSummaryCache = { at: 0, items: null };
+  productDetailCache.clear();
 }
 
 async function listProductSummaries() {
@@ -754,12 +756,20 @@ async function listProductSummaries() {
 }
 
 async function getProduct(id) {
+  const cacheKey = String(id || "");
+  const cached = productDetailCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS) return cached.product;
+  let product;
   if (useSupabase) {
     const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
-    return product || null;
+    const found = product || null;
+    if (found) productDetailCache.set(cacheKey, { at: Date.now(), product: found });
+    return found;
   }
   const products = await readJson(productsFile);
-  return products.find(product => product.id === id) || null;
+  product = products.find(product => product.id === id) || null;
+  if (product) productDetailCache.set(cacheKey, { at: Date.now(), product });
+  return product;
 }
 
 async function createProduct(input) {
@@ -1367,7 +1377,7 @@ async function handleApi(req, res, url) {
     const id = decodeURIComponent(url.pathname.split("/").pop());
     const product = await getProduct(id);
     if (!product) return send(res, 404, { error: "상품을 찾을 수 없습니다." });
-    return send(res, 200, product);
+    return send(res, 200, product, "application/json; charset=utf-8", { "Cache-Control": "private, max-age=5" });
   }
 
   if (url.pathname === "/api/products" && req.method === "POST") {

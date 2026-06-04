@@ -652,6 +652,7 @@
     let siteSettings = {};
     let productReviews = [];
     let reviewImages = [];
+    const productCacheKey = "elinProductSummaryCacheV2";
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({
@@ -1189,6 +1190,23 @@
       bindProductReviewForm();
     }
 
+    function renderCachedProductFirst() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(productCacheKey) || "{}");
+        if (!Array.isArray(cached.products) || !cached.products.length) return false;
+        const cachedProduct = cached.products.find(item => String(item.id) === String(id));
+        if (!cachedProduct) return false;
+        product = cachedProduct;
+        allProducts = cached.products;
+        document.title = `ELIN | ${product.name}`;
+        renderProduct();
+        renderRelatedProducts();
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
     function requireMember() {
       if (currentMember) return true;
       alert("로그인 후 이용 가능합니다.");
@@ -1251,6 +1269,7 @@
       if (event.target.id === "cartAdded") closeCartAdded();
     });
 
+    renderCachedProductFirst();
     load();
     loadMemberNav();
   </script>
