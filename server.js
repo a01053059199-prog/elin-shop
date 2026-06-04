@@ -718,8 +718,7 @@ function verifyPassword(password, stored) {
 }
 
 async function listProducts() {
-  if (useSupabase) return await supabase("products?select=*&order=created_at.desc");
-  return await readJson(productsFile);
+  return await listProductSummaries();
 }
 
 function clearProductSummaryCache() {
@@ -733,8 +732,10 @@ async function listProductSummaries() {
     return productSummaryCache.items;
   }
   const summaryFromProduct = product => {
-    const image = parseStoredImages(product)[0] || "";
-    const version = encodeURIComponent(Buffer.byteLength(String(image || ""), "utf8"));
+    const firstStoredImage = parseStoredImages(product)[0] || "";
+    const versionSource = firstStoredImage || product.updated_at || product.created_at || product.createdAt || product.id || "";
+    const version = encodeURIComponent(Buffer.byteLength(String(versionSource), "utf8"));
+    const image = firstStoredImage || (product.id ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "");
     return {
       id: product.id,
       name: product.name,
@@ -742,7 +743,7 @@ async function listProductSummaries() {
       keywords: product.keywords,
       label: product.label,
       price: product.price,
-      image: image ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "",
+      image,
       colors: product.colors,
       sizes: product.sizes,
       created_at: product.created_at,
@@ -751,7 +752,7 @@ async function listProductSummaries() {
   };
   let summaries;
   if (useSupabase) {
-    const products = await supabase("products?select=*&order=created_at.desc");
+    const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,created_at&order=created_at.desc");
     summaries = products.map(summaryFromProduct);
   } else {
     const products = await readJson(productsFile);
@@ -773,6 +774,19 @@ function parseStoredImages(product) {
     }
   }
   return [product.image].filter(Boolean);
+}
+
+async function getProductImages(id) {
+  if (useSupabase) {
+    try {
+      const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image,images&limit=1`);
+      return parseStoredImages(product || {});
+    } catch (_) {
+      const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image&limit=1`);
+      return parseStoredImages(product || {});
+    }
+  }
+  return parseStoredImages(await getProduct(id));
 }
 
 function sendProductImage(res, source) {
@@ -1410,9 +1424,8 @@ async function handleApi(req, res, url) {
     const parts = url.pathname.split("/");
     const id = decodeURIComponent(parts[3] || "");
     const imageIndex = Math.max(0, Math.min(PRODUCT_IMAGE_LIMIT - 1, Number(parts[4] || 0)));
-    const product = await getProduct(id);
-    if (!product) return send(res, 404, "Not found", "text/plain; charset=utf-8");
-    return sendProductImage(res, parseStoredImages(product)[imageIndex]);
+    const images = await getProductImages(id);
+    return sendProductImage(res, images[imageIndex]);
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "GET") {
