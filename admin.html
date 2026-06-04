@@ -944,9 +944,22 @@
         fetch("/api/admin/inquiries", { headers: headers() }).then(response => response.json())
       ];
       if (!options.polling) {
-        requests.unshift(fetch("/api/products?summary=1").then(response => response.json()));
+        requests.unshift(fetch("/api/products").then(async response => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "상품 목록을 불러오지 못했습니다.");
+          return data;
+        }));
       }
-      const results = await Promise.all(requests);
+      let results;
+      try {
+        results = await Promise.all(requests);
+      } catch (error) {
+        console.error(error);
+        if (!options.polling) {
+          document.querySelector("#productList").innerHTML = `<p>상품 목록 오류: ${escapeHtml(error.message)}</p>`;
+        }
+        throw error;
+      }
       if (!options.polling) products = results.shift();
       const [nextOrders, nextMembers, nextActiveMembers, nextInquiries] = results;
       handleNotifications(nextOrders, nextMembers, nextInquiries, options);
