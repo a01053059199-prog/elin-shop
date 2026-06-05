@@ -61,7 +61,17 @@
     .clean-head h3 { margin: 0; }
     .clean-stage { position: relative; display: grid; place-items: center; min-height: 320px; max-height: 68vh; overflow: hidden; border: 1px solid #e6e0d8; border-radius: 8px; background: #f8f6f2; touch-action: none; cursor: crosshair; }
     .clean-stage img { max-width: 100%; max-height: 68vh; object-fit: contain; display: block; user-select: none; pointer-events: none; }
-    .clean-selection { position: absolute; display: none; border: 2px solid #16a34a; background: rgba(22,163,74,.18); box-shadow: 0 0 0 9999px rgba(0,0,0,.18); pointer-events: none; }
+    .clean-selection { position: absolute; display: none; border: 2px solid #16a34a; background: rgba(22,163,74,.12); box-shadow: 0 0 0 9999px rgba(0,0,0,.2); cursor: move; touch-action: none; }
+    .clean-selection::before, .clean-selection::after { content: ""; position: absolute; pointer-events: none; }
+    .clean-selection::before { inset: 33.333% 0 auto; border-top: 1px solid rgba(255,255,255,.8); box-shadow: 0 calc(var(--crop-height, 100px) / 3) 0 rgba(255,255,255,.8); }
+    .clean-selection::after { inset: 0 auto 0 33.333%; border-left: 1px solid rgba(255,255,255,.8); box-shadow: calc(var(--crop-width, 100px) / 3) 0 0 rgba(255,255,255,.8); }
+    .crop-handle { position: absolute; z-index: 2; width: 18px; height: 18px; border: 2px solid #16a34a; border-radius: 999px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+    .crop-handle.nw { left: -10px; top: -10px; cursor: nwse-resize; }
+    .crop-handle.ne { right: -10px; top: -10px; cursor: nesw-resize; }
+    .crop-handle.sw { left: -10px; bottom: -10px; cursor: nesw-resize; }
+    .crop-handle.se { right: -10px; bottom: -10px; cursor: nwse-resize; }
+    .crop-quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .crop-quick-actions button { padding: 8px 10px; font-size: 13px; }
     .crop-result { margin-top: 12px; padding: 12px; border: 1px solid #e6e0d8; border-radius: 8px; background: #fbfaf8; }
     .crop-result strong { display: block; margin-bottom: 8px; font-size: 13px; }
     .crop-result-box { display: grid; place-items: center; min-height: 150px; border: 1px dashed #cfc7bc; border-radius: 8px; background: #f8f6f2; color: #777; font-size: 13px; overflow: hidden; }
@@ -566,9 +576,20 @@
         <button type="button" class="ghost" id="closeImageClean">닫기</button>
       </div>
       <div class="hint" id="imageCleanHint">남길 영역을 마우스나 손가락으로 자유롭게 드래그한 뒤 자르기를 누르세요.</div>
+      <div class="crop-quick-actions">
+        <button type="button" class="ghost" id="cropFitAll">전체 선택</button>
+        <button type="button" class="ghost" id="cropRatioFree">자유 자르기</button>
+        <button type="button" class="ghost" id="cropRatioSquare">1:1</button>
+        <button type="button" class="ghost" id="cropRatioProduct">상품형 4:5</button>
+      </div>
       <div class="clean-stage" id="imageCleanStage">
         <img id="imageCleanTarget" alt="자를 상품 이미지">
-        <div class="clean-selection" id="imageCleanSelection"></div>
+        <div class="clean-selection" id="imageCleanSelection">
+          <span class="crop-handle nw" data-handle="nw"></span>
+          <span class="crop-handle ne" data-handle="ne"></span>
+          <span class="crop-handle sw" data-handle="sw"></span>
+          <span class="crop-handle se" data-handle="se"></span>
+        </div>
       </div>
       <div class="crop-result">
         <strong>자르기 미리보기</strong>
@@ -606,6 +627,10 @@
     let cleanImageIndex = -1;
     let cleanSelection = null;
     let cleanDragStart = null;
+    let cleanDragMode = "draw";
+    let cleanDragHandle = "";
+    let cleanDragSelection = null;
+    let cleanAspectRatio = null;
     let cropPreviewToken = 0;
     const productImageLimit = 15;
     const adminRememberKey = "elinAdminRemember";
@@ -755,32 +780,64 @@
 
     document.querySelector("#closeImageClean").addEventListener("click", closeImageCleanModal);
     document.querySelector("#resetImageClean").addEventListener("click", () => {
-      cleanSelection = null;
+      setDefaultCleanSelection();
       cleanDragStart = null;
+      cleanDragMode = "draw";
+      cleanDragHandle = "";
       drawCleanSelection();
-      resetCropPreview();
+      updateCropPreview();
     });
+    document.querySelector("#cropFitAll").addEventListener("click", () => {
+      cleanAspectRatio = null;
+      cleanSelection = { x: 0, y: 0, width: 1, height: 1 };
+      drawCleanSelection();
+      updateCropPreview();
+    });
+    document.querySelector("#cropRatioFree").addEventListener("click", () => {
+      cleanAspectRatio = null;
+      drawCleanSelection();
+      updateCropPreview();
+    });
+    document.querySelector("#cropRatioSquare").addEventListener("click", () => setCropRatio(1));
+    document.querySelector("#cropRatioProduct").addEventListener("click", () => setCropRatio(4 / 5));
     document.querySelector("#imageCleanStage").addEventListener("pointerdown", event => {
       if (event.target.closest("button")) return;
+      event.preventDefault();
       cleanDragStart = imagePointFromEvent(event);
-      cleanSelection = { x: cleanDragStart.x, y: cleanDragStart.y, width: 0, height: 0 };
+      cleanDragSelection = cleanSelection ? { ...cleanSelection } : null;
+      cleanDragHandle = event.target.dataset.handle || "";
+      cleanDragMode = cleanDragHandle ? "resize" : event.target.closest("#imageCleanSelection") ? "move" : "draw";
+      if (cleanDragMode === "draw") {
+        cleanSelection = { x: cleanDragStart.x, y: cleanDragStart.y, width: 0, height: 0 };
+      }
       event.currentTarget.setPointerCapture(event.pointerId);
       drawCleanSelection();
     });
     document.querySelector("#imageCleanStage").addEventListener("pointermove", event => {
       if (!cleanDragStart) return;
+      event.preventDefault();
       const point = imagePointFromEvent(event);
-      cleanSelection = {
-        x: Math.min(cleanDragStart.x, point.x),
-        y: Math.min(cleanDragStart.y, point.y),
-        width: Math.abs(point.x - cleanDragStart.x),
-        height: Math.abs(point.y - cleanDragStart.y)
-      };
+      if (cleanDragMode === "move" && cleanDragSelection) {
+        const dx = point.x - cleanDragStart.x;
+        const dy = point.y - cleanDragStart.y;
+        cleanSelection = {
+          ...cleanDragSelection,
+          x: clamp(cleanDragSelection.x + dx, 0, 1 - cleanDragSelection.width),
+          y: clamp(cleanDragSelection.y + dy, 0, 1 - cleanDragSelection.height)
+        };
+      } else if (cleanDragMode === "resize" && cleanDragSelection) {
+        cleanSelection = resizeCleanSelection(cleanDragSelection, point, cleanDragHandle);
+      } else {
+        cleanSelection = selectionFromPoints(cleanDragStart, point);
+      }
       drawCleanSelection();
     });
     document.querySelector("#imageCleanStage").addEventListener("pointerup", event => {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       cleanDragStart = null;
+      cleanDragSelection = null;
+      cleanDragMode = "draw";
+      cleanDragHandle = "";
       drawCleanSelection();
       updateCropPreview();
     });
@@ -1624,10 +1681,20 @@
       cleanImageIndex = index;
       cleanSelection = null;
       cleanDragStart = null;
+      cleanDragSelection = null;
+      cleanDragMode = "draw";
+      cleanDragHandle = "";
+      cleanAspectRatio = null;
       document.querySelector("#imageCleanTitle").textContent = "사진 자르기";
-      document.querySelector("#imageCleanHint").textContent = "남길 영역을 드래그한 뒤 자르기를 누르세요.";
+      document.querySelector("#imageCleanHint").textContent = "초록 박스를 드래그해 이동하고, 모서리를 잡아 크기를 조절한 뒤 자르기를 누르세요.";
       document.querySelector("#applyImageClean").textContent = "선택 영역으로 자르기";
-      document.querySelector("#imageCleanTarget").src = src;
+      const target = document.querySelector("#imageCleanTarget");
+      target.onload = () => {
+        setDefaultCleanSelection();
+        drawCleanSelection();
+        updateCropPreview();
+      };
+      target.src = src;
       document.querySelector("#imageCleanSelection").style.display = "none";
       resetCropPreview();
       document.querySelector("#imageCleanModal").classList.remove("hidden");
@@ -1638,11 +1705,102 @@
       cleanImageIndex = -1;
       cleanSelection = null;
       cleanDragStart = null;
+      cleanDragSelection = null;
+      cleanDragMode = "draw";
+      cleanDragHandle = "";
+      cleanAspectRatio = null;
       document.querySelector("#imageCleanModal").classList.add("hidden");
       document.querySelector("#imageCleanModal").setAttribute("aria-hidden", "true");
-      document.querySelector("#imageCleanTarget").removeAttribute("src");
+      const target = document.querySelector("#imageCleanTarget");
+      target.onload = null;
+      target.removeAttribute("src");
       document.querySelector("#imageCleanSelection").style.display = "none";
       resetCropPreview();
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function selectionFromPoints(start, end) {
+      let x = Math.min(start.x, end.x);
+      let y = Math.min(start.y, end.y);
+      let width = Math.abs(end.x - start.x);
+      let height = Math.abs(end.y - start.y);
+      if (cleanAspectRatio && width > 0 && height > 0) {
+        const ratio = cleanAspectRatio;
+        if (width / height > ratio) width = height * ratio;
+        else height = width / ratio;
+        x = end.x < start.x ? start.x - width : start.x;
+        y = end.y < start.y ? start.y - height : start.y;
+      }
+      return normalizeSelection({ x, y, width, height });
+    }
+
+    function normalizeSelection(selection) {
+      const minSize = 0.03;
+      const width = clamp(selection.width, minSize, 1);
+      const height = clamp(selection.height, minSize, 1);
+      return {
+        x: clamp(selection.x, 0, 1 - width),
+        y: clamp(selection.y, 0, 1 - height),
+        width,
+        height
+      };
+    }
+
+    function setDefaultCleanSelection() {
+      cleanAspectRatio = cleanAspectRatio || null;
+      cleanSelection = { x: 0.08, y: 0.08, width: 0.84, height: 0.84 };
+      if (cleanAspectRatio) cleanSelection = fitAspectSelection(cleanAspectRatio);
+    }
+
+    function fitAspectSelection(ratio) {
+      let width = 0.84;
+      let height = width / ratio;
+      if (height > 0.84) {
+        height = 0.84;
+        width = height * ratio;
+      }
+      return {
+        x: (1 - width) / 2,
+        y: (1 - height) / 2,
+        width,
+        height
+      };
+    }
+
+    function setCropRatio(ratio) {
+      cleanAspectRatio = ratio;
+      cleanSelection = fitAspectSelection(ratio);
+      drawCleanSelection();
+      updateCropPreview();
+    }
+
+    function resizeCleanSelection(original, point, handle) {
+      let left = original.x;
+      let top = original.y;
+      let right = original.x + original.width;
+      let bottom = original.y + original.height;
+      if (handle.includes("w")) left = point.x;
+      if (handle.includes("e")) right = point.x;
+      if (handle.includes("n")) top = point.y;
+      if (handle.includes("s")) bottom = point.y;
+      if (right < left) [left, right] = [right, left];
+      if (bottom < top) [top, bottom] = [bottom, top];
+
+      let width = Math.max(0.03, right - left);
+      let height = Math.max(0.03, bottom - top);
+      if (cleanAspectRatio) {
+        const ratio = cleanAspectRatio;
+        if (width / height > ratio) width = height * ratio;
+        else height = width / ratio;
+        if (handle.includes("w")) left = right - width;
+        else right = left + width;
+        if (handle.includes("n")) top = bottom - height;
+        else bottom = top + height;
+      }
+      return normalizeSelection({ x: left, y: top, width: right - left, height: bottom - top });
     }
 
     function imagePointFromEvent(event) {
@@ -1668,6 +1826,8 @@
       selection.style.top = `${imageBox.top - stageBox.top + cleanSelection.y * imageBox.height}px`;
       selection.style.width = `${cleanSelection.width * imageBox.width}px`;
       selection.style.height = `${cleanSelection.height * imageBox.height}px`;
+      selection.style.setProperty("--crop-width", `${cleanSelection.width * imageBox.width}px`);
+      selection.style.setProperty("--crop-height", `${cleanSelection.height * imageBox.height}px`);
     }
 
     function resetCropPreview() {
