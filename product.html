@@ -680,8 +680,11 @@
     let productReviews = [];
     let reviewImages = [];
     const productCacheKey = "elinProductSummaryCacheV4";
+    const relatedProductsCacheKey = "elinProductSummariesV4";
     try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV3"); } catch (_) {}
+    try { sessionStorage.removeItem("elinProductSummaries"); } catch (_) {}
+    try { sessionStorage.removeItem("elinProductSummariesV3"); } catch (_) {}
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({
@@ -926,15 +929,15 @@
 
     async function loadRelatedProducts() {
       try {
-        const cached = sessionStorage.getItem("elinProductSummaries");
+        const cached = sessionStorage.getItem(relatedProductsCacheKey);
         if (cached) {
           allProducts = JSON.parse(cached);
-          renderRelatedProducts();
+          if (Array.isArray(allProducts) && allProducts.length > 1) renderRelatedProducts();
         }
         const response = await fetch("/api/products?summary=1");
         if (!response.ok) return;
         allProducts = await response.json();
-        sessionStorage.setItem("elinProductSummaries", JSON.stringify(allProducts));
+        sessionStorage.setItem(relatedProductsCacheKey, JSON.stringify(allProducts));
         renderRelatedProducts();
       } catch (_) {}
     }

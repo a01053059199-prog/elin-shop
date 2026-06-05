@@ -732,10 +732,9 @@ async function listProductSummaries() {
     return productSummaryCache.items;
   }
   const summaryFromProduct = product => {
-    const firstStoredImage = parseStoredImages(product)[0] || "";
-    const versionSource = firstStoredImage || product.updated_at || product.created_at || product.createdAt || product.id || "";
+    const versionSource = product.updated_at || product.created_at || product.createdAt || product.id || "";
     const version = encodeURIComponent(Buffer.byteLength(String(versionSource), "utf8"));
-    const image = firstStoredImage || (product.id ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "");
+    const image = product.id ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "";
     return {
       id: product.id,
       name: product.name,
@@ -744,6 +743,7 @@ async function listProductSummaries() {
       label: product.label,
       price: product.price,
       image,
+      images: image ? [image] : [],
       colors: product.colors,
       sizes: product.sizes,
       created_at: product.created_at,
@@ -752,7 +752,7 @@ async function listProductSummaries() {
   };
   let summaries;
   if (useSupabase) {
-    const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,created_at&order=created_at.desc");
+    const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,created_at&order=created_at.desc");
     summaries = products.map(summaryFromProduct);
   } else {
     const products = await readJson(productsFile);
