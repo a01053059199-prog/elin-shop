@@ -680,7 +680,7 @@
     let productReviews = [];
     let reviewImages = [];
     const productCacheKey = "elinProductSummaryCacheV4";
-    const relatedProductsCacheKey = "elinProductSummariesV4";
+    const relatedProductsCacheKey = "elinProductSummariesV5";
     try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV3"); } catch (_) {}
     try { sessionStorage.removeItem("elinProductSummaries"); } catch (_) {}
@@ -736,6 +736,21 @@
       if (value.startsWith("accessory-")) return "accessory";
       if (value.startsWith("watch-")) return "watch";
       return value;
+    }
+
+    function keywordTokens(item) {
+      return String([item?.keywords, item?.name, item?.category].filter(Boolean).join(" "))
+        .toLowerCase()
+        .split(/[^0-9a-z가-힣]+/i)
+        .map(token => token.trim())
+        .filter(token => token.length >= 2);
+    }
+
+    function relatedScore(item, currentTokens, currentGroup) {
+      const tokens = new Set(keywordTokens(item));
+      const keywordMatches = currentTokens.reduce((count, token) => count + (tokens.has(token) ? 1 : 0), 0);
+      const sameCategory = categoryGroup(item.category) === currentGroup ? 1 : 0;
+      return keywordMatches * 20 + sameCategory;
     }
 
     function lineHtml(value) {
@@ -946,10 +961,13 @@
       if (!product || !Array.isArray(allProducts)) return [];
       const currentId = String(product.id);
       const currentGroup = categoryGroup(product.category);
+      const currentTokens = keywordTokens(product);
       const candidates = allProducts.filter(item => String(item.id) !== currentId);
-      const sameCategory = candidates.filter(item => categoryGroup(item.category) === currentGroup);
-      const otherCategory = candidates.filter(item => categoryGroup(item.category) !== currentGroup);
-      return sameCategory.concat(otherCategory).slice(0, limit);
+      return candidates
+        .map((item, index) => ({ item, index, score: relatedScore(item, currentTokens, currentGroup) }))
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .slice(0, limit)
+        .map(entry => entry.item);
     }
 
     function renderRelatedProducts() {
