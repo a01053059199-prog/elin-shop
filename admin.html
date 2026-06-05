@@ -1642,15 +1642,23 @@
         "watch-women": "여성시계"
       })[value] || value || "상품";
     }
+    const categoryChildren = {
+      women: ["women-outer", "women-tshirt", "women-blouse", "women-knit", "women-pants"],
+      men: ["men-outer", "men-tshirt", "men-shirt", "men-knit", "men-pants"],
+      bag: ["bag-men", "bag-women"],
+      shoes: ["shoes-men", "shoes-women"],
+      accessory: ["accessory-belt", "accessory-hat", "accessory-scarf", "accessory-glasses", "accessory-jewelry"],
+      watch: ["watch-men", "watch-women"]
+    };
     function categoryMatches(productCategory, filter) {
-      if (!filter) return true;
-      if (filter === "men") return productCategory === "men" || String(productCategory || "").startsWith("men-");
-      if (filter === "women") return productCategory === "women" || String(productCategory || "").startsWith("women-");
-      if (filter === "bag") return productCategory === "bag" || String(productCategory || "").startsWith("bag-");
-      if (filter === "shoes") return productCategory === "shoes" || String(productCategory || "").startsWith("shoes-");
-      if (filter === "accessory") return productCategory === "accessory" || String(productCategory || "").startsWith("accessory-");
-      if (filter === "watch") return productCategory === "watch" || String(productCategory || "").startsWith("watch-");
-      return productCategory === filter;
+      const product = String(productCategory || "");
+      const selected = String(filter || "");
+      if (!selected) return true;
+      if (!product) return false;
+      if (product === selected) return true;
+      if ((categoryChildren[selected] || []).includes(product)) return true;
+      if ((categoryChildren[product] || []).includes(selected)) return true;
+      return false;
     }
 
     function productImages(product) {
