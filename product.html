@@ -280,6 +280,20 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 16px;
     }
+    .related-section {
+      display: block;
+    }
+    .related-section h2 {
+      text-align: center;
+    }
+    .related-empty {
+      grid-column: 1 / -1;
+      padding: 28px 0;
+      color: #777;
+      text-align: center;
+      border: 1px solid #eee8df;
+      background: #fff;
+    }
     .related img {
       width: 100%;
       aspect-ratio: 1 / 1.15;
@@ -590,6 +604,18 @@
         max-width: 430px;
         margin-left: auto;
         margin-right: auto;
+      }
+      .related-section {
+        margin-top: 34px;
+        padding-bottom: 22px;
+        text-align: left;
+      }
+      .related-section h2 {
+        text-align: left;
+        font-size: 26px;
+      }
+      .related-grid {
+        gap: 18px 12px;
       }
       .guide-table th,
       .guide-table td {
@@ -959,6 +985,43 @@
           <span>${money(item.price)}</span>
         </a>
       `).join("");
+    }
+
+    function renderRelatedProducts() {
+      let section = document.querySelector("#relatedProductsSection");
+      let grid = document.querySelector("#relatedProductsGrid");
+      if (!product) return;
+      if (!section || !grid) {
+        section = document.createElement("section");
+        section.className = "section related-section";
+        section.id = "relatedProductsSection";
+        section.innerHTML = `<h2>함께 보면 좋은 상품</h2><div class="related-grid" id="relatedProductsGrid"></div>`;
+        const reviews = document.querySelector("#productReviews");
+        if (reviews) {
+          reviews.insertAdjacentElement("beforebegin", section);
+        } else {
+          document.querySelector("#productRoot").appendChild(section);
+        }
+        grid = document.querySelector("#relatedProductsGrid");
+      }
+      section.classList.add("related-section");
+      const title = section.querySelector("h2");
+      if (title) title.textContent = "함께 보면 좋은 상품";
+      document.querySelectorAll(".related-grid:not(#relatedProductsGrid)").forEach(extraGrid => {
+        const extraSection = extraGrid.closest(".section");
+        if (extraSection) extraSection.remove();
+      });
+      const related = relatedProducts();
+      section.style.display = "";
+      grid.innerHTML = related.length
+        ? related.map(item => `
+          <a class="related" href="/product.html?id=${encodeURIComponent(item.id)}">
+            <img src="${parseImages(item)[0] || item.image}" alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
+            <strong>${escapeHtml(item.name)}</strong>
+            <span>${money(item.price)}</span>
+          </a>
+        `).join("")
+        : `<div class="related-empty">함께 보면 좋은 상품을 준비 중입니다.</div>`;
     }
 
     function renderProductReviews() {
