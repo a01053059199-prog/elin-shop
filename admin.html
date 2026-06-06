@@ -614,6 +614,10 @@
     let heroSlides = [];
     let categoryCards = [];
     let editingMemberId = "";
+    let adminDetailsLoaded = false;
+    let adminSettingsLoaded = false;
+    let adminProductRenderToken = 0;
+    let adminProductSearchTimer = null;
     let knownOrderIds = new Set();
     let knownMemberIds = new Set();
     let knownInquiryIds = new Set();
@@ -709,12 +713,11 @@
       saveRememberedAdminLogin(loginUsername, loginPassword);
       showAdmin();
       setValue("adminUsername", result.username || "admin");
-      await Promise.all([
-        loadMemberPageSettings(),
-        loadCustomerCenterSettings(),
-        loadSiteSettings()
-      ]);
-      await refresh({ initial: true });
+      await refresh({ initial: true, fast: true });
+      window.setTimeout(() => {
+        loadAdminSettingsData();
+        loadAdminDetailsData();
+      }, 0);
       restorePendingAlert();
       startOrderPolling();
     });
@@ -918,7 +921,10 @@
     document.querySelector("#siteSettingsForm").addEventListener("input", event => {
       if (event.target.matches("[data-visual-image]")) renderVisualPreview(event.target.id, event.target.value);
     });
-    document.querySelector("#productSearch").addEventListener("input", renderProducts);
+    document.querySelector("#productSearch").addEventListener("input", () => {
+      window.clearTimeout(adminProductSearchTimer);
+      adminProductSearchTimer = window.setTimeout(renderProducts, 120);
+    });
     document.querySelector("#productCategory").addEventListener("change", renderProducts);
     document.querySelector("#orderSearch").addEventListener("input", renderOrders);
     document.querySelector("#orderStatus").addEventListener("change", renderOrders);
@@ -996,10 +1002,15 @@
     async function refresh(options = {}) {
       const requests = [
         fetch("/api/orders", { headers: headers() }).then(response => response.json()),
-        fetch("/api/admin/members", { headers: headers() }).then(response => response.json()),
-        fetch("/api/admin/active-members", { headers: headers() }).then(response => response.json()),
-        fetch("/api/admin/inquiries", { headers: headers() }).then(response => response.json())
+        fetch("/api/admin/active-members", { headers: headers() }).then(response => response.json())
       ];
+      const includeDetails = !options.fast && (!options.polling || adminDetailsLoaded);
+      if (includeDetails) {
+        requests.push(
+          fetch("/api/admin/members", { headers: headers() }).then(response => response.json()),
+          fetch("/api/admin/inquiries", { headers: headers() }).then(response => response.json())
+        );
+      }
       if (!options.polling) {
         requests.unshift(fetch("/api/products").then(async response => {
           const data = await response.json();
@@ -1018,18 +1029,21 @@
         throw error;
       }
       if (!options.polling) products = results.shift();
-      const [nextOrders, nextMembers, nextActiveMembers, nextInquiries] = results;
+      const [nextOrders, nextActiveMembers, nextMembers = members, nextInquiries = inquiries] = results;
       handleNotifications(nextOrders, nextMembers, nextInquiries, options);
       orders = nextOrders;
-      members = nextMembers;
       activeMembers = nextActiveMembers;
-      inquiries = nextInquiries;
+      if (includeDetails) {
+        members = nextMembers;
+        inquiries = nextInquiries;
+        adminDetailsLoaded = true;
+      }
       renderDashboard();
       if (!options.polling) renderProducts();
       renderOrders();
-      renderMembers();
+      if (includeDetails) renderMembers();
       renderActiveMembers();
-      renderInquiries();
+      if (includeDetails) renderInquiries();
     }
 
     function showAdmin() {
@@ -1264,6 +1278,8 @@
       document.querySelector("#membersTab").classList.toggle("hidden", tabName !== "members");
       document.querySelector("#inquiriesTab").classList.toggle("hidden", tabName !== "inquiries");
       document.querySelector("#settingsTab").classList.toggle("hidden", tabName !== "settings");
+      if ((tabName === "members" || tabName === "inquiries") && !adminDetailsLoaded) loadAdminDetailsData();
+      if (tabName === "settings" && !adminSettingsLoaded) loadAdminSettingsData();
     }
 
     async function loadAdminInfo() {
@@ -1290,6 +1306,30 @@
       const response = await fetch("/api/admin/site-settings");
       if (!response.ok) return;
       fillSiteSettingsForm(await response.json());
+    }
+
+    async function loadAdminSettingsData() {
+      if (adminSettingsLoaded) return;
+      await Promise.all([
+        loadMemberPageSettings(),
+        loadCustomerCenterSettings(),
+        loadSiteSettings()
+      ]);
+      adminSettingsLoaded = true;
+    }
+
+    async function loadAdminDetailsData() {
+      if (adminDetailsLoaded) return;
+      const [nextMembers, nextInquiries] = await Promise.all([
+        fetch("/api/admin/members", { headers: headers() }).then(response => response.json()),
+        fetch("/api/admin/inquiries", { headers: headers() }).then(response => response.json())
+      ]);
+      members = Array.isArray(nextMembers) ? nextMembers : [];
+      inquiries = Array.isArray(nextInquiries) ? nextInquiries : [];
+      adminDetailsLoaded = true;
+      renderDashboard();
+      renderMembers();
+      renderInquiries();
     }
 
     function readMemberPageSettingsForm() {
@@ -1978,13 +2018,16 @@
     }
 
     function renderProducts() {
+      adminProductRenderToken += 1;
+      const renderToken = adminProductRenderToken;
       const keyword = document.querySelector("#productSearch").value.trim().toLowerCase();
       const category = document.querySelector("#productCategory").value;
       const filtered = products.filter(product => {
         const text = `${product.name} ${product.category} ${product.keywords || ""}`.toLowerCase();
         return (!keyword || text.includes(keyword)) && categoryMatches(product.category, category);
       });
-      document.querySelector("#productList").innerHTML = filtered.map(product => `
+      const list = document.querySelector("#productList");
+      const productRow = product => `
         <article class="product">
           <img src="${productImages(product)[0] || product.image}" alt="${product.name}" loading="lazy" decoding="async">
           <div>
@@ -1997,7 +2040,18 @@
             <button class="danger" onclick="deleteProduct('${product.id}')">삭제</button>
           </div>
         </article>
-      `).join("") || "<p>검색 결과가 없습니다.</p>";
+      `;
+      if (!filtered.length) {
+        list.innerHTML = "<p>검색 결과가 없습니다.</p>";
+        return;
+      }
+      list.innerHTML = filtered.slice(0, 40).map(productRow).join("");
+      if (filtered.length > 40) {
+        window.requestAnimationFrame(() => {
+          if (renderToken !== adminProductRenderToken) return;
+          list.insertAdjacentHTML("beforeend", filtered.slice(40).map(productRow).join(""));
+        });
+      }
     }
 
     function renderOrders() {

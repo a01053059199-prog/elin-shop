@@ -27,7 +27,7 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
 const PRODUCT_IMAGE_LIMIT = 15;
-const PRODUCT_SUMMARY_CACHE_MS = 15000;
+const PRODUCT_SUMMARY_CACHE_MS = 60000;
 
 const adminSessions = new Set();
 const memberSessions = new Map();
@@ -1407,7 +1407,7 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/site-settings" && req.method === "GET") {
-    return send(res, 200, await siteSettings());
+    return send(res, 200, await siteSettings(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" });
   }
 
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
@@ -1473,7 +1473,7 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/products" && req.method === "GET") {
     if (url.searchParams.get("summary") === "1") {
-      return send(res, 200, await listProductSummaries(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=5" });
+      return send(res, 200, await listProductSummaries(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" });
     }
     return send(res, 200, await listProducts());
   }
@@ -1545,7 +1545,11 @@ async function serveStatic(req, res, url) {
   try {
     const content = await fs.readFile(filePath);
     const ext = path.extname(filePath);
-    const cacheControl = cacheableStaticExts.has(ext) ? "public, max-age=86400" : "no-store";
+    const cacheControl = cacheableStaticExts.has(ext)
+      ? "public, max-age=86400"
+      : ext === ".html"
+        ? "public, max-age=30, must-revalidate"
+        : "no-store";
     send(res, 200, content, mime[ext] || "application/octet-stream", { "Cache-Control": cacheControl });
   } catch {
     send(res, 404, "Not found", "text/plain; charset=utf-8");
