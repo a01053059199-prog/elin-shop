@@ -20,6 +20,7 @@ COPY talk-widget.css ./
 COPY talk-widget.js ./
 COPY start-elin.bat ./
 COPY README.md ./
+COPY data ./data
 
 ENV PORT=4173
 EXPOSE 4173

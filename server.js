@@ -9,6 +9,7 @@ const productsFile = path.join(dataDir, "products.json");
 const ordersFile = path.join(dataDir, "orders.json");
 const inquiriesFile = path.join(dataDir, "inquiries.json");
 const reviewsFile = path.join(dataDir, "reviews.json");
+const membersFile = path.join(dataDir, "members.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
@@ -32,6 +33,7 @@ const adminSessions = new Set();
 const memberSessions = new Map();
 let productSummaryCache = { at: 0, items: null };
 const productDetailCache = new Map();
+let supabaseFallbackNoticeAt = 0;
 
 const seedProducts = [
   { id: "p1", name: "엘린 클래식 트위드 자켓", category: "women", keywords: "여성 의류 자켓", label: "BEST", price: 168000, old: 198000, stock: 12, image: "https://images.unsplash.com/photo-1548624149-f9b185c22e9d?auto=format&fit=crop&w=800&q=80" },
@@ -88,6 +90,28 @@ async function readJson(file) {
 
 async function writeJson(file, value) {
   await fs.writeFile(file, JSON.stringify(value, null, 2), "utf8");
+}
+
+async function readLocalMembers() {
+  await ensureJson(membersFile, []);
+  return await readJson(membersFile);
+}
+
+function logSupabaseFallback(error, area) {
+  const now = Date.now();
+  if (now - supabaseFallbackNoticeAt < 30000) return;
+  supabaseFallbackNoticeAt = now;
+  console.warn(`[supabase fallback] ${area}: ${error.message || error}`);
+}
+
+async function withSupabaseFallback(area, remote, local) {
+  if (!useSupabase) return await local();
+  try {
+    return await remote();
+  } catch (error) {
+    logSupabaseFallback(error, area);
+    return await local(error);
+  }
 }
 
 function send(res, status, body, type = "application/json; charset=utf-8", headers = {}) {
@@ -176,6 +200,7 @@ async function adminSettings() {
 }
 
 async function saveAdminSettings(settings) {
+  await writeJson(adminSettingsFile, settings);
   if (useSupabase) {
     try {
       await supabase("admin_settings?on_conflict=key", {
@@ -191,12 +216,10 @@ async function saveAdminSettings(settings) {
       if (saved.username !== settings.username || saved.password !== settings.password || saved.pin !== settings.pin) {
         throw new Error("관리자 정보가 DB에 저장되지 않았습니다. Supabase admin_settings 테이블을 확인해주세요.");
       }
-      return;
     } catch (error) {
-      throw new Error(error.message || "관리자 정보 저장에 실패했습니다.");
+      logSupabaseFallback(error, "admin settings save");
     }
   }
-  await writeJson(adminSettingsFile, settings);
 }
 
 const defaultMemberPageSettings = {
@@ -369,11 +392,15 @@ async function saveCustomerCenterSettings(settings) {
   const normalized = normalizeCustomerCenterSettings(settings);
   await writeJson(customerCenterSettingsFile, normalized);
   if (useSupabase) {
-    await supabase("admin_settings?on_conflict=key", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify([{ key: "customer_center_settings", value: JSON.stringify(normalized) }])
-    });
+    try {
+      await supabase("admin_settings?on_conflict=key", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify([{ key: "customer_center_settings", value: JSON.stringify(normalized) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "customer center settings save");
+    }
   }
   return normalized;
 }
@@ -585,11 +612,15 @@ async function saveSiteSettings(settings) {
     try {
       await supabase("admin_settings?key=eq.site_settings", { method: "DELETE" });
     } catch {}
-    await supabase("admin_settings", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify([{ key: "site_settings", value: JSON.stringify(normalized) }])
-    });
+    try {
+      await supabase("admin_settings", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify([{ key: "site_settings", value: JSON.stringify(normalized) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "site settings save");
+    }
   }
   return normalized;
 }
@@ -765,14 +796,13 @@ async function listProductSummaries() {
       createdAt: product.createdAt
     };
   };
-  let summaries;
-  if (useSupabase) {
+  const summaries = await withSupabaseFallback("products list", async () => {
     const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,created_at&order=created_at.desc");
-    summaries = products.map(summaryFromProduct);
-  } else {
+    return products.map(summaryFromProduct);
+  }, async () => {
     const products = await readJson(productsFile);
-    summaries = products.map(summaryFromProduct);
-  }
+    return products.map(summaryFromProduct);
+  });
   productSummaryCache = { at: now, items: summaries };
   return summaries;
 }
@@ -792,7 +822,7 @@ function parseStoredImages(product) {
 }
 
 async function getProductImages(id) {
-  if (useSupabase) {
+  return await withSupabaseFallback("product images", async () => {
     try {
       const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image,images&limit=1`);
       return parseStoredImages(product || {});
@@ -800,8 +830,10 @@ async function getProductImages(id) {
       const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image&limit=1`);
       return parseStoredImages(product || {});
     }
-  }
-  return parseStoredImages(await getProduct(id));
+  }, async () => {
+    const products = await readJson(productsFile);
+    return parseStoredImages(products.find(product => product.id === id) || {});
+  });
 }
 
 function sendProductImage(res, source) {
@@ -821,22 +853,20 @@ async function getProduct(id) {
   const cacheKey = String(id || "");
   const cached = productDetailCache.get(cacheKey);
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS) return cached.product;
-  let product;
-  if (useSupabase) {
+  const product = await withSupabaseFallback("product detail", async () => {
     const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
-    const found = product || null;
-    if (found) productDetailCache.set(cacheKey, { at: Date.now(), product: found });
-    return found;
-  }
-  const products = await readJson(productsFile);
-  product = products.find(product => product.id === id) || null;
+    return product || null;
+  }, async () => {
+    const products = await readJson(productsFile);
+    return products.find(product => product.id === id) || null;
+  });
   if (product) productDetailCache.set(cacheKey, { at: Date.now(), product });
   return product;
 }
 
 async function createProduct(input) {
   const product = cleanProduct(input);
-  if (useSupabase) {
+  return await withSupabaseFallback("product create", async () => {
     const [created] = await supabase("products", {
       method: "POST",
       headers: { Prefer: "return=representation" },
@@ -844,17 +874,18 @@ async function createProduct(input) {
     });
     clearProductSummaryCache();
     return created;
-  }
-  const products = await readJson(productsFile);
-  products.unshift(product);
-  await writeJson(productsFile, products);
-  clearProductSummaryCache();
-  return product;
+  }, async () => {
+    const products = await readJson(productsFile);
+    products.unshift({ ...product, createdAt: new Date().toISOString() });
+    await writeJson(productsFile, products);
+    clearProductSummaryCache();
+    return product;
+  });
 }
 
 async function updateProduct(id, input) {
   const product = cleanProduct({ ...input, id });
-  if (useSupabase) {
+  return await withSupabaseFallback("product update", async () => {
     const [updated] = await supabase(`products?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
@@ -863,29 +894,34 @@ async function updateProduct(id, input) {
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
     clearProductSummaryCache();
     return updated;
-  }
-  const products = await readJson(productsFile);
-  const index = products.findIndex(item => item.id === id);
-  if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
-  products[index] = product;
-  await writeJson(productsFile, products);
-  clearProductSummaryCache();
-  return product;
+  }, async () => {
+    const products = await readJson(productsFile);
+    const index = products.findIndex(item => item.id === id);
+    if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
+    products[index] = { ...product, updatedAt: new Date().toISOString() };
+    await writeJson(productsFile, products);
+    clearProductSummaryCache();
+    return product;
+  });
 }
 
 async function deleteProduct(id) {
-  if (useSupabase) {
+  await withSupabaseFallback("product delete", async () => {
     await supabase(`products?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
     clearProductSummaryCache();
-    return;
-  }
-  const products = await readJson(productsFile);
-  await writeJson(productsFile, products.filter(product => product.id !== id));
-  clearProductSummaryCache();
+  }, async () => {
+    const products = await readJson(productsFile);
+    await writeJson(productsFile, products.filter(product => product.id !== id));
+    clearProductSummaryCache();
+  });
 }
 
 async function listOrders() {
-  const orders = useSupabase ? await supabase("orders?select=*&order=created_at.desc") : await readJson(ordersFile);
+  const orders = await withSupabaseFallback(
+    "orders list",
+    () => supabase("orders?select=*&order=created_at.desc"),
+    () => readJson(ordersFile)
+  );
   return orders.map(order => ({ ...order, createdAt: order.createdAt || order.created_at }));
 }
 
@@ -929,20 +965,20 @@ async function createOrder(body, member) {
     total: normalized.reduce((sum, item) => sum + item.price * item.qty, 0)
   };
 
-  if (useSupabase) {
+  return await withSupabaseFallback("order create", async () => {
     const [created] = await supabase("orders", {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(order)
     });
     return { ...created, createdAt: created.created_at };
-  }
-
-  const orders = await readJson(ordersFile);
-  const localOrder = { ...order, createdAt: new Date().toISOString() };
-  orders.unshift(localOrder);
-  await writeJson(ordersFile, orders);
-  return localOrder;
+  }, async () => {
+    const orders = await readJson(ordersFile);
+    const localOrder = { ...order, createdAt: new Date().toISOString() };
+    orders.unshift(localOrder);
+    await writeJson(ordersFile, orders);
+    return localOrder;
+  });
 }
 
 async function updateOrderStatus(id, input) {
@@ -952,7 +988,7 @@ async function updateOrderStatus(id, input) {
     tracking_number: String(input.tracking_number || "").trim(),
     admin_memo: String(input.admin_memo || "").trim()
   };
-  if (useSupabase) {
+  return await withSupabaseFallback("order update", async () => {
     const [updated] = await supabase(`orders?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
@@ -960,34 +996,41 @@ async function updateOrderStatus(id, input) {
     });
     if (!updated) throw new Error("주문을 찾을 수 없습니다.");
     return { ...updated, createdAt: updated.created_at };
-  }
-  const orders = await readJson(ordersFile);
-  const order = orders.find(candidate => candidate.id === id);
-  if (!order) throw new Error("주문을 찾을 수 없습니다.");
-  Object.assign(order, patch);
-  await writeJson(ordersFile, orders);
-  return order;
+  }, async () => {
+    const orders = await readJson(ordersFile);
+    const order = orders.find(candidate => candidate.id === id);
+    if (!order) throw new Error("주문을 찾을 수 없습니다.");
+    Object.assign(order, patch);
+    await writeJson(ordersFile, orders);
+    return order;
+  });
 }
 
 async function deleteOrder(id) {
-  if (useSupabase) {
+  await withSupabaseFallback("order delete", async () => {
     await supabase(`orders?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
-    return;
-  }
-  const orders = await readJson(ordersFile);
-  await writeJson(ordersFile, orders.filter(order => order.id !== id));
+  }, async () => {
+    const orders = await readJson(ordersFile);
+    await writeJson(ordersFile, orders.filter(order => order.id !== id));
+  });
 }
 
 async function listInquiries() {
-  const inquiries = useSupabase ? await supabase("inquiries?select=*&order=created_at.desc") : await readJson(inquiriesFile);
+  const inquiries = await withSupabaseFallback(
+    "inquiries list",
+    () => supabase("inquiries?select=*&order=created_at.desc"),
+    () => readJson(inquiriesFile)
+  );
   return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
 }
 
 async function listMemberInquiries(memberId) {
   if (!memberId) return [];
-  const inquiries = useSupabase
-    ? await supabase(`inquiries?member_id=eq.${encodeURIComponent(memberId)}&select=*&order=created_at.desc`)
-    : (await readJson(inquiriesFile)).filter(item => item.member_id === memberId);
+  const inquiries = await withSupabaseFallback(
+    "member inquiries list",
+    () => supabase(`inquiries?member_id=eq.${encodeURIComponent(memberId)}&select=*&order=created_at.desc`),
+    async () => (await readJson(inquiriesFile)).filter(item => item.member_id === memberId)
+  );
   return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
 }
 
@@ -1012,19 +1055,20 @@ async function createInquiry(input, member) {
   if (!inquiry.subject || !inquiry.message) {
     throw new Error("문의 제목과 내용을 입력해주세요.");
   }
-  if (useSupabase) {
+  return await withSupabaseFallback("inquiry create", async () => {
     const [created] = await supabase("inquiries", {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(inquiry)
     });
     return { ...created, createdAt: created.created_at };
-  }
-  const inquiries = await readJson(inquiriesFile);
-  const localInquiry = { ...inquiry, createdAt: new Date().toISOString() };
-  inquiries.unshift(localInquiry);
-  await writeJson(inquiriesFile, inquiries);
-  return localInquiry;
+  }, async () => {
+    const inquiries = await readJson(inquiriesFile);
+    const localInquiry = { ...inquiry, createdAt: new Date().toISOString() };
+    inquiries.unshift(localInquiry);
+    await writeJson(inquiriesFile, inquiries);
+    return localInquiry;
+  });
 }
 
 async function updateInquiry(id, input) {
@@ -1033,7 +1077,7 @@ async function updateInquiry(id, input) {
     answer: String(input.answer || "").trim(),
     admin_memo: String(input.admin_memo || "").trim()
   };
-  if (useSupabase) {
+  return await withSupabaseFallback("inquiry update", async () => {
     const [updated] = await supabase(`inquiries?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
@@ -1041,13 +1085,14 @@ async function updateInquiry(id, input) {
     });
     if (!updated) throw new Error("문의를 찾을 수 없습니다.");
     return { ...updated, createdAt: updated.created_at };
-  }
-  const inquiries = await readJson(inquiriesFile);
-  const inquiry = inquiries.find(item => item.id === id);
-  if (!inquiry) throw new Error("문의를 찾을 수 없습니다.");
-  Object.assign(inquiry, patch);
-  await writeJson(inquiriesFile, inquiries);
-  return inquiry;
+  }, async () => {
+    const inquiries = await readJson(inquiriesFile);
+    const inquiry = inquiries.find(item => item.id === id);
+    if (!inquiry) throw new Error("문의를 찾을 수 없습니다.");
+    Object.assign(inquiry, patch);
+    await writeJson(inquiriesFile, inquiries);
+    return inquiry;
+  });
 }
 
 async function listReviews() {
@@ -1089,35 +1134,33 @@ async function createReview(input, member) {
 async function findMemberByEmail(email) {
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return null;
-  if (useSupabase) {
+  return await withSupabaseFallback("member lookup email", async () => {
     const members = await supabase(`members?email=eq.${encodeURIComponent(normalized)}&select=*`);
     return members[0] || null;
-  }
-  const file = path.join(dataDir, "members.json");
-  await ensureJson(file, []);
-  const members = await readJson(file);
-  return members.find(member => member.email === normalized) || null;
+  }, async () => {
+    const members = await readLocalMembers();
+    return members.find(member => member.email === normalized) || null;
+  });
 }
 
 async function findMemberByUsername(username) {
   const normalized = String(username || "").trim().toLowerCase();
   if (!normalized) return null;
-  if (useSupabase) {
+  return await withSupabaseFallback("member lookup username", async () => {
     const members = await supabase(`members?username=eq.${encodeURIComponent(normalized)}&select=*`);
     return members[0] || null;
-  }
-  const file = path.join(dataDir, "members.json");
-  await ensureJson(file, []);
-  const members = await readJson(file);
-  return members.find(member => member.username === normalized) || null;
+  }, async () => {
+    const members = await readLocalMembers();
+    return members.find(member => member.username === normalized) || null;
+  });
 }
 
 async function listMembers() {
-  const members = useSupabase ? await supabase("members?select=*") : await (async () => {
-    const file = path.join(dataDir, "members.json");
-    await ensureJson(file, []);
-    return await readJson(file);
-  })();
+  const members = await withSupabaseFallback(
+    "members list",
+    () => supabase("members?select=*"),
+    () => readLocalMembers()
+  );
   return members
     .map(adminMemberView)
     .sort((a, b) => String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id)));
@@ -1153,20 +1196,20 @@ async function createMember(input) {
     phone: String(input.phone || "").trim(),
     address: String(input.address || "").trim()
   };
-  if (useSupabase) {
+  return await withSupabaseFallback("member create", async () => {
     const [created] = await supabase("members", {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(member)
     });
     return created;
-  }
-  const file = path.join(dataDir, "members.json");
-  await ensureJson(file, []);
-  const members = await readJson(file);
-  members.push({ ...member, createdAt: new Date().toISOString() });
-  await writeJson(file, members);
-  return member;
+  }, async () => {
+    const members = await readLocalMembers();
+    const localMember = { ...member, createdAt: new Date().toISOString() };
+    members.push(localMember);
+    await writeJson(membersFile, members);
+    return localMember;
+  });
 }
 
 async function updateMember(id, input) {
@@ -1186,7 +1229,7 @@ async function updateMember(id, input) {
   const patch = { username, email, name, phone, address };
   if (password) patch.password_hash = hashPassword(password);
 
-  if (useSupabase) {
+  return await withSupabaseFallback("member update", async () => {
     const [updated] = await supabase(`members?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
@@ -1197,30 +1240,26 @@ async function updateMember(id, input) {
       if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(updated) });
     }
     return adminMemberView(updated);
-  }
-
-  const file = path.join(dataDir, "members.json");
-  await ensureJson(file, []);
-  const members = await readJson(file);
-  const member = members.find(item => item.id === id);
-  if (!member) throw new Error("회원을 찾을 수 없습니다.");
-  Object.assign(member, patch);
-  await writeJson(file, members);
-  for (const [token, session] of memberSessions.entries()) {
-    if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(member) });
-  }
-  return adminMemberView(member);
+  }, async () => {
+    const members = await readLocalMembers();
+    const member = members.find(item => item.id === id);
+    if (!member) throw new Error("회원을 찾을 수 없습니다.");
+    Object.assign(member, patch);
+    await writeJson(membersFile, members);
+    for (const [token, session] of memberSessions.entries()) {
+      if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(member) });
+    }
+    return adminMemberView(member);
+  });
 }
 
 async function deleteMember(id) {
-  if (useSupabase) {
+  await withSupabaseFallback("member delete", async () => {
     await supabase(`members?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
-  } else {
-    const file = path.join(dataDir, "members.json");
-    await ensureJson(file, []);
-    const members = await readJson(file);
-    await writeJson(file, members.filter(member => member.id !== id));
-  }
+  }, async () => {
+    const members = await readLocalMembers();
+    await writeJson(membersFile, members.filter(member => member.id !== id));
+  });
   for (const [token, session] of memberSessions.entries()) {
     if (session.id === id) memberSessions.delete(token);
   }
