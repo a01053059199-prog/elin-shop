@@ -54,6 +54,7 @@
     .image-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
     .image-tools button { width: auto; height: 34px; padding: 0 12px; font-size: 13px; }
     .hint { margin-top: 7px; color: #777; font-size: 12px; line-height: 1.45; }
+    .upload-progress { min-height: 18px; margin-top: 8px; color: #555; font-size: 12px; font-weight: 800; }
     .clean-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 18px; background: rgba(0,0,0,.55); }
     .clean-modal.hidden { display: none; }
     .clean-box { width: min(920px, 96vw); max-height: 92vh; overflow: auto; border-radius: 10px; background: #fff; padding: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.24); }
@@ -207,6 +208,7 @@
           <input id="imageFile" type="file" accept="image/*" multiple />
           <div class="hint">최대 15장까지 등록 가능합니다. 권장: 1MB 이하 JPG/PNG/WEBP. 큰 이미지는 저장이 느릴 수 있습니다.</div>
           <div class="image-preview" id="imagePreview">이미지 미리보기</div>
+          <div class="upload-progress" id="imageUploadProgress" aria-live="polite"></div>
           <div class="image-tools">
             <button type="button" class="ghost" id="clearImages">이미지 전체 삭제</button>
           </div>
@@ -755,23 +757,37 @@
           return;
         }
       }
-      let uploaded;
+      const input = event.target;
+      const progress = document.querySelector("#imageUploadProgress");
+      input.disabled = true;
+      progress.textContent = `이미지 최적화 중... 0/${files.length}`;
       try {
-        uploaded = await Promise.all(files.map(file => readImageFile(file, {
-          maxSize: 900,
-          targetBytes: 180_000,
-          minQuality: 0.42,
-          quality: 0.74
-        })));
+        const uploaded = [];
+        for (const [index, file] of files.entries()) {
+          progress.textContent = `이미지 최적화 중... ${index + 1}/${files.length}`;
+          uploaded.push(await readImageFile(file, {
+            maxSize: 760,
+            targetBytes: 120_000,
+            minQuality: 0.44,
+            quality: 0.7,
+            attempts: 6
+          }));
+          await new Promise(resolve => window.setTimeout(resolve, 0));
+        }
+        const current = parseImages(formValue("image"));
+        const images = [...current, ...uploaded].slice(0, productImageLimit);
+        setImages(images);
+        progress.textContent = `${uploaded.length}장 업로드 최적화 완료`;
       } catch (error) {
         alert(error.message || "이미지를 읽지 못했습니다. JPG 파일로 다시 올려주세요.");
-        event.target.value = "";
+        progress.textContent = "";
+        input.value = "";
+        input.disabled = false;
         return;
+      } finally {
+        input.value = "";
+        input.disabled = false;
       }
-      const current = parseImages(formValue("image"));
-      const images = [...current, ...uploaded].slice(0, productImageLimit);
-      setImages(images);
-      event.target.value = "";
     });
 
     document.querySelector("#image").addEventListener("input", event => renderImagePreview(event.target.value));
@@ -1910,43 +1926,29 @@
       return Math.ceil(base64.length * 0.75);
     }
 
-    function readImageFile(file, options = {}) {
+    function canvasToDataUrl(canvas, quality) {
+      return new Promise(resolve => {
+        canvas.toBlob(blob => {
+          if (!blob) return resolve(canvas.toDataURL("image/jpeg", quality));
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        }, "image/jpeg", quality);
+      });
+    }
+
+    async function loadImageSource(file) {
+      if ("createImageBitmap" in window) {
+        try {
+          return await createImageBitmap(file, { imageOrientation: "from-image" });
+        } catch (_) {}
+      }
       return new Promise((resolve, reject) => {
         const image = new Image();
         const objectUrl = URL.createObjectURL(file);
         image.onload = () => {
-          try {
-            const targetBytes = options.targetBytes || 300_000;
-            const minQuality = options.minQuality || 0.45;
-            let maxSize = options.maxSize || 1100;
-            let quality = options.quality || 0.76;
-            let result = "";
-
-            for (let attempt = 0; attempt < 12; attempt += 1) {
-              const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-              const canvas = document.createElement("canvas");
-              canvas.width = Math.max(1, Math.round(image.width * scale));
-              canvas.height = Math.max(1, Math.round(image.height * scale));
-              const context = canvas.getContext("2d");
-              context.fillStyle = "#fff";
-              context.fillRect(0, 0, canvas.width, canvas.height);
-              context.drawImage(image, 0, 0, canvas.width, canvas.height);
-              result = canvas.toDataURL("image/jpeg", quality);
-
-              if (dataUrlBytes(result) <= targetBytes) break;
-              if (quality > minQuality) {
-                quality = Math.max(minQuality, quality - 0.12);
-              } else {
-                maxSize = Math.max(520, Math.round(maxSize * 0.82));
-              }
-            }
-
-            URL.revokeObjectURL(objectUrl);
-            resolve(result);
-          } catch (error) {
-            URL.revokeObjectURL(objectUrl);
-            reject(error);
-          }
+          URL.revokeObjectURL(objectUrl);
+          resolve(image);
         };
         image.onerror = () => {
           URL.revokeObjectURL(objectUrl);
@@ -1954,6 +1956,39 @@
         };
         image.src = objectUrl;
       });
+    }
+
+    async function readImageFile(file, options = {}) {
+      const source = await loadImageSource(file);
+      try {
+        const sourceWidth = source.naturalWidth || source.width;
+        const sourceHeight = source.naturalHeight || source.height;
+        const targetBytes = options.targetBytes || 240_000;
+        const minQuality = options.minQuality || 0.45;
+        const attempts = options.attempts || 7;
+        let maxSize = options.maxSize || 960;
+        let quality = options.quality || 0.74;
+        let result = "";
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d", { alpha: false });
+
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          const scale = Math.min(1, maxSize / Math.max(sourceWidth, sourceHeight));
+          canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+          canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+          context.fillStyle = "#fff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(source, 0, 0, canvas.width, canvas.height);
+          result = await canvasToDataUrl(canvas, quality);
+
+          if (dataUrlBytes(result) <= targetBytes) break;
+          if (quality > minQuality) quality = Math.max(minQuality, quality - 0.1);
+          else maxSize = Math.max(480, Math.round(maxSize * 0.82));
+        }
+        return result;
+      } finally {
+        if (source.close) source.close();
+      }
     }
 
     function cropSelectedImageArea(src, rect, options = {}) {
