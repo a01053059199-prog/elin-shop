@@ -716,7 +716,12 @@ async function supabase(pathname, options = {}) {
 }
 
 function cleanProduct(input) {
-  const price = Number(input.price);
+  const parseMoney = value => {
+    if (typeof value === "number") return value;
+    const digits = String(value || "").replace(/[^\d]/g, "");
+    return digits ? Number(digits) : NaN;
+  };
+  const price = Math.round(parseMoney(input.price));
   const stock = Number(input.stock || 9999);
   const images = Array.isArray(input.images)
     ? input.images

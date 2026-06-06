@@ -194,7 +194,8 @@
           <input id="label" placeholder="NEW" />
 
           <label for="price">판매가</label>
-          <input id="price" type="number" required />
+          <input id="price" inputmode="numeric" autocomplete="off" placeholder="예: 239,000" required />
+          <div class="hint">숫자만 입력해도 자동으로 쉼표가 표시됩니다. 마우스 휠로 금액이 바뀌지 않습니다.</div>
 
           <label for="colors">색상 옵션</label>
           <textarea id="colors" rows="3" placeholder="블랙&#10;화이트&#10;브라운"></textarea>
@@ -2289,19 +2290,40 @@
 
     function formValue(id) { return document.querySelector(`#${id}`).value; }
     function setValue(id, value) { document.querySelector(`#${id}`).value = value || ""; }
+    function parsePriceInput(value) {
+      const digits = String(value || "").replace(/[^\d]/g, "");
+      if (!digits) return NaN;
+      return Number(digits);
+    }
+    function formatPriceInput(value) {
+      const price = parsePriceInput(value);
+      return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "";
+    }
+
+    document.querySelector("#price").addEventListener("input", event => {
+      const cursorAtEnd = event.target.selectionStart === event.target.value.length;
+      event.target.value = formatPriceInput(event.target.value);
+      if (cursorAtEnd) event.target.setSelectionRange(event.target.value.length, event.target.value.length);
+    });
 
     document.querySelector("#productForm").addEventListener("submit", async event => {
       event.preventDefault();
       const id = formValue("productId");
       let images = parseImages(formValue("image")).slice(0, productImageLimit);
       setImages(images);
+      const price = parsePriceInput(formValue("price"));
+      if (!Number.isFinite(price) || price <= 0) {
+        alert("판매가를 올바르게 입력해주세요. 예: 239,000");
+        document.querySelector("#price").focus();
+        return;
+      }
       const payload = {
         name: formValue("name"),
         category: formValue("category"),
         keywords: formValue("keywords"),
         label: formValue("label") || "NEW",
-        price: Number(formValue("price")),
-        old: Number(formValue("price")),
+        price,
+        old: price,
         stock: 9999,
         colors: parseOptions(formValue("colors"), "기본"),
         sizes: parseOptions(formValue("sizes"), "FREE"),
@@ -2339,7 +2361,7 @@
       setValue("category", product.category);
       setValue("keywords", product.keywords);
       setValue("label", product.label);
-      setValue("price", product.price);
+      setValue("price", formatPriceInput(product.price));
       setValue("colors", optionText(product.colors, "기본"));
       setValue("sizes", optionText(product.sizes, "FREE"));
       setValue("image", productImages(product).join("\n"));
