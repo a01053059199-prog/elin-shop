@@ -412,13 +412,22 @@ const defaultHeroSlides = [
 ];
 
 const defaultCategoryCards = [
-  { title: "WOMEN", text: "아우터 · 니트 · 팬츠", image: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80" },
-  { title: "MAN", text: "셔츠 · 아우터 · 팬츠", image: "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80" },
-  { title: "BAG", text: "토트 · 숄더 · 미니백", image: "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80" },
-  { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80" },
-  { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80" },
-  { title: "WATCH", text: "클래식 · 데일리", image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80" }
+  { title: "WOMEN", text: "아우터 · 니트 · 팬츠", image: "" },
+  { title: "MAN", text: "셔츠 · 아우터 · 팬츠", image: "" },
+  { title: "BAG", text: "토트 · 숄더 · 미니백", image: "" },
+  { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "" },
+  { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "" },
+  { title: "WATCH", text: "클래식 · 데일리", image: "" }
 ];
+
+const legacyCategoryImageUrls = new Set([
+  "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80",
+  "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80",
+  "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80",
+  "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80",
+  "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
+  "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80"
+]);
 
 const defaultCheckoutBankAccounts = [
   "신한은행 110-000-000000 ELIN",
@@ -539,7 +548,11 @@ function normalizeSiteSettings(input = {}) {
     };
   });
   settings.heroSlides = cleanVisualItems(input.heroSlides, defaultHeroSlides, 4, true);
-  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 6);
+  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 6)
+    .map(card => ({
+      ...card,
+      image: legacyCategoryImageUrls.has(card.image) ? "" : card.image
+    }));
   return settings;
 }
 

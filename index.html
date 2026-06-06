@@ -1300,12 +1300,12 @@
       <div class="category-slider" aria-label="카테고리 슬라이드">
         <div class="category-viewport">
           <div class="category-strip" id="categoryStrip">
-        <a class="category-card" data-category-card="0" data-nav-filter="women" href="#products" style="background-image:url('https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80')"><strong>WOMEN</strong><span>아우터 · 니트 · 팬츠</span></a>
-        <a class="category-card" data-category-card="1" data-nav-filter="men" href="#products" style="background-image:url('https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80')"><strong>MAN</strong><span>셔츠 · 아우터 · 팬츠</span></a>
-        <a class="category-card" data-category-card="2" data-nav-filter="bag" href="#products" style="background-image:url('https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80')"><strong>BAG</strong><span>토트 · 숄더 · 미니백</span></a>
-        <a class="category-card" data-category-card="3" data-nav-filter="shoes" href="#products" style="background-image:url('https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80')"><strong>SHOES</strong><span>스니커즈 · 로퍼 · 샌들</span></a>
-        <a class="category-card" data-category-card="4" data-nav-filter="accessory" href="#products" style="background-image:url('https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80')"><strong>ACCESSORY</strong><span>주얼리 · 벨트 · 지갑</span></a>
-        <a class="category-card" data-category-card="5" data-nav-filter="watch" href="#products" style="background-image:url('https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80')"><strong>WATCH</strong><span>클래식 · 데일리</span></a>
+        <a class="category-card" data-category-card="0" data-nav-filter="women" href="#products"><strong>WOMEN</strong><span>아우터 · 니트 · 팬츠</span></a>
+        <a class="category-card" data-category-card="1" data-nav-filter="men" href="#products"><strong>MAN</strong><span>셔츠 · 아우터 · 팬츠</span></a>
+        <a class="category-card" data-category-card="2" data-nav-filter="bag" href="#products"><strong>BAG</strong><span>토트 · 숄더 · 미니백</span></a>
+        <a class="category-card" data-category-card="3" data-nav-filter="shoes" href="#products"><strong>SHOES</strong><span>스니커즈 · 로퍼 · 샌들</span></a>
+        <a class="category-card" data-category-card="4" data-nav-filter="accessory" href="#products"><strong>ACCESSORY</strong><span>주얼리 · 벨트 · 지갑</span></a>
+        <a class="category-card" data-category-card="5" data-nav-filter="watch" href="#products"><strong>WATCH</strong><span>클래식 · 데일리</span></a>
           </div>
         </div>
         <div class="category-slider-controls">
@@ -1725,6 +1725,15 @@
       return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     }
 
+    const legacyCategoryImageUrls = new Set([
+      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80"
+    ]);
+
     function lineHtml(value) {
       return escapeHtml(value).replace(/\n/g, "<br>");
     }
@@ -1801,7 +1810,8 @@
       document.querySelectorAll("[data-category-card]").forEach((cardElement, index) => {
         const category = categories[index];
         if (!category) return;
-        if (category.image) cardElement.style.backgroundImage = `url('${safeCssUrl(category.image)}')`;
+        const categoryImage = legacyCategoryImageUrls.has(category.image) ? "" : category.image;
+        cardElement.style.backgroundImage = categoryImage ? `url('${safeCssUrl(categoryImage)}')` : "";
         const title = cardElement.querySelector("strong");
         const text = cardElement.querySelector("span");
         if (title && category.title) title.textContent = category.title;
