@@ -1029,7 +1029,7 @@
         );
       }
       if (!options.polling) {
-        requests.unshift(fetch("/api/products").then(async response => {
+        requests.unshift(fetch(`/api/products?admin=1&ts=${Date.now()}`, { cache: "no-store" }).then(async response => {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "상품 목록을 불러오지 못했습니다.");
           return data;
@@ -2290,6 +2290,14 @@
 
     function formValue(id) { return document.querySelector(`#${id}`).value; }
     function setValue(id, value) { document.querySelector(`#${id}`).value = value || ""; }
+    function clearProductClientCaches() {
+      try { localStorage.removeItem("elinProductSummaryCacheV4"); } catch (_) {}
+      try { localStorage.removeItem("elinProductSummaryCacheV3"); } catch (_) {}
+      try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
+      try { sessionStorage.removeItem("elinProductSummariesV5"); } catch (_) {}
+      try { sessionStorage.removeItem("elinProductSummariesV3"); } catch (_) {}
+      try { sessionStorage.removeItem("elinProductSummaries"); } catch (_) {}
+    }
     function parsePriceInput(value) {
       const digits = String(value || "").replace(/[^\d]/g, "");
       if (!digits) return NaN;
@@ -2340,10 +2348,19 @@
         alert(result.error || "상품 저장에 실패했습니다.");
         return;
       }
+      const savedProduct = await response.json().catch(() => null);
+      clearProductClientCaches();
+      if (savedProduct?.id) {
+        const index = products.findIndex(item => item.id === savedProduct.id);
+        if (index >= 0) products[index] = { ...products[index], ...savedProduct };
+        else products.unshift(savedProduct);
+        renderProducts();
+      }
       event.target.reset();
       setValue("productId", "");
       renderImagePreview("");
-      await refresh();
+      await refresh({ fast: true });
+      alert(id ? "상품 수정이 반영되었습니다." : "상품 등록이 반영되었습니다.");
     });
 
     document.querySelector("#resetForm").addEventListener("click", () => {
@@ -2353,7 +2370,7 @@
     });
 
     window.editProduct = async id => {
-      const response = await fetch(`/api/products/${encodeURIComponent(id)}`);
+      const response = await fetch(`/api/products/${encodeURIComponent(id)}?ts=${Date.now()}`, { cache: "no-store" });
       const product = response.ok ? await response.json() : products.find(item => item.id === id);
       if (!product) return;
       setValue("productId", product.id);

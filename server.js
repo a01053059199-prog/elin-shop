@@ -783,7 +783,7 @@ async function listProductSummaries() {
     return productSummaryCache.items;
   }
   const summaryFromProduct = product => {
-    const versionSource = product.updated_at || product.created_at || product.createdAt || product.id || "";
+    const versionSource = product.updated_at || product.updatedAt || `${product.created_at || product.createdAt || product.id || ""}:${now}`;
     const version = encodeURIComponent(Buffer.byteLength(String(versionSource), "utf8"));
     const image = product.id ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "";
     return {
@@ -797,6 +797,8 @@ async function listProductSummaries() {
       images: image ? [image] : [],
       colors: product.colors,
       sizes: product.sizes,
+      updated_at: product.updated_at,
+      updatedAt: product.updatedAt,
       created_at: product.created_at,
       createdAt: product.createdAt
     };
@@ -851,7 +853,7 @@ function sendProductImage(res, source) {
   const match = image.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
   if (!match) return send(res, 404, "Not found", "text/plain; charset=utf-8");
   const buffer = Buffer.from(match[2], "base64");
-  return send(res, 200, buffer, match[1], { "Cache-Control": "public, max-age=86400, immutable" });
+  return send(res, 200, buffer, match[1], { "Cache-Control": "public, max-age=300, must-revalidate" });
 }
 
 async function getProduct(id) {
@@ -901,12 +903,13 @@ async function updateProduct(id, input) {
     return updated;
   }, async () => {
     const products = await readJson(productsFile);
+    const previous = products.find(item => item.id === id) || {};
     const index = products.findIndex(item => item.id === id);
     if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
-    products[index] = { ...product, updatedAt: new Date().toISOString() };
+    products[index] = { ...previous, ...product, createdAt: previous.createdAt || previous.created_at || new Date().toISOString(), updatedAt: new Date().toISOString() };
     await writeJson(productsFile, products);
     clearProductSummaryCache();
-    return product;
+    return products[index];
   });
 }
 
@@ -1478,7 +1481,7 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/products" && req.method === "GET") {
     if (url.searchParams.get("summary") === "1") {
-      return send(res, 200, await listProductSummaries(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" });
+      return send(res, 200, await listProductSummaries(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=5, stale-while-revalidate=60" });
     }
     return send(res, 200, await listProducts());
   }
