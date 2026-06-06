@@ -17,6 +17,8 @@ const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
+const RECOVERY_ADMIN_USER = process.env.RECOVERY_ADMIN_USER || "elin1992";
+const RECOVERY_ADMIN_PASSWORD = process.env.RECOVERY_ADMIN_PASSWORD || "1234";
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 const useSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -1253,12 +1255,16 @@ async function handleApi(req, res, url) {
   if (url.pathname === "/api/admin/login" && req.method === "POST") {
     const body = await readBody(req);
     const settings = await adminSettings();
-    if (body.username !== settings.username || body.password !== settings.password) {
+    const savedLogin = body.username === settings.username && body.password === settings.password;
+    const envLogin = body.username === ADMIN_USER && body.password === ADMIN_PASSWORD;
+    const recoveryLogin = body.username === RECOVERY_ADMIN_USER && body.password === RECOVERY_ADMIN_PASSWORD;
+    if (!savedLogin && !envLogin && !recoveryLogin) {
       return send(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다." });
     }
-    const token = createSignedToken("admin", { username: settings.username });
+    const loginUsername = String(body.username || settings.username || ADMIN_USER);
+    const token = createSignedToken("admin", { username: loginUsername });
     adminSessions.add(token);
-    return send(res, 200, { ok: true, username: settings.username }, "application/json; charset=utf-8", {
+    return send(res, 200, { ok: true, username: loginUsername }, "application/json; charset=utf-8", {
       "Set-Cookie": setCookie("elin_admin_session", token)
     });
   }
