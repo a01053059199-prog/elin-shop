@@ -444,6 +444,7 @@ const defaultCategoryCards = [
   { title: "WOMEN", text: "아우터 · 니트 · 팬츠", image: "" },
   { title: "MAN", text: "셔츠 · 아우터 · 팬츠", image: "" },
   { title: "BAG", text: "토트 · 숄더 · 미니백", image: "" },
+  { title: "WALLET", text: "반지갑 · 장지갑 · 카드지갑", image: "" },
   { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "" },
   { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "" },
   { title: "WATCH", text: "클래식 · 데일리", image: "" }
@@ -507,7 +508,7 @@ function cleanVisualItems(items, fallback, limit, hasButton = false) {
   return Array.from({ length: limit }, (_, index) => {
     const base = fallback[index] || {};
     const item = source[index] || {};
-    const hasItem = hasCustomItems && item && typeof item === "object";
+    const hasItem = hasCustomItems && item && typeof item === "object" && Object.keys(item).length > 0;
     const clean = {
       ...base,
       title: String(hasItem ? item.title || "" : base.title || "").trim(),
@@ -577,7 +578,7 @@ function normalizeSiteSettings(input = {}) {
     };
   });
   settings.heroSlides = cleanVisualItems(input.heroSlides, defaultHeroSlides, 4, true);
-  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 6)
+  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 7)
     .map(card => ({
       ...card,
       image: legacyCategoryImageUrls.has(card.image) ? "" : card.image
