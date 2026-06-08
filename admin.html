@@ -48,7 +48,13 @@
     .image-preview { width: 100%; min-height: 160px; border: 1px dashed #cfc7bc; border-radius: 8px; background: #f8f6f2; display: grid; grid-template-columns: repeat(auto-fill, 96px); align-content: start; align-items: start; gap: 10px; padding: 10px; color: #777; font-size: 13px; }
     .image-preview.empty { display: grid; place-items: center; grid-template-columns: 1fr; }
     .image-preview img { width: 96px; height: 96px; border-radius: 6px; object-fit: contain; background: #eee8df; display: block; color: transparent; font-size: 0; }
-    .preview-item { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+    .preview-item { position: relative; width: 96px; height: 96px; display: grid; place-items: center; cursor: grab; }
+    .preview-item:active { cursor: grabbing; }
+    .preview-item.dragging { opacity: .45; outline: 2px solid #171717; outline-offset: 2px; }
+    .preview-item.drop-before::before, .preview-item.drop-after::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 999px; background: #b71f2a; z-index: 4; }
+    .preview-item.drop-before::before { left: -6px; }
+    .preview-item.drop-after::after { right: -6px; }
+    .preview-order { position: absolute; left: 5px; top: 5px; z-index: 3; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: rgba(183,31,42,.94); color: #fff; font-size: 12px; font-weight: 900; line-height: 22px; text-align: center; pointer-events: none; }
     .preview-item button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border-radius: 999px; background: rgba(23,23,23,.82); color: #fff; font-size: 14px; line-height: 1; }
     .preview-item .crop-btn { top: auto; left: 4px; bottom: 4px; width: auto; height: 24px; padding: 0 8px; border-radius: 999px; font-size: 11px; background: rgba(17,17,17,.88); }
     .image-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
@@ -639,6 +645,7 @@
     let cleanDragSelection = null;
     let cleanAspectRatio = null;
     let cropPreviewToken = 0;
+    let imageDragIndex = -1;
     const productImageLimit = 15;
     const adminRememberKey = "elinAdminRemember";
     const notifySoundKey = "elinAdminNotifySound";
@@ -1729,6 +1736,63 @@
       renderImagePreview(images);
     }
 
+    function clearImageDropMarkers() {
+      document.querySelectorAll("#imagePreview .preview-item").forEach(item => {
+        item.classList.remove("dragging", "drop-before", "drop-after");
+      });
+    }
+
+    function reorderImages(fromIndex, toIndex) {
+      const images = parseImages(formValue("image"));
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= images.length || toIndex >= images.length || fromIndex === toIndex) return;
+      const [moved] = images.splice(fromIndex, 1);
+      images.splice(toIndex, 0, moved);
+      setImages(images);
+    }
+
+    window.startImageDrag = (event, index) => {
+      if (event.target.closest("button")) {
+        event.preventDefault();
+        return;
+      }
+      imageDragIndex = index;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+      event.currentTarget.classList.add("dragging");
+    };
+
+    window.overImageDrag = (event, index) => {
+      if (imageDragIndex < 0 || imageDragIndex === index) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      clearImageDropMarkers();
+      const box = event.currentTarget.getBoundingClientRect();
+      const after = event.clientX > box.left + box.width / 2;
+      event.currentTarget.classList.add(after ? "drop-after" : "drop-before");
+    };
+
+    window.leaveImageDrag = event => {
+      event.currentTarget.classList.remove("drop-before", "drop-after");
+    };
+
+    window.dropImageDrag = (event, index) => {
+      event.preventDefault();
+      const fromIndex = Number(event.dataTransfer.getData("text/plain") || imageDragIndex);
+      const box = event.currentTarget.getBoundingClientRect();
+      const after = event.clientX > box.left + box.width / 2;
+      let toIndex = index + (after ? 1 : 0);
+      if (fromIndex < toIndex) toIndex -= 1;
+      toIndex = Math.max(0, Math.min(parseImages(formValue("image")).length - 1, toIndex));
+      reorderImages(fromIndex, toIndex);
+      imageDragIndex = -1;
+      clearImageDropMarkers();
+    };
+
+    window.endImageDrag = () => {
+      imageDragIndex = -1;
+      clearImageDropMarkers();
+    };
+
     window.removeImage = index => {
       const images = parseImages(formValue("image"));
       images.splice(index, 1);
@@ -2033,7 +2097,8 @@
       }
       preview.classList.remove("empty");
       preview.innerHTML = images.map((image, index) => `
-        <div class="preview-item">
+        <div class="preview-item" draggable="true" data-index="${index}" ondragstart="startImageDrag(event, ${index})" ondragover="overImageDrag(event, ${index})" ondragleave="leaveImageDrag(event)" ondrop="dropImageDrag(event, ${index})" ondragend="endImageDrag()">
+          <span class="preview-order">${index + 1}</span>
           <img src="${image}" alt="상품 이미지" loading="lazy" decoding="async">
           <button type="button" onclick="removeImage(${index})" aria-label="이미지 ${index + 1} 삭제">×</button>
           <button type="button" class="crop-btn" onclick="openImageClean(${index})">자르기</button>
