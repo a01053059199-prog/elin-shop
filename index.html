@@ -202,7 +202,7 @@
       display: none;
     }
     .mobile-panel summary::after {
-      content: "??;
+      content: "⌄";
       color: #777;
       font-size: 13px;
     }
@@ -400,6 +400,7 @@
       border-color: #111;
     }
     .hero-pause {
+      display: none;
       justify-self: start;
       width: auto;
       min-width: 84px;
@@ -1466,7 +1467,7 @@
         try {
           localStorage.setItem(productCacheKey, JSON.stringify({ savedAt: Date.now(), products: slimItems.slice(0, 24) }));
         } catch (error) {
-          console.warn("?곹뭹 罹먯떆瑜???ν븯吏 紐삵뻽?듬땲??", error);
+          console.warn("상품 캐시를 저장하지 못했습니다.", error);
         }
       }
     }
@@ -1809,7 +1810,7 @@
           applySiteSettings(settings);
         }
       } catch (error) {
-        console.warn("?ъ씠???ㅼ젙??遺덈윭?ㅼ? 紐삵뻽?듬땲??", error);
+        console.warn("사이트 설정을 불러오지 못했습니다.", error);
       } finally {
         document.querySelector(".hero-slider")?.classList.remove("settings-pending");
       }
@@ -1824,7 +1825,7 @@
           cacheProducts(freshProducts);
         }
       } catch (error) {
-        console.warn("?쒕쾭 ?곹뭹 ?곗씠?곕? 遺덈윭?ㅼ? 紐삵빐 湲곕낯 ?곹뭹???ъ슜?⑸땲??", error);
+        console.warn("서버 상품 데이터를 불러오지 못해 기본 상품을 사용합니다.", error);
       }
       renderProducts();
       renderCart();
