@@ -1138,109 +1138,56 @@
 
   <header class="header">
     <div class="topline">
-      <button class="icon-btn mobile-menu" id="menuBtn" aria-label="硫붾돱 ?닿린">
+      <button class="icon-btn mobile-menu" id="menuBtn" aria-label="메뉴 열기">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
       <form class="search" id="searchForm">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="searchInput" type="search" placeholder="?곹뭹紐? 移댄뀒怨좊━ 寃?? />
+        <input id="searchInput" type="search" placeholder="상품명 또는 카테고리 검색" />
       </form>
       <a class="brand" href="/">ELIN</a>
       <div class="utility">
-        <a href="/login.html" id="loginLink">濡쒓렇??/a>
-        <a href="/signup.html" id="signupLink">?뚯썝媛??/a>
-        <a href="#" id="logoutLink" style="display:none">濡쒓렇?꾩썐</a>
-        <a href="/mypage.html">留덉씠?섏씠吏</a>
+        <a href="/login.html" id="loginLink">로그인</a>
+        <a href="/signup.html" id="signupLink">회원가입</a>
+        <a href="#" id="logoutLink" style="display:none">로그아웃</a>
+        <a href="/mypage.html">마이페이지</a>
       </div>
       <div class="actions">
-        <button class="icon-btn" aria-label="愿?ъ긽??>
+        <button class="icon-btn" aria-label="관심상품">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         </button>
-        <button class="icon-btn" id="cartBtn" aria-label="?λ컮援щ땲 ?닿린">
+        <button class="icon-btn" id="cartBtn" aria-label="장바구니 열기">
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 8h15l-1.7 9H7.7L5.7 4H3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor"/></svg>
           <span class="cart-count" id="cartCount">0</span>
         </button>
       </div>
     </div>
-
-    <nav class="nav" aria-label="二쇱슂 移댄뀒怨좊━">
+    <nav class="nav" aria-label="주요 카테고리">
       <div class="nav-row">
-        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="men">MAN <span>??/span></a><div class="mega compact"><div><h3>MAN</h3><a href="#weekly" data-nav-filter="men-outer">?꾩슦??/a><a href="#weekly" data-nav-filter="men-tshirt">?곗뀛痢?/a><a href="#weekly" data-nav-filter="men-shirt">?붿툩</a><a href="#weekly" data-nav-filter="men-knit">?덊듃/媛?붽굔</a><a href="#weekly" data-nav-filter="men-pants">吏??ъ툩</a></div></div></div>
-        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="women">WOMEN <span>??/span></a><div class="mega compact"><div><h3>WOMEN</h3><a href="#weekly" data-nav-filter="women-outer">?꾩슦??/a><a href="#weekly" data-nav-filter="women-tshirt">?곗뀛痢?/a><a href="#weekly" data-nav-filter="women-blouse">?붿툩/釉붾씪?곗뒪</a><a href="#weekly" data-nav-filter="women-knit">?덊듃/媛?붽굔</a><a href="#weekly" data-nav-filter="women-pants">吏??ъ툩</a></div></div></div>
-        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="bag">BAG <span>??/span></a><div class="mega compact"><div><h3>BAG</h3><a href="#weekly" data-nav-filter="bag-men">?⑥꽦媛諛?/a><a href="#weekly" data-nav-filter="bag-women">?ъ꽦媛諛?/a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="men">MAN <span>⌄</span></a><div class="mega compact"><div><h3>MAN</h3><a href="#weekly" data-nav-filter="men-outer">아우터</a><a href="#weekly" data-nav-filter="men-tshirt">티셔츠</a><a href="#weekly" data-nav-filter="men-shirt">셔츠</a><a href="#weekly" data-nav-filter="men-knit">니트/가디건</a><a href="#weekly" data-nav-filter="men-pants">진/팬츠</a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="women">WOMEN <span>⌄</span></a><div class="mega compact"><div><h3>WOMEN</h3><a href="#weekly" data-nav-filter="women-outer">아우터</a><a href="#weekly" data-nav-filter="women-tshirt">티셔츠</a><a href="#weekly" data-nav-filter="women-blouse">셔츠/블라우스</a><a href="#weekly" data-nav-filter="women-knit">니트/가디건</a><a href="#weekly" data-nav-filter="women-pants">진/팬츠</a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="bag">BAG <span>⌄</span></a><div class="mega compact"><div><h3>BAG</h3><a href="#weekly" data-nav-filter="bag-men">남성가방</a><a href="#weekly" data-nav-filter="bag-women">여성가방</a></div></div></div>
         <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="wallet">WALLET <span>⌄</span></a><div class="mega compact"><div><h3>WALLET</h3><a href="#weekly" data-nav-filter="wallet-men">남성지갑</a><a href="#weekly" data-nav-filter="wallet-women">여성지갑</a></div></div></div>
-        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="shoes">SHOES <span>??/span></a><div class="mega compact"><div><h3>SHOES</h3><a href="#weekly" data-nav-filter="shoes-men">?⑥꽦 ?덉쫰</a><a href="#weekly" data-nav-filter="shoes-women">?ъ꽦 ?덉쫰</a></div></div></div>
-        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="accessory">ACCESSORY <span>??/span></a><div class="mega compact"><div><h3>ACCESSORY</h3><a href="#weekly" data-nav-filter="accessory-belt">踰⑦듃</a><a href="#weekly" data-nav-filter="accessory-hat">紐⑥옄</a><a href="#weekly" data-nav-filter="accessory-scarf">癒명뵆???ㅼ뭅??/a><a href="#weekly" data-nav-filter="accessory-glasses">?덇꼍/?좉??쇱뒪</a><a href="#weekly" data-nav-filter="accessory-jewelry">伊ъ뼹由?/a></div></div></div>
-        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="watch">WATCH <span>??/span></a><div class="mega compact"><div><h3>WATCH</h3><a href="#weekly" data-nav-filter="watch-men">?⑥꽦?쒓퀎</a><a href="#weekly" data-nav-filter="watch-women">?ъ꽦?쒓퀎</a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="shoes">SHOES <span>⌄</span></a><div class="mega compact"><div><h3>SHOES</h3><a href="#weekly" data-nav-filter="shoes-men">남성 슈즈</a><a href="#weekly" data-nav-filter="shoes-women">여성 슈즈</a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="accessory">ACCESSORY <span>⌄</span></a><div class="mega compact"><div><h3>ACCESSORY</h3><a href="#weekly" data-nav-filter="accessory-belt">벨트</a><a href="#weekly" data-nav-filter="accessory-hat">모자</a><a href="#weekly" data-nav-filter="accessory-scarf">머플러/스카프</a><a href="#weekly" data-nav-filter="accessory-glasses">안경/선글라스</a><a href="#weekly" data-nav-filter="accessory-jewelry">쥬얼리</a></div></div></div>
+        <div class="nav-item"><a class="nav-link" href="#weekly" data-nav-filter="watch">WATCH <span>⌄</span></a><div class="mega compact"><div><h3>WATCH</h3><a href="#weekly" data-nav-filter="watch-men">남성시계</a><a href="#weekly" data-nav-filter="watch-women">여성시계</a></div></div></div>
         <a class="nav-link" href="/review.html">REVIEW</a>
         <a class="nav-link" href="/customer.html">NOTICE</a>
       </div>
     </nav>
     <div class="mobile-panel" id="mobilePanel">
       <a href="#products">BEST & NEW</a>
-      <details>
-        <summary>MAN</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="men-outer">?꾩슦??/a>
-          <a href="#weekly" data-nav-filter="men-tshirt">?곗뀛痢?/a>
-          <a href="#weekly" data-nav-filter="men-shirt">?붿툩</a>
-          <a href="#weekly" data-nav-filter="men-knit">?덊듃/媛?붽굔</a>
-          <a href="#weekly" data-nav-filter="men-pants">吏??ъ툩</a>
-        </div>
-      </details>
-      <details>
-        <summary>WOMEN</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="women-outer">?꾩슦??/a>
-          <a href="#weekly" data-nav-filter="women-tshirt">?곗뀛痢?/a>
-          <a href="#weekly" data-nav-filter="women-blouse">?붿툩/釉붾씪?곗뒪</a>
-          <a href="#weekly" data-nav-filter="women-knit">?덊듃/媛?붽굔</a>
-          <a href="#weekly" data-nav-filter="women-pants">吏??ъ툩</a>
-        </div>
-      </details>
-      <details>
-        <summary>BAG</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="bag-men">?⑥꽦媛諛?/a>
-          <a href="#weekly" data-nav-filter="bag-women">?ъ꽦媛諛?/a>
-        </div>
-      </details>
-      <details>
-        <summary>WALLET</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="wallet-men">남성지갑</a>
-          <a href="#weekly" data-nav-filter="wallet-women">여성지갑</a>
-        </div>
-      </details>
-      <details>
-        <summary>SHOES</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="shoes-men">?⑥꽦 ?덉쫰</a>
-          <a href="#weekly" data-nav-filter="shoes-women">?ъ꽦 ?덉쫰</a>
-        </div>
-      </details>
-      <details>
-        <summary>ACCESSORY</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="accessory-belt">踰⑦듃</a>
-          <a href="#weekly" data-nav-filter="accessory-hat">紐⑥옄</a>
-          <a href="#weekly" data-nav-filter="accessory-scarf">癒명뵆???ㅼ뭅??/a>
-          <a href="#weekly" data-nav-filter="accessory-glasses">?덇꼍/?좉??쇱뒪</a>
-          <a href="#weekly" data-nav-filter="accessory-jewelry">伊ъ뼹由?/a>
-        </div>
-      </details>
-      <details>
-        <summary>WATCH</summary>
-        <div class="mobile-sub">
-          <a href="#weekly" data-nav-filter="watch-men">?⑥꽦?쒓퀎</a>
-          <a href="#weekly" data-nav-filter="watch-women">?ъ꽦?쒓퀎</a>
-        </div>
-      </details>
-      <a href="/mypage.html">留덉씠?섏씠吏</a>
+      <details><summary>MAN</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="men-outer">아우터</a><a href="#weekly" data-nav-filter="men-tshirt">티셔츠</a><a href="#weekly" data-nav-filter="men-shirt">셔츠</a><a href="#weekly" data-nav-filter="men-knit">니트/가디건</a><a href="#weekly" data-nav-filter="men-pants">진/팬츠</a></div></details>
+      <details><summary>WOMEN</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="women-outer">아우터</a><a href="#weekly" data-nav-filter="women-tshirt">티셔츠</a><a href="#weekly" data-nav-filter="women-blouse">셔츠/블라우스</a><a href="#weekly" data-nav-filter="women-knit">니트/가디건</a><a href="#weekly" data-nav-filter="women-pants">진/팬츠</a></div></details>
+      <details><summary>BAG</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="bag-men">남성가방</a><a href="#weekly" data-nav-filter="bag-women">여성가방</a></div></details>
+      <details><summary>WALLET</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="wallet-men">남성지갑</a><a href="#weekly" data-nav-filter="wallet-women">여성지갑</a></div></details>
+      <details><summary>SHOES</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="shoes-men">남성 슈즈</a><a href="#weekly" data-nav-filter="shoes-women">여성 슈즈</a></div></details>
+      <details><summary>ACCESSORY</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="accessory-belt">벨트</a><a href="#weekly" data-nav-filter="accessory-hat">모자</a><a href="#weekly" data-nav-filter="accessory-scarf">머플러/스카프</a><a href="#weekly" data-nav-filter="accessory-glasses">안경/선글라스</a><a href="#weekly" data-nav-filter="accessory-jewelry">쥬얼리</a></div></details>
+      <details><summary>WATCH</summary><div class="mobile-sub"><a href="#weekly" data-nav-filter="watch-men">남성시계</a><a href="#weekly" data-nav-filter="watch-women">여성시계</a></div></details>
+      <a href="/mypage.html">마이페이지</a>
       <a href="/review.html">REVIEW</a>
       <a href="/customer.html">NOTICE</a>
-    </div>
-  </header>
+    </div>  </header>
 
   <main>
     <section class="hero-slider settings-pending" aria-label="硫붿씤 ?щ씪?대뱶 諛곕꼫">
@@ -1328,10 +1275,10 @@
       <div class="section-head">
         <div>
           <h2 class="section-title">WEEKLY BEST 5% OFF</h2>
-          <p class="section-note" id="resultNote">?곹뭹??遺덈윭?ㅻ뒗 以묒엯?덈떎.</p>
+          <p class="section-note" id="resultNote">상품을 불러오는 중입니다.</p>
         </div>
         <div class="chips" aria-label="?곹뭹 ?꾪꽣">
-          <button class="chip active" data-filter="all">?꾩껜</button>
+          <button class="chip active" data-filter="all">전체</button>
           <button class="chip" data-filter="women">WOMEN</button>
           <button class="chip" data-filter="men">MAN</button>
           <button class="chip" data-filter="bag">BAG</button>
@@ -1382,40 +1329,39 @@
 
   <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
-    <div class="drawer-panel" role="dialog" aria-label="?λ컮援щ땲">
+    <div class="drawer-panel" role="dialog" aria-label="장바구니">
       <div class="drawer-head">
-        <strong>?λ컮援щ땲</strong>
-        <button class="icon-btn" id="closeDrawer" aria-label="?λ컮援щ땲 ?リ린">횞</button>
+        <strong>장바구니</strong>
+        <button class="icon-btn" id="closeDrawer" aria-label="장바구니 닫기">×</button>
       </div>
       <div class="cart-list" id="cartList"></div>
       <div class="drawer-foot">
-        <div class="total-line"><span>?⑷퀎</span><span id="cartTotal">0??/span></div>
-        <button class="checkout">二쇰Ц?섍린</button>
-        <button class="continue-shopping" type="button" id="continueShopping">?쇳븨 怨꾩냽?섍린</button>
+        <div class="total-line"><span>합계</span><span id="cartTotal">0원</span></div>
+        <button class="checkout">주문하기</button>
+        <button class="continue-shopping" type="button" id="continueShopping">쇼핑 계속하기</button>
       </div>
     </div>
   </aside>
 
   <div class="cart-added" id="cartAdded" aria-hidden="true">
-    <div class="cart-added-box" role="dialog" aria-label="移댄듃??異붽????덈ぉ">
-      <button class="cart-added-close" type="button" id="cartAddedClose" aria-label="?リ린">횞</button>
-      <div class="cart-added-title"><span>??/span><span>移댄듃??異붽????덈ぉ</span></div>
+    <div class="cart-added-box" role="dialog" aria-label="장바구니 추가 확인">
+      <button class="cart-added-close" type="button" id="cartAddedClose" aria-label="닫기">×</button>
+      <div class="cart-added-title"><span>✓</span><span>장바구니에 추가했습니다</span></div>
       <div class="cart-added-product" id="cartAddedProduct"></div>
       <div class="cart-added-actions">
-        <button type="button" id="cartAddedView">?λ컮援щ땲 蹂닿린(0)</button>
-        <a class="checkout-now" href="/checkout.html">二쇰Ц?섍린</a>
-        <button class="continue" type="button" id="cartAddedContinue">?쇳븨 怨꾩냽?섍린</button>
+        <button type="button" id="cartAddedView">장바구니 보기(0)</button>
+        <a class="checkout-now" href="/checkout.html">주문하기</a>
+        <button class="continue" type="button" id="cartAddedContinue">쇼핑 계속하기</button>
       </div>
     </div>
   </div>
+  <div class="toast" id="toast">장바구니에 담았습니다.</div>
 
-  <div class="toast" id="toast">?λ컮援щ땲???댁븯?듬땲??</div>
-
-  <nav class="mobile-bottom-nav" aria-label="紐⑤컮??鍮좊Ⅸ 硫붾돱">
-    <a href="/"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3V10.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>??/span></a>
-    <a href="#weekly"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>?곹뭹</span></a>
-    <button type="button" id="mobileCartBtn"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 8h15l-1.7 9H7.7L5.7 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor"/></svg><span>?λ컮援щ땲</span></button>
-    <a href="/mypage.html"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>留덉씠</span></a>
+  <nav class="mobile-bottom-nav" aria-label="모바일 빠른 메뉴">
+    <a href="/"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3V10.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>홈</span></a>
+    <a href="#weekly"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>상품</span></a>
+    <button type="button" id="mobileCartBtn"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.2 8h15l-1.7 9H7.7L5.7 4H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor"/></svg><span>장바구니</span></button>
+    <a href="/mypage.html"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>마이</span></a>
   </nav>
 
   <script>
@@ -1565,7 +1511,7 @@
         const filterMatch = categoryMatches(product.category, activeFilter);
         return filterMatch && productMatchesSearch(product, searchTerm);
       });
-      resultNote.textContent = `珥?${filtered.length}媛쒖쓽 ?곹뭹??以鍮꾪뻽?듬땲??`;
+      resultNote.textContent = `총 ${filtered.length}개의 상품을 준비했습니다.`;
       productGrid.innerHTML = filtered.slice(0, 12).map((product, index) => productCard(product, index)).join("");
       if (filtered.length > 12) {
         window.requestAnimationFrame(() => {
@@ -1613,7 +1559,7 @@
           <div><b>${escapeHtml(item.name)}</b><span>${item.color || "湲곕낯"} / ${item.size || "FREE"} 쨌 ${money(item.price)} 쨌 ${item.qty}媛?/span></div>
           <button class="remove" type="button" aria-label="${escapeHtml(item.name)} ??젣" onclick="removeFromCart(${index})">횞</button>
         </div>
-      `).join("") : "<p style='color:#777;margin:0'>?λ컮援щ땲媛 鍮꾩뼱 ?덉뒿?덈떎.</p>";
+      `).join("") : "<p style='color:#777;margin:0'>장바구니가 비어 있습니다.</p>";
     }
 
     function showCartAdded(item) {
@@ -1699,7 +1645,7 @@
     document.querySelector("#continueShopping").addEventListener("click", closeDrawer);
     document.querySelector(".checkout").addEventListener("click", () => {
       if (!requireMember()) return;
-      if (!cart.length) return showToast("?λ컮援щ땲媛 鍮꾩뼱 ?덉뒿?덈떎.");
+      if (!cart.length) return showToast("장바구니가 비어 있습니다.");
       location.href = "/checkout.html";
     });
     document.querySelector("#cartAddedClose").addEventListener("click", closeCartAdded);
@@ -1989,7 +1935,7 @@
     else {
       productGrid.innerHTML = "";
       newGrid.innerHTML = "";
-      resultNote.textContent = "?곹뭹??遺덈윭?ㅻ뒗 以묒엯?덈떎.";
+      resultNote.textContent = "상품을 불러오는 중입니다.";
     }
     renderCart();
     loadProducts();
@@ -1998,5 +1944,10 @@
   <script src="/talk-widget.js"></script>
 </body>
 </html>
+
+
+
+
+
 
 
