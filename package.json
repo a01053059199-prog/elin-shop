@@ -4,7 +4,8 @@
   "private": true,
   "description": "ELIN local full-stack shopping mall prototype",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check:korean": "node scripts/check-korean-text.js"
   },
   "engines": {
     "node": ">=18"
