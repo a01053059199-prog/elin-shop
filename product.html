@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ELIN ?곹뭹?곸꽭</title>
+  <title>ELIN 상품상세</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -663,27 +663,27 @@
     <div class="bar">
       <a class="brand" href="/">ELIN</a>
       <nav>
-        <a href="/login.html" id="loginLink">濡쒓렇??/a>
-        <a href="/mypage.html" id="memberLink">留덉씠?섏씠吏</a>
-        <a href="#" id="logoutLink" style="display:none">濡쒓렇?꾩썐</a>
+        <a href="/login.html" id="loginLink">로그인</a>
+        <a href="/mypage.html" id="memberLink">마이페이지</a>
+        <a href="#" id="logoutLink" style="display:none">로그아웃</a>
       </nav>
     </div>
   </header>
 
   <main class="page">
-    <div class="crumb">ELIN / ?곹뭹?곸꽭</div>
-    <div id="productRoot" class="empty">?곹뭹??遺덈윭?ㅻ뒗 以묒엯?덈떎.</div>
+    <div class="crumb">ELIN / 상품상세</div>
+    <div id="productRoot" class="empty">상품을 불러오는 중입니다.</div>
   </main>
 
   <div class="cart-added" id="cartAdded" aria-hidden="true">
-    <div class="cart-added-box" role="dialog" aria-label="移댄듃??異붽????덈ぉ">
-      <button class="cart-added-close" type="button" id="cartAddedClose" aria-label="?リ린">횞</button>
-      <div class="cart-added-title"><span>??/span><span>移댄듃??異붽????덈ぉ</span></div>
+    <div class="cart-added-box" role="dialog" aria-label="장바구니에 추가됨">
+      <button class="cart-added-close" type="button" id="cartAddedClose" aria-label="닫기">×</button>
+      <div class="cart-added-title"><span>✓</span><span>장바구니에 추가되었습니다</span></div>
       <div class="cart-added-product" id="cartAddedProduct"></div>
       <div class="cart-added-actions">
-        <a id="cartAddedView" href="/?cart=open">移댄듃 蹂닿린(0)</a>
-        <a class="checkout-now" href="/checkout.html">寃곗젣</a>
-        <button class="continue" type="button" id="cartAddedContinue">?쇳븨 怨꾩냽?섍린</button>
+        <a id="cartAddedView" href="/?cart=open">장바구니 보기(0)</a>
+        <a class="checkout-now" href="/checkout.html">주문하기</a>
+        <button class="continue" type="button" id="cartAddedContinue">쇼핑 계속하기</button>
       </div>
     </div>
   </div>
@@ -876,7 +876,7 @@
           </div>
           <div class="review-stars">${reviewStars(review.rating)}</div>
           <div class="review-card-content">${escapeHtml(review.content || "")}</div>
-          ${images.length ? `<div class="review-card-images">${images.map((image, index) => `<img src="${escapeHtml(image)}" alt="?꾧린 ?대?吏 ${index + 1}" loading="lazy" decoding="async">`).join("")}</div>` : ""}
+          ${images.length ? `<div class="review-card-images">${images.map((image, index) => `<img src="${escapeHtml(image)}" alt="후기 이미지 ${index + 1}" loading="lazy" decoding="async">`).join("")}</div>` : ""}
         </article>
       `;
     }
@@ -920,7 +920,7 @@
         };
         image.onerror = () => {
           URL.revokeObjectURL(objectUrl);
-          reject(new Error("?대?吏瑜??쎌? 紐삵뻽?듬땲??"));
+          reject(new Error("이미지를 읽지 못했습니다."));
         };
         image.src = objectUrl;
       });
@@ -943,7 +943,7 @@
         fetch("/api/auth/me")
       ]);
       if (!productResponse.ok) {
-        document.querySelector("#productRoot").textContent = "?곹뭹??李얠쓣 ???놁뒿?덈떎.";
+        document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
         return;
       }
       product = await productResponse.json();
@@ -953,7 +953,7 @@
         currentMember = memberData.member || null;
       }
       if (!product) {
-        document.querySelector("#productRoot").textContent = "?곹뭹??李얠쓣 ???놁뒿?덈떎.";
+        document.querySelector("#productRoot").textContent = "상품을 찾을 수 없습니다.";
         return;
       }
       document.title = `ELIN | ${product.name}`;
@@ -1007,7 +1007,7 @@
         section.className = "section";
         section.id = "relatedProductsSection";
         section.style.display = "none";
-        section.innerHTML = `<h2>?④퍡 蹂대㈃ 醫뗭? ?곹뭹</h2><div class="related-grid" id="relatedProductsGrid"></div>`;
+        section.innerHTML = `<h2>함께 보면 좋은 상품</h2><div class="related-grid" id="relatedProductsGrid"></div>`;
         document.querySelector("#productRoot").appendChild(section);
         grid = document.querySelector("#relatedProductsGrid");
       }
@@ -1035,7 +1035,7 @@
         section = document.createElement("section");
         section.className = "section related-section";
         section.id = "relatedProductsSection";
-        section.innerHTML = `<h2>?④퍡 蹂대㈃ 醫뗭? ?곹뭹</h2><div class="related-grid" id="relatedProductsGrid"></div>`;
+        section.innerHTML = `<h2>함께 보면 좋은 상품</h2><div class="related-grid" id="relatedProductsGrid"></div>`;
         const reviews = document.querySelector("#productReviews");
         if (reviews) {
           reviews.insertAdjacentElement("beforebegin", section);
@@ -1046,7 +1046,7 @@
       }
       section.classList.add("related-section");
       const title = section.querySelector("h2");
-      if (title) title.textContent = "?④퍡 蹂대㈃ 醫뗭? ?곹뭹";
+      if (title) title.textContent = "함께 보면 좋은 상품";
       document.querySelectorAll(".related-grid:not(#relatedProductsGrid)").forEach(extraGrid => {
         const extraSection = extraGrid.closest(".section");
         if (extraSection) extraSection.remove();
@@ -1061,7 +1061,7 @@
             <span>${money(item.price)}</span>
           </a>
         `).join("")
-        : `<div class="related-empty">?④퍡 蹂대㈃ 醫뗭? ?곹뭹??以鍮?以묒엯?덈떎.</div>`;
+        : `<div class="related-empty">함께 보면 좋은 상품을 준비 중입니다.</div>`;
     }
 
     function renderProductReviews() {
@@ -1084,14 +1084,14 @@
       fileInput?.addEventListener("change", async () => {
         const files = Array.from(fileInput.files || []).slice(0, 5);
         if (!files.length) return;
-        message.textContent = "?대?吏瑜?以꾩씠??以묒엯?덈떎...";
+        message.textContent = "이미지를 줄이는 중입니다...";
         try {
           const compressed = await Promise.all(files.map(compressReviewImage));
           reviewImages = reviewImages.concat(compressed).slice(0, 5);
-          preview.innerHTML = reviewImages.map((image, index) => `<img src="${image}" alt="?꾧린 ?대?吏 ${index + 1}">`).join("");
-          message.textContent = "?대?吏媛 泥⑤??섏뿀?듬땲??";
+          preview.innerHTML = reviewImages.map((image, index) => `<img src="${image}" alt="후기 이미지 ${index + 1}">`).join("");
+          message.textContent = "이미지가 첨부되었습니다.";
         } catch (error) {
-          message.textContent = error.message || "?대?吏 泥⑤????ㅽ뙣?덉뒿?덈떎.";
+          message.textContent = error.message || "이미지 첨부에 실패했습니다.";
         }
         fileInput.value = "";
       });
@@ -1104,10 +1104,10 @@
         }
         const content = document.querySelector("#reviewContent").value.trim();
         if (!content) {
-          message.textContent = "?꾧린 ?댁슜???낅젰?댁＜?몄슂.";
+          message.textContent = "후기 내용을 입력해주세요.";
           return;
         }
-        message.textContent = "?꾧린瑜??깅줉?섎뒗 以묒엯?덈떎...";
+        message.textContent = "후기를 등록하는 중입니다...";
         const response = await fetch("/api/reviews", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1122,21 +1122,21 @@
         });
         const data = await response.json();
         if (!response.ok) {
-          message.textContent = data.error || "?꾧린 ?깅줉???ㅽ뙣?덉뒿?덈떎.";
+          message.textContent = data.error || "후기 등록에 실패했습니다.";
           return;
         }
         productReviews.unshift(data);
         reviewImages = [];
         form.reset();
         preview.innerHTML = "";
-        message.textContent = "?꾧린媛 ?깅줉?섏뿀?듬땲??";
+        message.textContent = "후기가 등록되었습니다.";
         renderProductReviews();
       });
     }
 
     function renderProduct() {
       const images = parseImages(product);
-      const colors = parseOptions(product.colors, "湲곕낯");
+      const colors = parseOptions(product.colors, "기본");
       const sizes = parseOptions(product.sizes, "FREE");
       const title = escapeHtml(product.name);
       const guide = productGuide();
@@ -1151,8 +1151,8 @@
           <div class="gallery">
             <div class="thumbs">
               ${images.map((image, index) => `
-                <button type="button" class="${index === 0 ? "active" : ""}" onclick="showImage(${index})" aria-label="?곹뭹 ?대?吏 ${index + 1}">
-                  <img src="${image}" alt="${title} ?몃꽕??${index + 1}" loading="lazy" decoding="async">
+                <button type="button" class="${index === 0 ? "active" : ""}" onclick="showImage(${index})" aria-label="상품 이미지 ${index + 1}">
+                  <img src="${image}" alt="${title} 썸네일 ${index + 1}" loading="lazy" decoding="async">
                 </button>
               `).join("")}
             </div>
@@ -1172,43 +1172,43 @@
               ${productInfoRowsHtml()}
             </div>
 
-            <label for="color">?됱긽</label>
+            <label for="color">색상</label>
             <select id="color">
               ${optionTags(colors)}
             </select>
 
-            <label for="size">?ъ씠利?/label>
+            <label for="size">사이즈</label>
             <select id="size">
               ${optionTags(sizes)}
             </select>
 
             <div class="qty-row">
-              <label for="qty">?섎웾</label>
+              <label for="qty">수량</label>
               <input id="qty" type="number" min="1" value="1" oninput="updateTotal()">
             </div>
 
             <div class="total">
-              <span>珥??곹뭹湲덉븸</span>
+              <span>총 상품금액</span>
               <strong id="totalPrice">${money(product.price)}</strong>
             </div>
 
             <div class="actions">
-              <button type="button" class="action secondary" onclick="addToCart(false)">?λ컮援щ땲</button>
-              <button type="button" class="action" onclick="addToCart(true)">諛붾줈 二쇰Ц</button>
+              <button type="button" class="action secondary" onclick="addToCart(false)">장바구니</button>
+              <button type="button" class="action" onclick="addToCart(true)">바로 주문</button>
             </div>
 
             <div class="accordion">
               <details open>
-                <summary>援щℓ ???덈궡</summary>
-                <p>?곹뭹 ?대?吏??紐⑤땲???섍꼍???곕씪 ?됱긽???ㅻⅤ寃?蹂댁씪 ???덉뒿?덈떎. 二쇰Ц ???듭뀡怨?諛곗넚吏瑜?瑗??뺤씤?댁＜?몄슂.</p>
+                <summary>구매 전 안내</summary>
+                <p>상품 이미지는 모니터 환경에 따라 색상이 다르게 보일 수 있습니다. 주문 전 옵션과 배송지를 꼭 확인해주세요.</p>
               </details>
               <details>
-                <summary>諛곗넚 ?덈궡</summary>
-                <p>?낃툑 ?뺤씤 ???곸뾽??湲곗? 1~3?????쒖감 異쒓퀬?⑸땲??</p>
+                <summary>배송 안내</summary>
+                <p>입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.</p>
               </details>
               <details>
-                <summary>援먰솚/諛섑뭹 ?덈궡</summary>
-                <p>?곹뭹 ?섎졊 ??7???대궡 怨좉컼?쇳꽣濡??묒닔?댁＜?몄슂. ?ъ슜 ?붿쟻???덇굅??援ъ꽦?덉씠 ?꾨씫??寃쎌슦 ?쒗븳?????덉뒿?덈떎.</p>
+                <summary>교환/반품 안내</summary>
+                <p>상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.</p>
               </details>
             </div>
           </aside>
@@ -1222,7 +1222,7 @@
           ${productDescription ? `<div class="detail-copy product-description">${lineHtml(productDescription)}</div>` : ""}
           <div class="detail-images">
             ${images.map((image, index) => `
-              <figure><img src="${image}" alt="${title} ?곸꽭 ?대?吏 ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></figure>
+              <figure><img src="${image}" alt="${title} 상세 이미지 ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></figure>
             `).join("")}
           </div>
         </section>
@@ -1236,50 +1236,50 @@
 
         <section class="section product-reviews" id="productReviews">
           <div class="review-head">
-            <h2>?곹뭹 ?꾧린</h2>
-            <span id="productReviewCount">0媛?/span>
+            <h2>상품 후기</h2>
+            <span id="productReviewCount">0개</span>
           </div>
           ${currentMember ? `
             <form class="review-form" id="productReviewForm">
               <div class="review-row">
                 <div>
-                  <label for="reviewRating">?됱젏</label>
+                  <label for="reviewRating">평점</label>
                   <select id="reviewRating">
-                    <option value="5">?끸쁾?끸쁾???꾩＜ 醫뗭븘??/option>
-                    <option value="4">?끸쁾?끸쁾 醫뗭뒿?덈떎</option>
-                    <option value="3">?끸쁾??蹂댄넻?낅땲??/option>
-                    <option value="2">?끸쁾 ?꾩돩?뚯슂</option>
-                    <option value="1">??蹂꾨줈?덉슂</option>
+                    <option value="5">★★★★★ 아주 좋아요</option>
+                    <option value="4">★★★★ 좋아요</option>
+                    <option value="3">★★★ 보통입니다</option>
+                    <option value="2">★★ 아쉬워요</option>
+                    <option value="1">★ 별로예요</option>
                   </select>
                 </div>
                 <div>
-                  <label>?묒꽦 ?꾩씠??/label>
+                  <label>작성 아이디</label>
                   <input value="${escapeHtml(currentMember.username || currentMember.name || "")}" readonly>
                 </div>
               </div>
-              <label for="reviewContent">?꾧린 ?댁슜</label>
-              <textarea id="reviewContent" placeholder="?곹뭹 ?꾧린瑜??묒꽦?댁＜?몄슂."></textarea>
-              <label for="reviewImages">?꾧린 ?ъ쭊</label>
+              <label for="reviewContent">후기 내용</label>
+              <textarea id="reviewContent" placeholder="상품 후기를 작성해주세요."></textarea>
+              <label for="reviewImages">후기 사진</label>
               <input id="reviewImages" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-              <div class="review-message">?ъ쭊? 理쒕? 5?κ퉴吏 ?먮룞 ?뺤텞?섏뼱 ?깅줉?⑸땲??</div>
+              <div class="review-message">사진은 최대 5장까지 자동 압축되어 등록됩니다.</div>
               <div class="review-preview" id="reviewPreview"></div>
-              <button type="submit">?꾧린 ?깅줉</button>
+              <button type="submit">후기 등록</button>
               <div class="review-message" id="reviewMessage"></div>
             </form>
           ` : `
             <div class="review-login-box">
-              ?꾧린??濡쒓렇?????묒꽦?????덉뒿?덈떎.
-              <a href="/login.html">濡쒓렇??/a>
+              후기는 로그인 후 작성할 수 있습니다.
+              <a href="/login.html">로그인</a>
             </div>
           `}
           <div class="review-list" id="productReviewList">
-            <div class="review-empty">?꾧린瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.</div>
+            <div class="review-empty">후기를 불러오는 중입니다.</div>
           </div>
         </section>
 
         ${related.length ? `
           <section class="section">
-            <h2>?④퍡 蹂대㈃ 醫뗭? ?곹뭹</h2>
+            <h2>함께 보면 좋은 상품</h2>
             <div class="related-grid">
               ${related.map(item => `
                 <a class="related" href="/product.html?id=${encodeURIComponent(item.id)}">
@@ -1294,7 +1294,7 @@
       `;
       document.querySelectorAll(".related-grid").forEach(grid => {
         const heading = grid.previousElementSibling;
-        if (heading) heading.textContent = "?④퍡 蹂대㈃ 醫뗭? ?곹뭹";
+        if (heading) heading.textContent = "함께 보면 좋은 상품";
       });
       const guideDetails = document.querySelectorAll(".accordion details");
       const guideItems = [
@@ -1336,7 +1336,7 @@
 
     function requireMember() {
       if (currentMember) return true;
-      alert("濡쒓렇?????댁슜 媛?ν빀?덈떎.");
+      alert("로그인 후 이용 가능합니다.");
       location.href = "/login.html";
       return false;
     }
@@ -1361,7 +1361,7 @@
         <img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async">
         <div>
           <strong>${item.name}</strong>
-          <span>${item.category || "?곹뭹"} 쨌 ${item.color || "湲곕낯"} / ${item.size || "FREE"}</span>
+          <span>${item.category || "상품"} · ${item.color || "기본"} / ${item.size || "FREE"}</span>
         </div>
       `;
       document.querySelector("#cartAddedView").textContent = `장바구니 보기(${totalQty})`;
