@@ -34,6 +34,8 @@ const adminSessions = new Set();
 const memberSessions = new Map();
 let productSummaryCache = { at: 0, items: null };
 const productDetailCache = new Map();
+const productImageListCache = new Map();
+const productImageBufferCache = new Map();
 let supabaseFallbackNoticeAt = 0;
 
 const seedProducts = [
@@ -783,6 +785,8 @@ async function listProducts() {
 function clearProductSummaryCache() {
   productSummaryCache = { at: 0, items: null };
   productDetailCache.clear();
+  productImageListCache.clear();
+  productImageBufferCache.clear();
 }
 
 async function productDescriptions() {
@@ -882,7 +886,10 @@ function parseStoredImages(product) {
 }
 
 async function getProductImages(id) {
-  return await withSupabaseFallback("product images", async () => {
+  const cacheKey = String(id || "");
+  const cached = productImageListCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS * 5) return cached.images;
+  const images = await withSupabaseFallback("product images", async () => {
     try {
       const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image,images&limit=1`);
       return parseStoredImages(product || {});
@@ -894,19 +901,30 @@ async function getProductImages(id) {
     const products = await readJson(productsFile);
     return parseStoredImages(products.find(product => product.id === id) || {});
   });
+  productImageListCache.set(cacheKey, { at: Date.now(), images });
+  return images;
 }
 
-function sendProductImage(res, source) {
+function sendProductImage(res, source, cacheKey = "") {
   const image = String(source || "").trim();
   if (!image) return send(res, 404, "Not found", "text/plain; charset=utf-8");
   if (/^https?:\/\//i.test(image)) {
-    res.writeHead(302, { Location: image, "Cache-Control": "public, max-age=3600" });
+    res.writeHead(302, { Location: image, "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800" });
     return res.end();
   }
   const match = image.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
   if (!match) return send(res, 404, "Not found", "text/plain; charset=utf-8");
-  const buffer = Buffer.from(match[2], "base64");
-  return send(res, 200, buffer, match[1], { "Cache-Control": "public, max-age=300, must-revalidate" });
+  const key = cacheKey || crypto.createHash("sha1").update(image.slice(0, 128) + image.length).digest("hex");
+  let cached = productImageBufferCache.get(key);
+  if (!cached) {
+    cached = { type: match[1], buffer: Buffer.from(match[2], "base64") };
+    productImageBufferCache.set(key, cached);
+    if (productImageBufferCache.size > 300) {
+      const oldestKey = productImageBufferCache.keys().next().value;
+      productImageBufferCache.delete(oldestKey);
+    }
+  }
+  return send(res, 200, cached.buffer, cached.type, { "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800" });
 }
 
 async function getProduct(id) {
@@ -1551,7 +1569,8 @@ async function handleApi(req, res, url) {
     const id = decodeURIComponent(parts[3] || "");
     const imageIndex = Math.max(0, Math.min(PRODUCT_IMAGE_LIMIT - 1, Number(parts[4] || 0)));
     const images = await getProductImages(id);
-    return sendProductImage(res, images[imageIndex]);
+    const version = url.searchParams.get("v") || "";
+    return sendProductImage(res, images[imageIndex], `${id}:${imageIndex}:${version}`);
   }
 
   if (url.pathname.startsWith("/api/products/") && req.method === "GET") {

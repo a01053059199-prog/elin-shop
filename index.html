@@ -1491,8 +1491,8 @@
 
     function productCard(product, index = 0) {
       const image = firstImage(product);
-      const loading = index < 4 ? "eager" : "lazy";
-      const priority = index < 2 ? " fetchpriority=\"high\"" : "";
+      const loading = index < 8 ? "eager" : "lazy";
+      const priority = index < 8 ? " fetchpriority=\"high\"" : "";
       return `
         <article class="product">
           <div class="product-media">
