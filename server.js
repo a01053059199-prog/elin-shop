@@ -479,6 +479,8 @@ const defaultSiteSettings = {
   productGuideShippingText: "입금 확인 후 영업일 기준 1~3일 내 순차 출고됩니다.",
   productGuideReturnTitle: "교환/반품 안내",
   productGuideReturnText: "상품 수령 후 7일 이내 고객센터로 접수해주세요. 사용 흔적이 있거나 구성품이 누락된 경우 제한될 수 있습니다.",
+  productDetailTitle: "상품 상세정보",
+  productDetailText: "ELIN에서 선별한 상품입니다. 전체 실루엣, 소재감, 디테일을 확인하실 수 있도록 등록된 이미지를 아래에 한 번 더 정리했습니다.",
   productExchangeTitle: "배송 및 교환 안내",
   productExchangeRows: [
     { label: "결제 방식", text: "현재 ELIN은 무통장 입금 방식으로 주문을 받습니다. 주문 후 안내된 계좌로 입금해 주세요." },
@@ -540,6 +542,8 @@ function normalizeSiteSettings(input = {}) {
     "productGuideShippingText",
     "productGuideReturnTitle",
     "productGuideReturnText",
+    "productDetailTitle",
+    "productDetailText",
     "productExchangeTitle",
     "checkoutDepositNotice"
   ]) {
