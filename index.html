@@ -500,6 +500,7 @@
     .category-card span { position: relative; }
     .category-card strong { font-size: 17px; }
     .category-card span { margin-top: 5px; color: rgba(255,255,255,.8); font-size: 12px; }
+    .category-card[hidden] { display: none; }
     .category-slider-controls {
       display: flex;
       justify-content: center;
@@ -1702,6 +1703,15 @@
       "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
       "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80"
     ]);
+    const defaultCategoryImages = [
+      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
+      "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80"
+    ];
 
     function lineHtml(value) {
       return escapeHtml(value).replace(/\n/g, "<br>");
@@ -1776,11 +1786,25 @@
       visibleSlides[0]?.classList.add("active");
 
       const categories = Array.isArray(settings.categoryCards) ? settings.categoryCards : [];
+      const seenCategoryTitles = new Set();
       document.querySelectorAll("[data-category-card]").forEach((cardElement, index) => {
         const category = categories[index];
-        if (!category) return;
+        cardElement.hidden = false;
+        if (!category) {
+          const fallbackImage = defaultCategoryImages[index] || "";
+          cardElement.style.backgroundImage = fallbackImage ? `url('${safeCssUrl(fallbackImage)}')` : "";
+          return;
+        }
+        const titleText = String(category.title || cardElement.querySelector("strong")?.textContent || "").trim().toUpperCase();
+        if (titleText && seenCategoryTitles.has(titleText)) {
+          cardElement.hidden = true;
+          return;
+        }
+        if (titleText) seenCategoryTitles.add(titleText);
         const categoryImage = legacyCategoryImageUrls.has(category.image) ? "" : category.image;
-        cardElement.style.backgroundImage = categoryImage ? `url('${safeCssUrl(categoryImage)}')` : "";
+        const fallbackImage = defaultCategoryImages[index] || "";
+        const finalImage = categoryImage || fallbackImage;
+        cardElement.style.backgroundImage = finalImage ? `url('${safeCssUrl(finalImage)}')` : "";
         const title = cardElement.querySelector("strong");
         const text = cardElement.querySelector("span");
         if (title && category.title) title.textContent = category.title;
