@@ -771,9 +771,17 @@
     const supportedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
     document.querySelector("#imageFile").addEventListener("change", async event => {
-      const files = [...event.target.files].slice(0, productImageLimit);
-      if (!files.length) return;
-      if (event.target.files.length > productImageLimit) alert(`상품 이미지는 최대 ${productImageLimit}장까지 등록할 수 있습니다.`);
+      const selectedFiles = [...event.target.files];
+      if (!selectedFiles.length) return;
+      const current = parseImages(formValue("image"));
+      const remainingSlots = Math.max(0, productImageLimit - current.length);
+      if (!remainingSlots) {
+        alert(`상품 이미지는 최대 ${productImageLimit}장까지 등록할 수 있습니다. 기존 이미지를 삭제한 뒤 추가해주세요.`);
+        event.target.value = "";
+        return;
+      }
+      const files = selectedFiles.slice(0, remainingSlots);
+      if (selectedFiles.length > remainingSlots) alert(`남은 등록 가능 수량은 ${remainingSlots}장입니다. ${remainingSlots}장만 추가합니다.`);
       for (const file of files) {
         if (!supportedImageTypes.includes(file.type)) {
           alert("JPG, PNG, WEBP 이미지만 등록할 수 있습니다. HEIC 사진은 JPG로 변환해서 올려주세요.");
@@ -791,19 +799,9 @@
       input.disabled = true;
       progress.textContent = `이미지 최적화 중... 0/${files.length}`;
       try {
-        const uploaded = [];
-        for (const [index, file] of files.entries()) {
-          progress.textContent = `이미지 최적화 중... ${index + 1}/${files.length}`;
-          uploaded.push(await readImageFile(file, {
-            maxSize: 760,
-            targetBytes: 120_000,
-            minQuality: 0.44,
-            quality: 0.7,
-            attempts: 6
-          }));
-          await new Promise(resolve => window.setTimeout(resolve, 0));
-        }
-        const current = parseImages(formValue("image"));
+        const uploaded = await optimizeProductImages(files, count => {
+          progress.textContent = `이미지 최적화 중... ${count}/${files.length}`;
+        });
         const images = [...current, ...uploaded].slice(0, productImageLimit);
         setImages(images);
         progress.textContent = `${uploaded.length}장 업로드 최적화 완료`;
@@ -2031,6 +2029,15 @@
       });
     }
 
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function loadImageSource(file) {
       if ("createImageBitmap" in window) {
         try {
@@ -2053,6 +2060,9 @@
     }
 
     async function readImageFile(file, options = {}) {
+      if (options.fastSmall && file.size <= (options.targetBytes || 140_000)) {
+        return await readFileAsDataUrl(file);
+      }
       const source = await loadImageSource(file);
       try {
         const sourceWidth = source.naturalWidth || source.width;
@@ -2083,6 +2093,33 @@
       } finally {
         if (source.close) source.close();
       }
+    }
+
+    async function optimizeProductImages(files, onProgress) {
+      const results = new Array(files.length);
+      let completed = 0;
+      let nextIndex = 0;
+      const workerCount = Math.min(3, files.length);
+      const options = {
+        maxSize: 720,
+        targetBytes: 100_000,
+        minQuality: 0.48,
+        quality: 0.68,
+        attempts: 4,
+        fastSmall: true
+      };
+      async function worker() {
+        while (nextIndex < files.length) {
+          const index = nextIndex;
+          nextIndex += 1;
+          results[index] = await readImageFile(files[index], options);
+          completed += 1;
+          onProgress?.(completed);
+          await new Promise(resolve => window.setTimeout(resolve, 0));
+        }
+      }
+      await Promise.all(Array.from({ length: workerCount }, worker));
+      return results.filter(Boolean);
     }
 
     function cropSelectedImageArea(src, rect, options = {}) {
