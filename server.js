@@ -14,6 +14,7 @@ const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
 const siteSettingsFile = path.join(dataDir, "site-settings.json");
+const productDescriptionsFile = path.join(dataDir, "product-descriptions.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -74,6 +75,7 @@ async function ensureData() {
   await ensureJson(memberPageSettingsFile, null);
   await ensureJson(customerCenterSettingsFile, null);
   await ensureJson(siteSettingsFile, null);
+  await ensureJson(productDescriptionsFile, {});
 }
 
 async function ensureJson(file, fallback) {
@@ -756,6 +758,7 @@ function cleanProduct(input) {
     stock: Number.isFinite(stock) ? stock : 9999,
     colors,
     sizes,
+    description: String(input.description || "").trim(),
     image: mainImage,
     images: cleanImages.length ? cleanImages : [mainImage]
   };
@@ -780,6 +783,51 @@ async function listProducts() {
 function clearProductSummaryCache() {
   productSummaryCache = { at: 0, items: null };
   productDetailCache.clear();
+}
+
+async function productDescriptions() {
+  return await withSupabaseFallback("product descriptions", async () => {
+    const rows = await supabase("admin_settings?key=eq.product_descriptions&select=value");
+    const value = rows?.[0]?.value;
+    if (!value) return {};
+    if (typeof value === "string") return JSON.parse(value || "{}");
+    return value;
+  }, async () => {
+    try {
+      const saved = await readJson(productDescriptionsFile);
+      return saved && typeof saved === "object" ? saved : {};
+    } catch {
+      return {};
+    }
+  });
+}
+
+async function saveProductDescription(id, description) {
+  const cleanDescription = String(description || "").trim();
+  const descriptions = await productDescriptions();
+  if (cleanDescription) descriptions[id] = cleanDescription;
+  else delete descriptions[id];
+  await writeJson(productDescriptionsFile, descriptions);
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?key=eq.product_descriptions", { method: "DELETE" });
+      await supabase("admin_settings", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify([{ key: "product_descriptions", value: JSON.stringify(descriptions) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "product descriptions save");
+    }
+  }
+  return cleanDescription;
+}
+
+async function mergeProductDescription(product) {
+  if (!product) return product;
+  const descriptions = await productDescriptions();
+  const description = String(product.description || descriptions[product.id] || "").trim();
+  return { ...product, description };
 }
 
 async function listProductSummaries() {
@@ -872,31 +920,34 @@ async function getProduct(id) {
     const products = await readJson(productsFile);
     return products.find(product => product.id === id) || null;
   });
-  if (product) productDetailCache.set(cacheKey, { at: Date.now(), product });
-  return product;
+  const mergedProduct = await mergeProductDescription(product);
+  if (mergedProduct) productDetailCache.set(cacheKey, { at: Date.now(), product: mergedProduct });
+  return mergedProduct;
 }
 
 async function createProduct(input) {
-  const product = cleanProduct(input);
+  const { description, ...product } = cleanProduct(input);
   return await withSupabaseFallback("product create", async () => {
     const [created] = await supabase("products", {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(product)
     });
+    const savedDescription = await saveProductDescription(created.id, description);
     clearProductSummaryCache();
-    return created;
+    return { ...created, description: savedDescription };
   }, async () => {
     const products = await readJson(productsFile);
-    products.unshift({ ...product, createdAt: new Date().toISOString() });
+    products.unshift({ ...product, description, createdAt: new Date().toISOString() });
     await writeJson(productsFile, products);
+    await saveProductDescription(product.id, description);
     clearProductSummaryCache();
-    return product;
+    return { ...product, description };
   });
 }
 
 async function updateProduct(id, input) {
-  const product = cleanProduct({ ...input, id });
+  const { description, ...product } = cleanProduct({ ...input, id });
   return await withSupabaseFallback("product update", async () => {
     const [updated] = await supabase(`products?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
@@ -904,15 +955,17 @@ async function updateProduct(id, input) {
       body: JSON.stringify(product)
     });
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
+    const savedDescription = await saveProductDescription(id, description);
     clearProductSummaryCache();
-    return updated;
+    return { ...updated, description: savedDescription };
   }, async () => {
     const products = await readJson(productsFile);
     const previous = products.find(item => item.id === id) || {};
     const index = products.findIndex(item => item.id === id);
     if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
-    products[index] = { ...previous, ...product, createdAt: previous.createdAt || previous.created_at || new Date().toISOString(), updatedAt: new Date().toISOString() };
+    products[index] = { ...previous, ...product, description, createdAt: previous.createdAt || previous.created_at || new Date().toISOString(), updatedAt: new Date().toISOString() };
     await writeJson(productsFile, products);
+    await saveProductDescription(id, description);
     clearProductSummaryCache();
     return products[index];
   });
@@ -921,10 +974,12 @@ async function updateProduct(id, input) {
 async function deleteProduct(id) {
   await withSupabaseFallback("product delete", async () => {
     await supabase(`products?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    await saveProductDescription(id, "");
     clearProductSummaryCache();
   }, async () => {
     const products = await readJson(productsFile);
     await writeJson(productsFile, products.filter(product => product.id !== id));
+    await saveProductDescription(id, "");
     clearProductSummaryCache();
   });
 }

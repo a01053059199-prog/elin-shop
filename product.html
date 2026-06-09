@@ -234,6 +234,10 @@
       word-break: keep-all;
       text-align: center;
     }
+    .product-description {
+      margin-top: 16px;
+      color: #333;
+    }
     .detail-images {
       margin: 22px auto 0;
       display: grid;
@@ -1139,6 +1143,7 @@
       const related = relatedProducts();
       const detailTitle = String(siteSettings.productDetailTitle || "상품 상세정보").trim();
       const detailText = String(siteSettings.productDetailText || "ELIN에서 선별한 상품입니다. 전체 실루엣, 소재감, 디테일을 확인하실 수 있도록 등록된 이미지를 아래에 한 번 더 정리했습니다.").trim();
+      const productDescription = String(product.description || "").trim();
 
       document.querySelector("#productRoot").className = "";
       document.querySelector("#productRoot").innerHTML = `
@@ -1214,6 +1219,7 @@
           <div class="detail-copy">
             ${lineHtml(detailText)}
           </div>
+          ${productDescription ? `<div class="detail-copy product-description">${lineHtml(productDescription)}</div>` : ""}
           <div class="detail-images">
             ${images.map((image, index) => `
               <figure><img src="${image}" alt="${title} ?곸꽭 ?대?吏 ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async"></figure>

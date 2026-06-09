@@ -216,6 +216,10 @@
           <textarea id="sizes" rows="3" placeholder="FREE&#10;S&#10;M&#10;L"></textarea>
           <div class="hint">신발은 250, 255처럼 입력할 수 있습니다. 비워두면 FREE로 저장됩니다.</div>
 
+          <label for="description">상품 상세 설명</label>
+          <textarea id="description" rows="6" placeholder="상품 소재, 구성품, 상태, 실측 정보 등 상세 설명을 입력하세요. 줄바꿈 그대로 상세페이지에 표시됩니다."></textarea>
+          <div class="hint">상품별로 다른 설명을 적을 수 있습니다. 비워두면 공통 상세정보 문구만 표시됩니다.</div>
+
           <label for="imageFile">상품 이미지 업로드</label>
           <input id="imageFile" type="file" accept="image/*" multiple />
           <div class="hint">최대 15장까지 등록 가능합니다. 권장: 1MB 이하 JPG/PNG/WEBP. 큰 이미지는 저장이 느릴 수 있습니다.</div>
@@ -2425,6 +2429,7 @@
         stock: 9999,
         colors: parseOptions(formValue("colors"), "기본"),
         sizes: parseOptions(formValue("sizes"), "FREE"),
+        description: formValue("description"),
         image: images[0],
         images
       };
@@ -2471,6 +2476,7 @@
       setValue("price", formatPriceInput(product.price));
       setValue("colors", optionText(product.colors, "기본"));
       setValue("sizes", optionText(product.sizes, "FREE"));
+      setValue("description", product.description || "");
       setValue("image", productImages(product).join("\n"));
       renderImagePreview(productImages(product));
       scrollTo({ top: 0, behavior: "smooth" });
