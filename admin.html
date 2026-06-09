@@ -173,11 +173,6 @@
               <option value="bag-men">남성가방</option>
               <option value="bag-women">여성가방</option>
             </optgroup>
-            <optgroup label="WALLET">
-              <option value="wallet">지갑 전체</option>
-              <option value="wallet-men">남성지갑</option>
-              <option value="wallet-women">여성지갑</option>
-            </optgroup>
             <optgroup label="SHOES">
               <option value="shoes">슈즈 전체</option>
               <option value="shoes-men">남성 슈즈</option>
@@ -185,6 +180,8 @@
             </optgroup>
             <optgroup label="ACCESSORY">
               <option value="accessory">악세서리 전체</option>
+              <option value="wallet-men">남성지갑</option>
+              <option value="wallet-women">여성지갑</option>
               <option value="accessory-belt">벨트</option>
               <option value="accessory-hat">모자</option>
               <option value="accessory-scarf">머플러/스카프</option>
@@ -256,13 +253,12 @@
               <option value="bag">가방 전체</option>
               <option value="bag-men">남성가방</option>
               <option value="bag-women">여성가방</option>
-              <option value="wallet">지갑 전체</option>
-              <option value="wallet-men">남성지갑</option>
-              <option value="wallet-women">여성지갑</option>
               <option value="shoes">슈즈 전체</option>
               <option value="shoes-men">남성 슈즈</option>
               <option value="shoes-women">여성 슈즈</option>
               <option value="accessory">악세서리 전체</option>
+              <option value="wallet-men">남성지갑</option>
+              <option value="wallet-women">여성지갑</option>
               <option value="accessory-belt">벨트</option>
               <option value="accessory-hat">모자</option>
               <option value="accessory-scarf">머플러/스카프</option>
@@ -1738,7 +1734,7 @@
       bag: ["bag-men", "bag-women"],
       wallet: ["wallet-men", "wallet-women"],
       shoes: ["shoes-men", "shoes-women"],
-      accessory: ["accessory-belt", "accessory-hat", "accessory-scarf", "accessory-glasses", "accessory-jewelry"],
+      accessory: ["wallet-men", "wallet-women", "accessory-belt", "accessory-hat", "accessory-scarf", "accessory-glasses", "accessory-jewelry"],
       watch: ["watch-men", "watch-women"]
     };
     function categoryMatches(productCategory, filter) {
