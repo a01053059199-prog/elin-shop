@@ -766,6 +766,46 @@ function cleanProduct(input) {
   };
 }
 
+function productField(product, englishKey, koreanKey, fallback = "") {
+  const value = product?.[englishKey] ?? product?.[koreanKey] ?? fallback;
+  return value == null ? fallback : value;
+}
+
+function normalizeProductRow(product = {}) {
+  const images = parseStoredImages(product);
+  return {
+    ...product,
+    id: product.id || product.ID || product.Id || "",
+    name: String(productField(product, "name", "이름")).trim(),
+    category: String(productField(product, "category", "분류")).trim(),
+    keywords: String(productField(product, "keywords", "키워드")).trim(),
+    label: String(productField(product, "label", "레이블", "NEW")).trim(),
+    price: Number(productField(product, "price", "가격", 0)) || 0,
+    colors: productField(product, "colors", "색상", []),
+    sizes: productField(product, "sizes", "크기", []),
+    image: images[0] || String(productField(product, "image", "이미지")).trim(),
+    images,
+    updated_at: product.updated_at || product.updatedAt || product["수정일"] || "",
+    updatedAt: product.updatedAt || product.updated_at || product["수정일"] || "",
+    created_at: product.created_at || product.createdAt || "",
+    createdAt: product.createdAt || product.created_at || ""
+  };
+}
+
+function koreanProductPayload(product) {
+  return {
+    id: product.id,
+    "이름": product.name,
+    "분류": product.category,
+    "키워드": product.keywords,
+    "레이블": product.label,
+    "가격": product.price,
+    "색상": product.colors,
+    "크기": product.sizes,
+    "이미지": product.images
+  };
+}
+
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
   return `${salt}:${hash}`;
@@ -829,6 +869,7 @@ async function saveProductDescription(id, description) {
 
 async function mergeProductDescription(product) {
   if (!product) return product;
+  product = normalizeProductRow(product);
   const descriptions = await productDescriptions();
   const description = String(product.description || descriptions[product.id] || "").trim();
   return { ...product, description };
@@ -872,15 +913,15 @@ async function listProductSummaries() {
   };
   const summaries = await withSupabaseFallback("products list", async () => {
     try {
-      const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,images,created_at,updated_at&order=created_at.desc");
-      return products.map(summaryFromProduct);
+      const products = await supabase("products?select=*&order=created_at.desc");
+      return products.map(normalizeProductRow).map(summaryFromProduct);
     } catch (_) {
-      const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,created_at,updated_at&order=created_at.desc");
-      return products.map(summaryFromProduct);
+      const products = await supabase("products?select=*");
+      return products.map(normalizeProductRow).map(summaryFromProduct);
     }
   }, async () => {
     const products = await readJson(productsFile);
-    return products.map(summaryFromProduct);
+    return products.map(normalizeProductRow).map(summaryFromProduct);
   });
   productSummaryCache = { at: now, items: summaries };
   return summaries;
@@ -889,12 +930,21 @@ async function listProductSummaries() {
 function parseStoredImages(product) {
   if (!product) return [];
   if (Array.isArray(product.images)) return product.images.filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
+  if (Array.isArray(product["이미지"])) return product["이미지"].filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
   if (product.images) {
     try {
       const parsed = JSON.parse(product.images);
       if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
     } catch (_) {
       return String(product.images).split(/\n+/).map(item => item.trim()).filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
+    }
+  }
+  if (product["이미지"]) {
+    try {
+      const parsed = typeof product["이미지"] === "string" ? JSON.parse(product["이미지"]) : product["이미지"];
+      if (Array.isArray(parsed)) return parsed.filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
+    } catch (_) {
+      return String(product["이미지"]).split(/\n+/).map(item => item.trim()).filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT);
     }
   }
   return [product.image].filter(Boolean);
@@ -908,12 +958,20 @@ async function saveSupabaseProduct(path, method, product) {
       body: JSON.stringify(product)
     });
   } catch (error) {
-    const { images, ...singleImageProduct } = product;
-    return await supabase(path, {
-      method,
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify(singleImageProduct)
-    });
+    try {
+      const { images, ...singleImageProduct } = product;
+      return await supabase(path, {
+        method,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(singleImageProduct)
+      });
+    } catch (_) {
+      return await supabase(path, {
+        method,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(koreanProductPayload(product))
+      });
+    }
   }
 }
 
@@ -923,15 +981,15 @@ async function getProductImages(id) {
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS * 5) return cached.images;
   const images = await withSupabaseFallback("product images", async () => {
     try {
-      const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image,images&limit=1`);
-      return parseStoredImages(product || {});
+      const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+      return parseStoredImages(normalizeProductRow(product || {}));
     } catch (_) {
       const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image&limit=1`);
       return parseStoredImages(product || {});
     }
   }, async () => {
     const products = await readJson(productsFile);
-    return parseStoredImages(products.find(product => product.id === id) || {});
+    return parseStoredImages(normalizeProductRow(products.find(product => product.id === id) || {}));
   });
   productImageListCache.set(cacheKey, { at: Date.now(), images });
   return images;
@@ -981,7 +1039,7 @@ async function createProduct(input) {
     const [created] = await saveSupabaseProduct("products", "POST", product);
     const savedDescription = await saveProductDescription(created.id, description);
     clearProductSummaryCache();
-    return { ...created, description: savedDescription };
+    return { ...normalizeProductRow(created), description: savedDescription };
   }, async () => {
     const products = await readJson(productsFile);
     products.unshift({ ...product, description, createdAt: new Date().toISOString() });
@@ -999,7 +1057,7 @@ async function updateProduct(id, input) {
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
     const savedDescription = await saveProductDescription(id, description);
     clearProductSummaryCache();
-    return { ...updated, description: savedDescription };
+    return { ...normalizeProductRow(updated), description: savedDescription };
   }, async () => {
     const products = await readJson(productsFile);
     const previous = products.find(item => item.id === id) || {};
