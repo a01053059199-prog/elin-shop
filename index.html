@@ -533,6 +533,9 @@
       background: var(--soft);
       overflow: hidden;
     }
+    .product.image-error .product-media {
+      background: var(--soft);
+    }
     .product-media a {
       display: block;
       width: 100%;
@@ -1395,9 +1398,10 @@
     const cartAddedProduct = document.querySelector("#cartAddedProduct");
     const cartAddedView = document.querySelector("#cartAddedView");
     const products = [];
-    const productCacheKey = "elinProductSummaryCacheV4";
+    const productCacheKey = "elinProductSummaryCacheV5";
     try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV3"); } catch (_) {}
+    try { localStorage.removeItem("elinProductSummaryCacheV4"); } catch (_) {}
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
     let searchTerm = "";
@@ -1496,7 +1500,7 @@
       return `
         <article class="product">
           <div class="product-media">
-            <a href="/product.html?id=${encodeURIComponent(product.id)}"><img src="${image}" alt="${escapeHtml(product.name)}" loading="${loading}" decoding="async"${priority}></a>
+            <a href="/product.html?id=${encodeURIComponent(product.id)}"><img src="${image}" alt="${escapeHtml(product.name)}" loading="${loading}" decoding="async"${priority} onerror="this.closest('.product').classList.add('image-error'); this.remove();"></a>
             <span class="badge">${escapeHtml(product.label || "NEW")}</span>
             <div class="quick">
               <button type="button" aria-label="${escapeHtml(product.name)} 관심상품">♡</button>
