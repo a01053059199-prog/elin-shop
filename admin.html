@@ -2466,6 +2466,7 @@
         image: images[0],
         images
       };
+      clearProductClientCaches();
       const response = await fetch(id ? `/api/products/${id}` : "/api/products", {
         method: id ? "PUT" : "POST",
         headers: headers(),
