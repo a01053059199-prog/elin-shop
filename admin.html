@@ -35,7 +35,9 @@
     .product { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; border: 1px solid #e6e0d8; border-radius: 8px; padding: 10px; background: #fff; }
     .member { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; background: #fff; }
     .order { display: grid; grid-template-columns: 1fr 320px; gap: 14px; border: 1px solid #e6e0d8; border-radius: 8px; padding: 14px; background: #fff; }
-    .product img { width: 80px; height: 80px; border-radius: 6px; object-fit: contain; background: #f3f0ea; color: transparent; font-size: 0; }
+    .product-thumb { width: 80px; height: 80px; border-radius: 6px; background: #f3f0ea; overflow: hidden; }
+    .product-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; color: transparent; font-size: 0; }
+    .product-thumb.image-error img { display: none; }
     .meta { color: #6a6a6a; font-size: 13px; line-height: 1.6; }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .order-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -2191,9 +2193,13 @@
         return (!keyword || text.includes(keyword)) && categoryMatches(product.category, category);
       });
       const list = document.querySelector("#productList");
-      const productRow = product => `
+      const productRow = product => {
+        const image = productImages(product)[0] || product.image || "";
+        return `
         <article class="product">
-          <img src="${productImages(product)[0] || product.image}" alt="${product.name}" loading="lazy" decoding="async">
+          <div class="product-thumb ${image ? "" : "image-error"}">
+            ${image ? `<img src="${escapeAttr(image)}" alt="${escapeAttr(product.name)}" loading="lazy" decoding="async" onerror="this.parentElement.classList.add('image-error');">` : ""}
+          </div>
           <div>
             <strong>${product.name}</strong>
             <div class="meta">${categoryLabel(product.category)} · ${money(product.price)}</div>
@@ -2205,6 +2211,7 @@
           </div>
         </article>
       `;
+      };
       if (!filtered.length) {
         list.innerHTML = "<p>검색 결과가 없습니다.</p>";
         return;
