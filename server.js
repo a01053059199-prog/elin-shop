@@ -29,6 +29,7 @@ const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
 const PRODUCT_IMAGE_LIMIT = 15;
 const PRODUCT_SUMMARY_CACHE_MS = 60000;
+const PRODUCT_TABLES = [encodeURIComponent("제품"), "products"];
 
 const adminSessions = new Set();
 const memberSessions = new Map();
@@ -724,6 +725,18 @@ async function supabase(pathname, options = {}) {
   return data;
 }
 
+async function supabaseProduct(pathSuffix = "", options = {}) {
+  let lastError;
+  for (const table of PRODUCT_TABLES) {
+    try {
+      return await supabase(`${table}${pathSuffix}`, options);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("상품 테이블을 찾을 수 없습니다.");
+}
+
 function cleanProduct(input) {
   const parseMoney = value => {
     if (typeof value === "number") return value;
@@ -913,10 +926,10 @@ async function listProductSummaries() {
   };
   const summaries = await withSupabaseFallback("products list", async () => {
     try {
-      const products = await supabase("products?select=*&order=created_at.desc");
+      const products = await supabaseProduct("?select=*&order=created_at.desc");
       return products.map(normalizeProductRow).map(summaryFromProduct);
     } catch (_) {
-      const products = await supabase("products?select=*");
+      const products = await supabaseProduct("?select=*");
       return products.map(normalizeProductRow).map(summaryFromProduct);
     }
   }, async () => {
@@ -952,7 +965,7 @@ function parseStoredImages(product) {
 
 async function saveSupabaseProduct(path, method, product) {
   try {
-    return await supabase(path, {
+    return await supabaseProduct(path, {
       method,
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(product)
@@ -960,13 +973,13 @@ async function saveSupabaseProduct(path, method, product) {
   } catch (error) {
     try {
       const { images, ...singleImageProduct } = product;
-      return await supabase(path, {
+      return await supabaseProduct(path, {
         method,
         headers: { Prefer: "return=representation" },
         body: JSON.stringify(singleImageProduct)
       });
     } catch (_) {
-      return await supabase(path, {
+      return await supabaseProduct(path, {
         method,
         headers: { Prefer: "return=representation" },
         body: JSON.stringify(koreanProductPayload(product))
@@ -981,10 +994,10 @@ async function getProductImages(id) {
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS * 5) return cached.images;
   const images = await withSupabaseFallback("product images", async () => {
     try {
-      const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+      const [product] = await supabaseProduct(`?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
       return parseStoredImages(normalizeProductRow(product || {}));
     } catch (_) {
-      const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image&limit=1`);
+      const [product] = await supabaseProduct(`?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
       return parseStoredImages(product || {});
     }
   }, async () => {
@@ -1022,7 +1035,7 @@ async function getProduct(id) {
   const cached = productDetailCache.get(cacheKey);
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS) return cached.product;
   const product = await withSupabaseFallback("product detail", async () => {
-    const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+    const [product] = await supabaseProduct(`?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
     return product || null;
   }, async () => {
     const products = await readJson(productsFile);
@@ -1036,7 +1049,7 @@ async function getProduct(id) {
 async function createProduct(input) {
   const { description, ...product } = cleanProduct(input);
   return await withSupabaseFallback("product create", async () => {
-    const [created] = await saveSupabaseProduct("products", "POST", product);
+    const [created] = await saveSupabaseProduct("", "POST", product);
     const savedDescription = await saveProductDescription(created.id, description);
     clearProductSummaryCache();
     return { ...normalizeProductRow(created), description: savedDescription };
@@ -1053,7 +1066,7 @@ async function createProduct(input) {
 async function updateProduct(id, input) {
   const { description, ...product } = cleanProduct({ ...input, id });
   return await withSupabaseFallback("product update", async () => {
-    const [updated] = await saveSupabaseProduct(`products?id=eq.${encodeURIComponent(id)}`, "PATCH", product);
+    const [updated] = await saveSupabaseProduct(`?id=eq.${encodeURIComponent(id)}`, "PATCH", product);
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
     const savedDescription = await saveProductDescription(id, description);
     clearProductSummaryCache();
@@ -1073,7 +1086,7 @@ async function updateProduct(id, input) {
 
 async function deleteProduct(id) {
   await withSupabaseFallback("product delete", async () => {
-    await supabase(`products?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+    await supabaseProduct(`?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
     await saveProductDescription(id, "");
     clearProductSummaryCache();
   }, async () => {
