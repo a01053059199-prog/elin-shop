@@ -15,6 +15,7 @@ const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
 const siteSettingsFile = path.join(dataDir, "site-settings.json");
 const productDescriptionsFile = path.join(dataDir, "product-descriptions.json");
+const productImagesFile = path.join(dataDir, "product-images.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -78,6 +79,7 @@ async function ensureData() {
   await ensureJson(customerCenterSettingsFile, null);
   await ensureJson(siteSettingsFile, null);
   await ensureJson(productDescriptionsFile, {});
+  await ensureJson(productImagesFile, {});
 }
 
 async function ensureJson(file, fallback) {
@@ -827,11 +829,60 @@ async function saveProductDescription(id, description) {
   return cleanDescription;
 }
 
+async function productImagesStore() {
+  return await withSupabaseFallback("product images store", async () => {
+    const rows = await supabase("admin_settings?key=eq.product_images&select=value");
+    const value = rows?.[0]?.value;
+    if (!value) return {};
+    if (typeof value === "string") return JSON.parse(value || "{}");
+    return value;
+  }, async () => {
+    try {
+      const saved = await readJson(productImagesFile);
+      return saved && typeof saved === "object" ? saved : {};
+    } catch {
+      return {};
+    }
+  });
+}
+
+async function saveProductImages(id, images) {
+  const cleanImages = (Array.isArray(images) ? images : [])
+    .map(image => String(image || "").trim())
+    .filter(Boolean)
+    .slice(0, PRODUCT_IMAGE_LIMIT);
+  const savedImages = await productImagesStore();
+  if (cleanImages.length) savedImages[id] = cleanImages;
+  else delete savedImages[id];
+  await writeJson(productImagesFile, savedImages);
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?key=eq.product_images", { method: "DELETE" });
+      await supabase("admin_settings", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify([{ key: "product_images", value: JSON.stringify(savedImages) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "product images store save");
+    }
+  }
+  return cleanImages;
+}
+
+function productTablePayload(product) {
+  const { images, ...payload } = product;
+  return payload;
+}
+
 async function mergeProductDescription(product) {
   if (!product) return product;
   const descriptions = await productDescriptions();
   const description = String(product.description || descriptions[product.id] || "").trim();
-  return { ...product, description };
+  const imageMap = await productImagesStore();
+  const storedImages = Array.isArray(imageMap[product.id]) ? imageMap[product.id].filter(Boolean) : [];
+  const images = storedImages.length ? storedImages : parseStoredImages(product);
+  return { ...product, description, images, image: images[0] || product.image || "" };
 }
 
 async function listProductSummaries() {
@@ -839,8 +890,11 @@ async function listProductSummaries() {
   if (productSummaryCache.items && now - productSummaryCache.at < PRODUCT_SUMMARY_CACHE_MS) {
     return productSummaryCache.items;
   }
+  const imageMap = await productImagesStore();
   const summaryFromProduct = product => {
-    const imageFingerprint = parseStoredImages(product)
+    const storedImages = Array.isArray(imageMap[product.id]) ? imageMap[product.id].filter(Boolean) : [];
+    const sourceImages = storedImages.length ? storedImages : parseStoredImages(product);
+    const imageFingerprint = sourceImages
       .slice(0, 3)
       .map(image => `${Buffer.byteLength(String(image || ""), "utf8")}:${String(image || "").slice(0, 80)}`)
       .join("|");
@@ -852,7 +906,8 @@ async function listProductSummaries() {
       now
     ].join(":");
     const version = crypto.createHash("sha1").update(versionSource).digest("hex").slice(0, 12);
-    const image = product.id ? `/api/product-image/${encodeURIComponent(product.id)}/0?v=${version}` : "";
+    const images = product.id ? sourceImages.map((_, index) => `/api/product-image/${encodeURIComponent(product.id)}/${index}?v=${version}`) : [];
+    const image = images[0] || "";
     return {
       id: product.id,
       name: product.name,
@@ -861,7 +916,7 @@ async function listProductSummaries() {
       label: product.label,
       price: product.price,
       image,
-      images: image ? [image] : [],
+      images,
       colors: product.colors,
       sizes: product.sizes,
       updated_at: product.updated_at,
@@ -904,6 +959,12 @@ async function getProductImages(id) {
   const cacheKey = String(id || "");
   const cached = productImageListCache.get(cacheKey);
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS * 5) return cached.images;
+  const imageMap = await productImagesStore();
+  const storedImages = Array.isArray(imageMap[cacheKey]) ? imageMap[cacheKey].filter(Boolean).slice(0, PRODUCT_IMAGE_LIMIT) : [];
+  if (storedImages.length) {
+    productImageListCache.set(cacheKey, { at: Date.now(), images: storedImages });
+    return storedImages;
+  }
   const images = await withSupabaseFallback("product images", async () => {
     try {
       const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=image,images&limit=1`);
@@ -964,16 +1025,18 @@ async function createProduct(input) {
     const [created] = await supabase("products", {
       method: "POST",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify(product)
+      body: JSON.stringify(productTablePayload(product))
     });
     const savedDescription = await saveProductDescription(created.id, description);
+    const savedImages = await saveProductImages(created.id, product.images);
     clearProductSummaryCache();
-    return { ...created, description: savedDescription };
+    return { ...created, image: savedImages[0] || created.image || "", images: savedImages, description: savedDescription };
   }, async () => {
     const products = await readJson(productsFile);
     products.unshift({ ...product, description, createdAt: new Date().toISOString() });
     await writeJson(productsFile, products);
     await saveProductDescription(product.id, description);
+    await saveProductImages(product.id, product.images);
     clearProductSummaryCache();
     return { ...product, description };
   });
@@ -985,12 +1048,13 @@ async function updateProduct(id, input) {
     const [updated] = await supabase(`products?id=eq.${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify(product)
+      body: JSON.stringify(productTablePayload(product))
     });
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
     const savedDescription = await saveProductDescription(id, description);
+    const savedImages = await saveProductImages(id, product.images);
     clearProductSummaryCache();
-    return { ...updated, description: savedDescription };
+    return { ...updated, image: savedImages[0] || updated.image || "", images: savedImages, description: savedDescription };
   }, async () => {
     const products = await readJson(productsFile);
     const previous = products.find(item => item.id === id) || {};
@@ -999,6 +1063,7 @@ async function updateProduct(id, input) {
     products[index] = { ...previous, ...product, description, createdAt: previous.createdAt || previous.created_at || new Date().toISOString(), updatedAt: new Date().toISOString() };
     await writeJson(productsFile, products);
     await saveProductDescription(id, description);
+    await saveProductImages(id, product.images);
     clearProductSummaryCache();
     return products[index];
   });
@@ -1008,11 +1073,13 @@ async function deleteProduct(id) {
   await withSupabaseFallback("product delete", async () => {
     await supabase(`products?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
     await saveProductDescription(id, "");
+    await saveProductImages(id, []);
     clearProductSummaryCache();
   }, async () => {
     const products = await readJson(productsFile);
     await writeJson(productsFile, products.filter(product => product.id !== id));
     await saveProductDescription(id, "");
+    await saveProductImages(id, []);
     clearProductSummaryCache();
   });
 }
