@@ -533,9 +533,7 @@
       background: var(--soft);
       overflow: hidden;
     }
-    .product.image-error .product-media {
-      background: var(--soft);
-    }
+    .product.image-error { display: none; }
     .product-media a {
       display: block;
       width: 100%;
@@ -1500,7 +1498,7 @@
       return `
         <article class="product">
           <div class="product-media">
-            <a href="/product.html?id=${encodeURIComponent(product.id)}"><img src="${image}" alt="${escapeHtml(product.name)}" loading="${loading}" decoding="async"${priority} onerror="this.closest('.product').classList.add('image-error'); this.remove();"></a>
+            <a href="/product.html?id=${encodeURIComponent(product.id)}"><img src="${image}" alt="${escapeHtml(product.name)}" loading="${loading}" decoding="async"${priority} onerror="var card=this.closest('.product'); if(card) card.classList.add('image-error');"></a>
             <span class="badge">${escapeHtml(product.label || "NEW")}</span>
             <div class="quick">
               <button type="button" aria-label="${escapeHtml(product.name)} 관심상품">♡</button>
@@ -1520,6 +1518,7 @@
       productRenderToken += 1;
       const renderToken = productRenderToken;
       const filtered = products.filter(product => {
+        if (!firstImage(product)) return false;
         const filterMatch = categoryMatches(product.category, activeFilter);
         return filterMatch && productMatchesSearch(product, searchTerm);
       });
