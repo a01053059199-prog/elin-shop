@@ -698,12 +698,17 @@
     let siteSettings = {};
     let productReviews = [];
     let reviewImages = [];
-    const productCacheKey = "elinProductSummaryCacheV4";
-    const relatedProductsCacheKey = "elinProductSummariesV5";
+    const productCacheKey = "elinProductSummaryCacheV7";
+    const relatedProductsCacheKey = "elinProductSummariesV6";
     try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV3"); } catch (_) {}
+    try { localStorage.removeItem("elinProductSummaryCacheV4"); } catch (_) {}
+    try { localStorage.removeItem("elinProductSummaryCacheV5"); } catch (_) {}
+    try { localStorage.removeItem("elinProductSummaryCacheV6"); } catch (_) {}
     try { sessionStorage.removeItem("elinProductSummaries"); } catch (_) {}
     try { sessionStorage.removeItem("elinProductSummariesV3"); } catch (_) {}
+    try { sessionStorage.removeItem("elinProductSummariesV4"); } catch (_) {}
+    try { sessionStorage.removeItem("elinProductSummariesV5"); } catch (_) {}
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, match => ({
@@ -1318,6 +1323,7 @@
     }
 
     function renderCachedProductFirst() {
+      return false;
       try {
         const cached = JSON.parse(localStorage.getItem(productCacheKey) || "{}");
         if (!Array.isArray(cached.products) || !cached.products.length) return false;

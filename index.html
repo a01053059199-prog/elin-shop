@@ -1396,11 +1396,12 @@
     const cartAddedProduct = document.querySelector("#cartAddedProduct");
     const cartAddedView = document.querySelector("#cartAddedView");
     const products = [];
-    const productCacheKey = "elinProductSummaryCacheV6";
+    const productCacheKey = "elinProductSummaryCacheV7";
     try { localStorage.removeItem("elinProductSummaryCacheV2"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV3"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV4"); } catch (_) {}
     try { localStorage.removeItem("elinProductSummaryCacheV5"); } catch (_) {}
+    try { localStorage.removeItem("elinProductSummaryCacheV6"); } catch (_) {}
     let cart = JSON.parse(localStorage.getItem("elinCart") || "[]");
     let activeFilter = "all";
     let searchTerm = "";
@@ -1449,6 +1450,7 @@
     }
     function cacheProducts(items) {
       if (!Array.isArray(items) || !items.length) return;
+      if (items.every(item => /^p\d+$/.test(String(item.id || "")))) return;
       const slimItems = items.slice(0, 60).map(item => ({
         id: item.id,
         name: item.name,
@@ -1844,9 +1846,12 @@
 
     async function loadProducts() {
       try {
-        const response = await fetch("/api/products?summary=1");
+        const response = await fetch(`/api/products?summary=1&ts=${Date.now()}`, { cache: "no-store" });
         if (response.ok) {
           const freshProducts = await response.json();
+          if (!Array.isArray(freshProducts) || !freshProducts.length || freshProducts.every(item => /^p\d+$/.test(String(item.id || "")))) {
+            throw new Error("Supabase 상품 데이터가 아직 반영되지 않았습니다.");
+          }
           products.splice(0, products.length, ...freshProducts);
           cacheProducts(freshProducts);
         }
@@ -1966,13 +1971,10 @@
       if (!hasCachedSiteSettings) initHeroSlider();
     });
     initCategorySlider();
-    const hasCachedProducts = applyCachedProducts();
-    if (hasCachedProducts) renderProducts();
-    else {
-      productGrid.innerHTML = "";
-      newGrid.innerHTML = "";
-      resultNote.textContent = "상품을 불러오는 중입니다.";
-    }
+    try { localStorage.removeItem(productCacheKey); } catch (_) {}
+    productGrid.innerHTML = "";
+    newGrid.innerHTML = "";
+    resultNote.textContent = "상품을 불러오는 중입니다.";
     renderCart();
     loadProducts();
     loadMemberNav();
