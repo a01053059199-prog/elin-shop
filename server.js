@@ -871,8 +871,13 @@ async function listProductSummaries() {
     };
   };
   const summaries = await withSupabaseFallback("products list", async () => {
-    const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,created_at&order=created_at.desc");
-    return products.map(summaryFromProduct);
+    try {
+      const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,images,created_at,updated_at&order=created_at.desc");
+      return products.map(summaryFromProduct);
+    } catch (_) {
+      const products = await supabase("products?select=id,name,category,keywords,label,price,colors,sizes,image,created_at,updated_at&order=created_at.desc");
+      return products.map(summaryFromProduct);
+    }
   }, async () => {
     const products = await readJson(productsFile);
     return products.map(summaryFromProduct);
