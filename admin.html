@@ -1057,6 +1057,9 @@
         requests.unshift(fetch(`/api/products?admin=1&ts=${Date.now()}`, { cache: "no-store" }).then(async response => {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "상품 목록을 불러오지 못했습니다.");
+          if (Array.isArray(data) && data.length && data.every(item => /^p\d+$/.test(String(item.id || "")))) {
+            throw new Error("Supabase 제품 테이블이 아직 연결되지 않아 샘플 상품만 표시되고 있습니다. server.js 재배포를 확인해주세요.");
+          }
           return data;
         }));
       }

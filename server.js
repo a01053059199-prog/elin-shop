@@ -29,7 +29,7 @@ const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
 const PRODUCT_IMAGE_LIMIT = 15;
 const PRODUCT_SUMMARY_CACHE_MS = 60000;
-const PRODUCT_TABLES = [encodeURIComponent("제품"), "products"];
+const PRODUCT_TABLES = ["제품", encodeURIComponent("제품"), "products"];
 
 const adminSessions = new Set();
 const memberSessions = new Map();
@@ -1008,6 +1008,37 @@ async function getProductImages(id) {
   return images;
 }
 
+async function productRecoveryCheck() {
+  const checks = [];
+  for (const table of PRODUCT_TABLES) {
+    try {
+      const rows = await supabase(`${table}?select=*&limit=20`);
+      const normalized = rows.map(normalizeProductRow);
+      checks.push({
+        table,
+        ok: true,
+        sampleCount: rows.length,
+        imageCount: normalized.filter(product => parseStoredImages(product).length).length,
+        firstId: normalized[0]?.id || "",
+        firstName: normalized[0]?.name || "",
+        firstImagePrefix: String(parseStoredImages(normalized[0] || {})[0] || "").slice(0, 40)
+      });
+    } catch (error) {
+      checks.push({ table, ok: false, error: error.message || String(error) });
+    }
+  }
+  const products = await listProductSummaries();
+  return {
+    ok: true,
+    activeCount: products.length,
+    activeFirstId: products[0]?.id || "",
+    activeFirstName: products[0]?.name || "",
+    activeImage: products[0]?.image || "",
+    activeLooksLikeSeed: products.length > 0 && products.every(product => /^p\d+$/.test(String(product.id || ""))),
+    checks
+  };
+}
+
 function sendProductImage(res, source, cacheKey = "") {
   const image = String(source || "").trim();
   if (!image) return send(res, 404, "Not found", "text/plain; charset=utf-8");
@@ -1589,6 +1620,10 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/site-settings" && req.method === "GET") {
     return send(res, 200, await siteSettings(), "application/json; charset=utf-8", { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" });
+  }
+
+  if (url.pathname === "/api/recover-products-check" && req.method === "GET") {
+    return send(res, 200, await productRecoveryCheck(), "application/json; charset=utf-8", { "Cache-Control": "no-store" });
   }
 
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
