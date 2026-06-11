@@ -2446,6 +2446,42 @@
       return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "";
     }
 
+    async function uploadImagesToStorage(images, productId, onProgress) {
+      const results = [...images];
+      const pending = results
+        .map((image, index) => ({ image, index }))
+        .filter(item => String(item.image || "").startsWith("data:image/"));
+      if (!pending.length) return results;
+      let completed = 0;
+      let nextIndex = 0;
+      const workerCount = Math.min(3, pending.length);
+      async function worker() {
+        while (nextIndex < pending.length) {
+          const item = pending[nextIndex++];
+          const response = await fetch("/api/admin/product-image-upload", {
+            method: "POST",
+            headers: headers(),
+            body: JSON.stringify({
+              productId: productId || `new-${Date.now()}`,
+              index: item.index,
+              image: item.image
+            })
+          });
+          const text = await response.text();
+          let result = {};
+          try { result = JSON.parse(text); } catch (_) {}
+          if (!response.ok || !result.url) {
+            throw new Error(result.error || text || `이미지 ${item.index + 1} 업로드에 실패했습니다.`);
+          }
+          results[item.index] = result.url;
+          completed += 1;
+          onProgress?.(completed, pending.length);
+        }
+      }
+      await Promise.all(Array.from({ length: workerCount }, worker));
+      return results;
+    }
+
     document.querySelector("#price").addEventListener("input", event => {
       const cursorAtEnd = event.target.selectionStart === event.target.value.length;
       event.target.value = formatPriceInput(event.target.value);
@@ -2454,6 +2490,8 @@
 
     document.querySelector("#productForm").addEventListener("submit", async event => {
       event.preventDefault();
+      const submitButton = event.submitter || event.target.querySelector('button[type="submit"]');
+      const progress = document.querySelector("#imageUploadProgress");
       const id = formValue("productId");
       let images = parseImages(formValue("image")).slice(0, productImageLimit);
       setImages(images);
@@ -2461,6 +2499,24 @@
       if (!Number.isFinite(price) || price <= 0) {
         alert("판매가를 올바르게 입력해주세요. 예: 239,000");
         document.querySelector("#price").focus();
+        return;
+      }
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "저장 중...";
+      }
+      try {
+        images = await uploadImagesToStorage(images, id, (completed, total) => {
+          progress.textContent = `Storage 이미지 업로드 중... ${completed}/${total}`;
+        });
+        setImages(images);
+      } catch (error) {
+        alert(error.message || "상품 이미지 업로드에 실패했습니다.");
+        progress.textContent = "이미지 업로드 실패";
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "저장";
+        }
         return;
       }
       const payload = {
@@ -2478,11 +2534,22 @@
         images
       };
       clearProductClientCaches();
-      const response = await fetch(id ? `/api/products/${id}` : "/api/products", {
-        method: id ? "PUT" : "POST",
-        headers: headers(),
-        body: JSON.stringify(payload)
-      });
+      let response;
+      try {
+        response = await fetch(id ? `/api/products/${id}` : "/api/products", {
+          method: id ? "PUT" : "POST",
+          headers: headers(),
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        alert(error.message || "상품 저장 요청에 실패했습니다.");
+        progress.textContent = "상품 저장 실패";
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "저장";
+        }
+        return;
+      }
       if (!response.ok) {
         const text = await response.text();
         let message = text;
@@ -2490,6 +2557,11 @@
           message = JSON.parse(text).error || text;
         } catch (_) {}
         alert(message || "상품 저장에 실패했습니다.");
+        progress.textContent = "상품 저장 실패";
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "저장";
+        }
         return;
       }
       const savedProduct = await response.json().catch(() => null);
@@ -2504,6 +2576,11 @@
       setValue("productId", "");
       renderImagePreview("");
       await refresh({ fast: true });
+      progress.textContent = "";
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "저장";
+      }
       alert(id ? "상품 수정이 반영되었습니다." : "상품 등록이 반영되었습니다.");
     });
 

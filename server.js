@@ -818,6 +818,16 @@ async function storeProductImages(product) {
   return { ...product, image: stored[0] || "", images: stored.filter(Boolean) };
 }
 
+async function uploadAdminProductImage(input) {
+  const source = String(input.image || "").trim();
+  if (!dataImageParts(source)) throw new Error("업로드할 이미지 데이터가 없습니다.");
+  const productId = String(input.productId || `new-${crypto.randomUUID()}`).trim();
+  const index = Math.max(0, Number(input.index || 0));
+  return {
+    url: await uploadProductImageToStorage(productId, source, index)
+  };
+}
+
 function cleanProduct(input) {
   const parseMoney = value => {
     if (typeof value === "number") return value;
@@ -1762,6 +1772,11 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/storage-status" && req.method === "GET") {
     return send(res, 200, await storageStatusCheck(), "application/json; charset=utf-8", { "Cache-Control": "no-store" });
+  }
+
+  if (url.pathname === "/api/admin/product-image-upload" && req.method === "POST") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    return send(res, 201, await uploadAdminProductImage(await readBody(req)));
   }
 
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
