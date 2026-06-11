@@ -645,7 +645,7 @@ async function requireAdmin(req) {
   const token = getCookies(req).elin_admin_session;
   if (token && adminSessions.has(token)) return true;
   const signed = readSignedToken(token, "admin");
-  return Boolean(signed?.username === settings.username);
+  return Boolean(signed?.username);
 }
 
 function currentMember(req) {

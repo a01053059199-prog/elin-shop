@@ -2454,13 +2454,14 @@
       if (!pending.length) return results;
       let completed = 0;
       let nextIndex = 0;
-      const workerCount = Math.min(3, pending.length);
+      const workerCount = Math.min(1, pending.length);
       async function worker() {
         while (nextIndex < pending.length) {
           const item = pending[nextIndex++];
           const response = await fetch("/api/admin/product-image-upload", {
             method: "POST",
             headers: headers(),
+            credentials: "same-origin",
             body: JSON.stringify({
               productId: productId || `new-${Date.now()}`,
               index: item.index,
@@ -2539,6 +2540,7 @@
         response = await fetch(id ? `/api/products/${id}` : "/api/products", {
           method: id ? "PUT" : "POST",
           headers: headers(),
+          credentials: "same-origin",
           body: JSON.stringify(payload)
         });
       } catch (error) {
