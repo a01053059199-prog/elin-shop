@@ -761,29 +761,44 @@ function productStoragePublicUrl(objectPath) {
   return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath.split("/").map(encodeURIComponent).join("/")}`;
 }
 
+function storageAuthHeaders(contentType = "application/json") {
+  const common = { "Content-Type": contentType };
+  if (!SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_")) {
+    return [{ ...common, apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }];
+  }
+  return [
+    { ...common, apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    { ...common, apikey: SUPABASE_SERVICE_ROLE_KEY },
+    { ...common, apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+  ];
+}
+
+async function storageRequest(pathname, options = {}) {
+  const attempts = [];
+  for (const authHeaders of storageAuthHeaders(options.contentType)) {
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/${pathname}`, {
+      method: options.method || "GET",
+      headers: { ...authHeaders, ...(options.headers || {}) },
+      body: options.body
+    });
+    if (response.ok) return response;
+    attempts.push(`${response.status} ${(await response.text()).slice(0, 160)}`);
+  }
+  throw new Error(`Supabase Storage 요청 실패: ${attempts.join(" / ")}`);
+}
+
 async function uploadProductImageToStorage(productId, source, index) {
   const image = dataImageParts(source);
   if (!image) return String(source || "").trim();
   if (!useSupabaseStorage) throw new Error("Supabase Storage 비밀 키가 설정되지 않았습니다.");
   const digest = crypto.createHash("sha1").update(image.buffer).digest("hex").slice(0, 16);
   const objectPath = `${encodeURIComponent(String(productId || "product"))}/${Date.now()}-${index + 1}-${digest}.${image.extension}`;
-  const storageHeaders = {
-    apikey: SUPABASE_SERVICE_ROLE_KEY,
-    "Content-Type": image.type,
-    "x-upsert": "true"
-  };
-  if (!SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_")) {
-    storageHeaders.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
-  }
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
+  await storageRequest(`object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
     method: "POST",
-    headers: storageHeaders,
+    contentType: image.type,
+    headers: { "x-upsert": "true" },
     body: image.buffer
   });
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`상품 이미지 Storage 업로드 실패: ${response.status} ${detail.slice(0, 180)}`);
-  }
   return productStoragePublicUrl(objectPath);
 }
 
@@ -1128,6 +1143,31 @@ async function productRecoveryCheck() {
     activeLooksLikeSeed: products.length > 0 && products.every(product => /^p\d+$/.test(String(product.id || ""))),
     checks
   };
+}
+
+async function storageStatusCheck() {
+  if (!useSupabaseStorage) {
+    return { ok: false, configured: false, bucket: PRODUCT_IMAGE_BUCKET, error: "SUPABASE_SERVICE_ROLE_KEY가 없습니다." };
+  }
+  try {
+    const response = await storageRequest(`bucket/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}`);
+    const bucket = await response.json();
+    return {
+      ok: true,
+      configured: true,
+      keyType: SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_") ? "secret" : "legacy-service-role",
+      bucket: bucket?.name || bucket?.id || PRODUCT_IMAGE_BUCKET,
+      public: Boolean(bucket?.public)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      configured: true,
+      keyType: SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_") ? "secret" : "legacy-service-role",
+      bucket: PRODUCT_IMAGE_BUCKET,
+      error: error.message || String(error)
+    };
+  }
 }
 
 function sendProductImage(res, source, cacheKey = "") {
@@ -1718,6 +1758,10 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/recover-products-check" && req.method === "GET") {
     return send(res, 200, await productRecoveryCheck(), "application/json; charset=utf-8", { "Cache-Control": "no-store" });
+  }
+
+  if (url.pathname === "/api/storage-status" && req.method === "GET") {
+    return send(res, 200, await storageStatusCheck(), "application/json; charset=utf-8", { "Cache-Control": "no-store" });
   }
 
   if (url.pathname === "/api/admin/members" && req.method === "GET") {
