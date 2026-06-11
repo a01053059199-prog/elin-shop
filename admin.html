@@ -2446,6 +2446,15 @@
       return Number.isFinite(price) ? price.toLocaleString("ko-KR") : "";
     }
 
+    function dataUrlToBlob(dataUrl) {
+      const match = String(dataUrl || "").match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+      if (!match) throw new Error("이미지 데이터 형식이 올바르지 않습니다.");
+      const binary = atob(match[2]);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      return new Blob([bytes], { type: match[1] });
+    }
+
     async function uploadImagesToStorage(images, productId, onProgress) {
       const results = [...images];
       const pending = results
@@ -2458,15 +2467,16 @@
       async function worker() {
         while (nextIndex < pending.length) {
           const item = pending[nextIndex++];
-          const response = await fetch("/api/admin/product-image-upload", {
+          const blob = dataUrlToBlob(item.image);
+          const query = new URLSearchParams({
+            productId: productId || `new-${Date.now()}`,
+            index: String(item.index)
+          });
+          const response = await fetch(`/api/admin/product-image-upload?${query}`, {
             method: "POST",
-            headers: headers(),
             credentials: "same-origin",
-            body: JSON.stringify({
-              productId: productId || `new-${Date.now()}`,
-              index: item.index,
-              image: item.image
-            })
+            headers: { "Content-Type": blob.type },
+            body: blob
           });
           const text = await response.text();
           let result = {};

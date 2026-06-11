@@ -148,6 +148,24 @@ function readBody(req) {
   });
 }
 
+function readBinaryBody(req, maxBytes = 10_000_000) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", chunk => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error("이미지 파일이 너무 큽니다."));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
 function getCookies(req) {
   return Object.fromEntries(String(req.headers.cookie || "").split(";").map(part => {
     const [key, ...rest] = part.trim().split("=");
@@ -790,14 +808,19 @@ async function storageRequest(pathname, options = {}) {
 async function uploadProductImageToStorage(productId, source, index) {
   const image = dataImageParts(source);
   if (!image) return String(source || "").trim();
+  return await uploadProductImageBufferToStorage(productId, image.buffer, image.type, image.extension, index);
+}
+
+async function uploadProductImageBufferToStorage(productId, buffer, contentType, extension, index) {
   if (!useSupabaseStorage) throw new Error("Supabase Storage 비밀 키가 설정되지 않았습니다.");
-  const digest = crypto.createHash("sha1").update(image.buffer).digest("hex").slice(0, 16);
-  const objectPath = `${encodeURIComponent(String(productId || "product"))}/${Date.now()}-${index + 1}-${digest}.${image.extension}`;
+  if (!Buffer.isBuffer(buffer) || !buffer.length) throw new Error("업로드할 이미지 파일이 없습니다.");
+  const digest = crypto.createHash("sha1").update(buffer).digest("hex").slice(0, 16);
+  const objectPath = `${encodeURIComponent(String(productId || "product"))}/${Date.now()}-${index + 1}-${digest}.${extension}`;
   await storageRequest(`object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
     method: "POST",
-    contentType: image.type,
+    contentType,
     headers: { "x-upsert": "true" },
-    body: image.buffer
+    body: buffer
   });
   return productStoragePublicUrl(objectPath);
 }
@@ -825,6 +848,24 @@ async function uploadAdminProductImage(input) {
   const index = Math.max(0, Number(input.index || 0));
   return {
     url: await uploadProductImageToStorage(productId, source, index)
+  };
+}
+
+async function uploadAdminProductImageFile(req, url) {
+  const contentType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+  const extensionByType = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif"
+  };
+  const extension = extensionByType[contentType];
+  if (!extension) throw new Error("JPG, PNG, WEBP 이미지만 업로드할 수 있습니다.");
+  const buffer = await readBinaryBody(req);
+  const productId = String(url.searchParams.get("productId") || `new-${crypto.randomUUID()}`).trim();
+  const index = Math.max(0, Number(url.searchParams.get("index") || 0));
+  return {
+    url: await uploadProductImageBufferToStorage(productId, buffer, contentType, extension, index)
   };
 }
 
@@ -1806,6 +1847,9 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/admin/product-image-upload" && req.method === "POST") {
     if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    if (String(req.headers["content-type"] || "").toLowerCase().startsWith("image/")) {
+      return send(res, 201, await uploadAdminProductImageFile(req, url));
+    }
     return send(res, 201, await uploadAdminProductImage(await readBody(req)));
   }
 
