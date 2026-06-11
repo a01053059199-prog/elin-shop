@@ -221,7 +221,7 @@
 
           <label for="imageFile">상품 이미지 업로드</label>
           <input id="imageFile" type="file" accept="image/*" multiple />
-          <div class="hint">최대 15장까지 등록 가능합니다. 여러 번 선택해도 기존 이미지 뒤에 계속 추가됩니다.</div>
+          <div class="hint">최대 15장까지 등록 가능합니다. 이미지를 추가하고 자르기 편집을 마친 뒤 상품 저장을 누르면 업로드됩니다.</div>
           <div class="image-preview" id="imagePreview">이미지 미리보기</div>
           <div class="upload-progress" id="imageUploadProgress" aria-live="polite"></div>
           <div class="image-tools">
@@ -801,21 +801,13 @@
         const optimized = await optimizeProductImages(files, count => {
           progress.textContent = `이미지 최적화 중... ${count}/${files.length}`;
         });
-        progress.textContent = `Storage 이미지 업로드 중... 0/${optimized.length}`;
-        const uploaded = await uploadImagesToStorage(
-          optimized,
-          formValue("productId") || `new-${Date.now()}`,
-          (completed, total) => {
-            progress.textContent = `Storage 이미지 업로드 중... ${completed}/${total}`;
-          }
-        );
-        const images = [...current, ...uploaded].slice(0, productImageLimit);
+        const images = [...current, ...optimized].slice(0, productImageLimit);
         setImages(images);
-        progress.textContent = `${uploaded.length}장 추가 완료 · 총 ${images.length}/${productImageLimit}장`;
+        progress.textContent = `${optimized.length}장 편집 준비 완료 · 자르기 후 상품 저장을 눌러주세요. 총 ${images.length}/${productImageLimit}장`;
       } catch (error) {
-        const message = error.message || "상품 이미지 업로드에 실패했습니다.";
+        const message = error.message || "이미지를 읽지 못했습니다.";
         alert(message);
-        progress.textContent = message.includes("로그인") ? "관리자 로그인이 만료되었습니다. 다시 로그인해주세요." : "이미지 업로드 실패";
+        progress.textContent = "이미지 준비 실패";
         input.value = "";
         input.disabled = false;
         return;
