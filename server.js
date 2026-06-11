@@ -761,8 +761,8 @@ function productStoragePublicUrl(objectPath) {
   return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-function storageAuthHeaders(contentType = "application/json") {
-  const common = { "Content-Type": contentType };
+function storageAuthHeaders(contentType = "") {
+  const common = contentType ? { "Content-Type": contentType } : {};
   if (!SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_")) {
     return [{ ...common, apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }];
   }
@@ -1114,11 +1114,16 @@ async function getProductImages(id) {
           body: JSON.stringify({ images: storedProduct.images })
         });
         clearProductSummaryCache();
+        productImageListCache.set(cacheKey, { at: Date.now(), images: storedProduct.images });
         return storedProduct.images;
-      })().finally(() => productImageMigrationJobs.delete(cacheKey));
+      })()
+        .catch(error => {
+          console.error(`[product image migration] ${cacheKey}:`, error.message || error);
+          return images;
+        })
+        .finally(() => productImageMigrationJobs.delete(cacheKey));
       productImageMigrationJobs.set(cacheKey, migration);
     }
-    images = await migration;
   }
   productImageListCache.set(cacheKey, { at: Date.now(), images });
   return images;
@@ -1193,8 +1198,7 @@ async function storageWriteCheck() {
       body: Buffer.from("ELIN storage upload check", "utf8")
     });
     await storageRequest(`object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
-      method: "DELETE",
-      contentType: "application/json"
+      method: "DELETE"
     });
     return { ok: true, bucket: PRODUCT_IMAGE_BUCKET, upload: true, cleanup: true };
   } catch (error) {
