@@ -798,15 +798,24 @@
       input.disabled = true;
       progress.textContent = `이미지 최적화 중... 0/${files.length}`;
       try {
-        const uploaded = await optimizeProductImages(files, count => {
+        const optimized = await optimizeProductImages(files, count => {
           progress.textContent = `이미지 최적화 중... ${count}/${files.length}`;
         });
+        progress.textContent = `Storage 이미지 업로드 중... 0/${optimized.length}`;
+        const uploaded = await uploadImagesToStorage(
+          optimized,
+          formValue("productId") || `new-${Date.now()}`,
+          (completed, total) => {
+            progress.textContent = `Storage 이미지 업로드 중... ${completed}/${total}`;
+          }
+        );
         const images = isEditingProduct ? uploaded.slice(0, productImageLimit) : [...current, ...uploaded].slice(0, productImageLimit);
         setImages(images);
-        progress.textContent = isEditingProduct ? `${uploaded.length}장 새 이미지로 교체 완료` : `${uploaded.length}장 업로드 최적화 완료`;
+        progress.textContent = isEditingProduct ? `${uploaded.length}장 새 이미지로 교체 완료` : `${uploaded.length}장 이미지 업로드 완료`;
       } catch (error) {
-        alert(error.message || "이미지를 읽지 못했습니다. JPG 파일로 다시 올려주세요.");
-        progress.textContent = "";
+        const message = error.message || "상품 이미지 업로드에 실패했습니다.";
+        alert(message);
+        progress.textContent = message.includes("로그인") ? "관리자 로그인이 만료되었습니다. 다시 로그인해주세요." : "이미지 업로드 실패";
         input.value = "";
         input.disabled = false;
         return;
