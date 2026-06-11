@@ -767,14 +767,17 @@ async function uploadProductImageToStorage(productId, source, index) {
   if (!useSupabaseStorage) throw new Error("Supabase Storage 비밀 키가 설정되지 않았습니다.");
   const digest = crypto.createHash("sha1").update(image.buffer).digest("hex").slice(0, 16);
   const objectPath = `${encodeURIComponent(String(productId || "product"))}/${Date.now()}-${index + 1}-${digest}.${image.extension}`;
+  const storageHeaders = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    "Content-Type": image.type,
+    "x-upsert": "true"
+  };
+  if (!SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_")) {
+    storageHeaders.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+  }
   const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
     method: "POST",
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      "Content-Type": image.type,
-      "x-upsert": "false"
-    },
+    headers: storageHeaders,
     body: image.buffer
   });
   if (!response.ok) {
