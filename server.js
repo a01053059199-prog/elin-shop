@@ -23,7 +23,10 @@ const RECOVERY_ADMIN_USER = process.env.RECOVERY_ADMIN_USER || "elin1992";
 const RECOVERY_ADMIN_PASSWORD = process.env.RECOVERY_ADMIN_PASSWORD || "1234";
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const PRODUCT_IMAGE_BUCKET = process.env.PRODUCT_IMAGE_BUCKET || "product-images";
 const useSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const useSupabaseStorage = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 const MEMBER_SESSION_MAX_AGE = 60 * 20;
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_PASSWORD || "elin-session";
@@ -37,6 +40,7 @@ let productSummaryCache = { at: 0, items: null };
 const productDetailCache = new Map();
 const productImageListCache = new Map();
 const productImageBufferCache = new Map();
+const productImageMigrationJobs = new Map();
 let supabaseFallbackNoticeAt = 0;
 
 const seedProducts = [
@@ -737,6 +741,65 @@ async function supabaseProduct(pathSuffix = "", options = {}) {
   throw lastError || new Error("상품 테이블을 찾을 수 없습니다.");
 }
 
+function dataImageParts(source) {
+  const match = String(source || "").match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+  if (!match) return null;
+  const extensionByType = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif"
+  };
+  return {
+    type: match[1].toLowerCase(),
+    extension: extensionByType[match[1].toLowerCase()] || "jpg",
+    buffer: Buffer.from(match[2], "base64")
+  };
+}
+
+function productStoragePublicUrl(objectPath) {
+  return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+async function uploadProductImageToStorage(productId, source, index) {
+  const image = dataImageParts(source);
+  if (!image) return String(source || "").trim();
+  if (!useSupabaseStorage) throw new Error("Supabase Storage 비밀 키가 설정되지 않았습니다.");
+  const digest = crypto.createHash("sha1").update(image.buffer).digest("hex").slice(0, 16);
+  const objectPath = `${encodeURIComponent(String(productId || "product"))}/${Date.now()}-${index + 1}-${digest}.${image.extension}`;
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": image.type,
+      "x-upsert": "false"
+    },
+    body: image.buffer
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`상품 이미지 Storage 업로드 실패: ${response.status} ${detail.slice(0, 180)}`);
+  }
+  return productStoragePublicUrl(objectPath);
+}
+
+async function storeProductImages(product) {
+  const images = parseStoredImages(product);
+  if (!images.some(image => dataImageParts(image))) return { ...product, image: images[0] || product.image || "", images };
+  const stored = new Array(images.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(3, images.length);
+  async function worker() {
+    while (nextIndex < images.length) {
+      const index = nextIndex++;
+      stored[index] = await uploadProductImageToStorage(product.id, images[index], index);
+    }
+  }
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return { ...product, image: stored[0] || "", images: stored.filter(Boolean) };
+}
+
 function cleanProduct(input) {
   const parseMoney = value => {
     if (typeof value === "number") return value;
@@ -982,28 +1045,22 @@ function parseStoredImages(product) {
 }
 
 async function saveSupabaseProduct(path, method, product) {
-  try {
-    return await supabaseProduct(path, {
-      method,
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify(product)
-    });
-  } catch (error) {
-    try {
-      const { images, ...singleImageProduct } = product;
-      return await supabaseProduct(path, {
-        method,
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify(singleImageProduct)
-      });
-    } catch (_) {
-      return await supabaseProduct(path, {
-        method,
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify(koreanProductPayload(product))
-      });
-    }
-  }
+  const payload = {
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    keywords: product.keywords,
+    label: product.label,
+    price: product.price,
+    colors: product.colors,
+    sizes: product.sizes,
+    images: product.images
+  };
+  return await supabase(`products${path}`, {
+    method,
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(payload)
+  });
 }
 
 async function getProductImages(id) {
@@ -1017,6 +1074,23 @@ async function getProductImages(id) {
   } else {
     const products = await readJson(productsFile);
     images = parseStoredImages(normalizeProductRow(products.find(product => product.id === id) || {}));
+  }
+  if (useSupabaseStorage && images.some(image => dataImageParts(image))) {
+    let migration = productImageMigrationJobs.get(cacheKey);
+    if (!migration) {
+      migration = (async () => {
+        const storedProduct = await storeProductImages({ id: cacheKey, images, image: images[0] || "" });
+        await supabase(`products?id=eq.${encodeURIComponent(cacheKey)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ images: storedProduct.images })
+        });
+        clearProductSummaryCache();
+        return storedProduct.images;
+      })().finally(() => productImageMigrationJobs.delete(cacheKey));
+      productImageMigrationJobs.set(cacheKey, migration);
+    }
+    images = await migration;
   }
   productImageListCache.set(cacheKey, { at: Date.now(), images });
   return images;
@@ -1042,6 +1116,8 @@ async function productRecoveryCheck() {
   const products = await listProductSummaries();
   return {
     ok: true,
+    storageConfigured: useSupabaseStorage,
+    storageBucket: PRODUCT_IMAGE_BUCKET,
     activeCount: products.length,
     activeFirstId: products[0]?.id || "",
     activeFirstName: products[0]?.name || "",
@@ -1091,7 +1167,8 @@ async function getProduct(id) {
 }
 
 async function createProduct(input) {
-  const { description, ...product } = cleanProduct(input);
+  const { description, ...cleanedProduct } = cleanProduct(input);
+  const product = useSupabase ? await storeProductImages(cleanedProduct) : cleanedProduct;
   return await withSupabaseFallback("product create", async () => {
     const [created] = await saveSupabaseProduct("", "POST", product);
     const savedDescription = await saveProductDescription(created.id, description);
@@ -1108,7 +1185,8 @@ async function createProduct(input) {
 }
 
 async function updateProduct(id, input) {
-  const { description, ...product } = cleanProduct({ ...input, id });
+  const { description, ...cleanedProduct } = cleanProduct({ ...input, id });
+  const product = useSupabase ? await storeProductImages(cleanedProduct) : cleanedProduct;
   return await withSupabaseFallback("product update", async () => {
     const [updated] = await saveSupabaseProduct(`?id=eq.${encodeURIComponent(id)}`, "PATCH", product);
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
