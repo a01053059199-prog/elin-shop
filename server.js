@@ -936,13 +936,13 @@ async function listProductSummaries() {
   if (useSupabase) {
     const summaryColumns = [
       "id",
-      "이름",
-      "분류",
-      "키워드",
-      "레이블",
-      "가격",
-      "색상",
-      "크기",
+      "name",
+      "category",
+      "keywords",
+      "label",
+      "price",
+      "colors",
+      "sizes",
       "created_at"
     ].join(",");
     products = await supabase(`products?select=${encodeURIComponent(summaryColumns)}&order=created_at.desc&limit=1000`);
@@ -1026,7 +1026,7 @@ async function productRecoveryCheck() {
   const checks = [];
   for (const table of PRODUCT_TABLES) {
     try {
-      const rows = await supabase(`${table}?select=${encodeURIComponent("id,이름,분류,created_at")}&limit=20`);
+      const rows = await supabase(`${table}?select=${encodeURIComponent("id,name,category,created_at")}&limit=20`);
       const normalized = rows.map(normalizeProductRow);
       checks.push({
         table,
