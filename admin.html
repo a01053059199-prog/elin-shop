@@ -221,7 +221,7 @@
 
           <label for="imageFile">상품 이미지 업로드</label>
           <input id="imageFile" type="file" accept="image/*" multiple />
-          <div class="hint">최대 15장까지 등록 가능합니다. 상품 수정 중 새 파일을 선택하면 기존 이미지를 새 이미지로 교체합니다.</div>
+          <div class="hint">최대 15장까지 등록 가능합니다. 여러 번 선택해도 기존 이미지 뒤에 계속 추가됩니다.</div>
           <div class="image-preview" id="imagePreview">이미지 미리보기</div>
           <div class="upload-progress" id="imageUploadProgress" aria-live="polite"></div>
           <div class="image-tools">
@@ -773,8 +773,7 @@
       const selectedFiles = [...event.target.files];
       if (!selectedFiles.length) return;
       const current = parseImages(formValue("image"));
-      const isEditingProduct = Boolean(formValue("productId"));
-      const remainingSlots = isEditingProduct ? productImageLimit : Math.max(0, productImageLimit - current.length);
+      const remainingSlots = Math.max(0, productImageLimit - current.length);
       if (!remainingSlots) {
         alert(`상품 이미지는 최대 ${productImageLimit}장까지 등록할 수 있습니다. 기존 이미지를 삭제한 뒤 추가해주세요.`);
         event.target.value = "";
@@ -810,9 +809,9 @@
             progress.textContent = `Storage 이미지 업로드 중... ${completed}/${total}`;
           }
         );
-        const images = isEditingProduct ? uploaded.slice(0, productImageLimit) : [...current, ...uploaded].slice(0, productImageLimit);
+        const images = [...current, ...uploaded].slice(0, productImageLimit);
         setImages(images);
-        progress.textContent = isEditingProduct ? `${uploaded.length}장 새 이미지로 교체 완료` : `${uploaded.length}장 이미지 업로드 완료`;
+        progress.textContent = `${uploaded.length}장 추가 완료 · 총 ${images.length}/${productImageLimit}장`;
       } catch (error) {
         const message = error.message || "상품 이미지 업로드에 실패했습니다.";
         alert(message);
