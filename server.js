@@ -934,7 +934,18 @@ async function listProductSummaries() {
   };
   let products;
   if (useSupabase) {
-    products = await supabase("products?select=*");
+    const summaryColumns = [
+      "id",
+      "이름",
+      "분류",
+      "키워드",
+      "레이블",
+      "가격",
+      "색상",
+      "크기",
+      "created_at"
+    ].join(",");
+    products = await supabase(`products?select=${encodeURIComponent(summaryColumns)}&order=created_at.desc&limit=1000`);
     if (!Array.isArray(products) || !products.length) {
       throw new Error("Supabase products 테이블에 상품이 없습니다.");
     }
@@ -1015,16 +1026,14 @@ async function productRecoveryCheck() {
   const checks = [];
   for (const table of PRODUCT_TABLES) {
     try {
-      const rows = await supabase(`${table}?select=*&limit=20`);
+      const rows = await supabase(`${table}?select=${encodeURIComponent("id,이름,분류,created_at")}&limit=20`);
       const normalized = rows.map(normalizeProductRow);
       checks.push({
         table,
         ok: true,
         sampleCount: rows.length,
-        imageCount: normalized.filter(product => parseStoredImages(product).length).length,
         firstId: normalized[0]?.id || "",
-        firstName: normalized[0]?.name || "",
-        firstImagePrefix: String(parseStoredImages(normalized[0] || {})[0] || "").slice(0, 40)
+        firstName: normalized[0]?.name || ""
       });
     } catch (error) {
       checks.push({ table, ok: false, error: error.message || String(error) });
