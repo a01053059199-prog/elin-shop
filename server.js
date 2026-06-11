@@ -133,7 +133,7 @@ function readBody(req) {
     let raw = "";
     req.on("data", chunk => {
       raw += chunk;
-      if (raw.length > 8_000_000) {
+      if (raw.length > 16_000_000) {
         reject(new Error("요청 본문이 너무 큽니다."));
         req.destroy();
       }
@@ -1180,6 +1180,28 @@ async function storageStatusCheck() {
   }
 }
 
+async function storageWriteCheck() {
+  if (!useSupabaseStorage) {
+    return { ok: false, error: "SUPABASE_SERVICE_ROLE_KEY가 없습니다." };
+  }
+  const objectPath = `_health/${Date.now()}-${crypto.randomBytes(4).toString("hex")}.txt`;
+  try {
+    await storageRequest(`object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
+      method: "POST",
+      contentType: "text/plain; charset=utf-8",
+      headers: { "x-upsert": "true" },
+      body: Buffer.from("ELIN storage upload check", "utf8")
+    });
+    await storageRequest(`object/${encodeURIComponent(PRODUCT_IMAGE_BUCKET)}/${objectPath}`, {
+      method: "DELETE",
+      contentType: "application/json"
+    });
+    return { ok: true, bucket: PRODUCT_IMAGE_BUCKET, upload: true, cleanup: true };
+  } catch (error) {
+    return { ok: false, bucket: PRODUCT_IMAGE_BUCKET, error: error.message || String(error) };
+  }
+}
+
 function sendProductImage(res, source, cacheKey = "") {
   const image = String(source || "").trim();
   if (!image) return send(res, 404, "Not found", "text/plain; charset=utf-8");
@@ -1772,6 +1794,10 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/storage-status" && req.method === "GET") {
     return send(res, 200, await storageStatusCheck(), "application/json; charset=utf-8", { "Cache-Control": "no-store" });
+  }
+
+  if (url.pathname === "/api/storage-write-check" && req.method === "GET") {
+    return send(res, 200, await storageWriteCheck(), "application/json; charset=utf-8", { "Cache-Control": "no-store" });
   }
 
   if (url.pathname === "/api/admin/product-image-upload" && req.method === "POST") {
