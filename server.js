@@ -784,18 +784,26 @@ function productField(product, englishKey, koreanKey, fallback = "") {
   return value == null ? fallback : value;
 }
 
+function firstProductField(product, keys, fallback = "") {
+  for (const key of keys) {
+    const value = product?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return fallback;
+}
+
 function normalizeProductRow(product = {}) {
   const images = parseStoredImages(product);
   return {
     ...product,
     id: product.id || product.ID || product.Id || "",
-    name: String(productField(product, "name", "이름")).trim(),
-    category: String(productField(product, "category", "분류")).trim(),
-    keywords: String(productField(product, "keywords", "키워드")).trim(),
-    label: String(productField(product, "label", "레이블", "NEW")).trim(),
-    price: Number(productField(product, "price", "가격", 0)) || 0,
-    colors: productField(product, "colors", "색상", []),
-    sizes: productField(product, "sizes", "크기", []),
+    name: String(firstProductField(product, ["name", "이름", "상품명"])).trim(),
+    category: String(firstProductField(product, ["category", "분류", "카테고리"])).trim(),
+    keywords: String(firstProductField(product, ["keywords", "키워드", "검색어"])).trim(),
+    label: String(firstProductField(product, ["label", "레이블", "라벨"], "NEW")).trim(),
+    price: Number(firstProductField(product, ["price", "가격", "판매가"], 0)) || 0,
+    colors: firstProductField(product, ["colors", "색상"], []),
+    sizes: firstProductField(product, ["sizes", "크기", "사이즈"], []),
     image: images[0] || String(productField(product, "image", "이미지")).trim(),
     images,
     updated_at: product.updated_at || product.updatedAt || product["수정일"] || "",
@@ -924,18 +932,17 @@ async function listProductSummaries() {
       createdAt: product.createdAt
     };
   };
-  const summaries = await withSupabaseFallback("products list", async () => {
-    try {
-      const products = await supabaseProduct("?select=*&order=created_at.desc");
-      return products.map(normalizeProductRow).map(summaryFromProduct);
-    } catch (_) {
-      const products = await supabaseProduct("?select=*");
-      return products.map(normalizeProductRow).map(summaryFromProduct);
+  let products;
+  if (useSupabase) {
+    products = await supabase("products?select=*");
+    if (!Array.isArray(products) || !products.length) {
+      throw new Error("Supabase products 테이블에 상품이 없습니다.");
     }
-  }, async () => {
+  } else {
     const products = await readJson(productsFile);
     return products.map(normalizeProductRow).map(summaryFromProduct);
-  });
+  }
+  const summaries = products.map(normalizeProductRow).map(summaryFromProduct);
   productSummaryCache = { at: now, items: summaries };
   return summaries;
 }
@@ -992,18 +999,14 @@ async function getProductImages(id) {
   const cacheKey = String(id || "");
   const cached = productImageListCache.get(cacheKey);
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS * 5) return cached.images;
-  const images = await withSupabaseFallback("product images", async () => {
-    try {
-      const [product] = await supabaseProduct(`?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
-      return parseStoredImages(normalizeProductRow(product || {}));
-    } catch (_) {
-      const [product] = await supabaseProduct(`?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
-      return parseStoredImages(product || {});
-    }
-  }, async () => {
+  let images;
+  if (useSupabase) {
+    const [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+    images = parseStoredImages(normalizeProductRow(product || {}));
+  } else {
     const products = await readJson(productsFile);
-    return parseStoredImages(normalizeProductRow(products.find(product => product.id === id) || {}));
-  });
+    images = parseStoredImages(normalizeProductRow(products.find(product => product.id === id) || {}));
+  }
   productImageListCache.set(cacheKey, { at: Date.now(), images });
   return images;
 }
@@ -1065,13 +1068,14 @@ async function getProduct(id) {
   const cacheKey = String(id || "");
   const cached = productDetailCache.get(cacheKey);
   if (cached && Date.now() - cached.at < PRODUCT_SUMMARY_CACHE_MS) return cached.product;
-  const product = await withSupabaseFallback("product detail", async () => {
-    const [product] = await supabaseProduct(`?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
-    return product || null;
-  }, async () => {
+  let product;
+  if (useSupabase) {
+    [product] = await supabase(`products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+    product = product || null;
+  } else {
     const products = await readJson(productsFile);
-    return products.find(product => product.id === id) || null;
-  });
+    product = products.find(product => product.id === id) || null;
+  }
   const mergedProduct = await mergeProductDescription(product);
   if (mergedProduct) productDetailCache.set(cacheKey, { at: Date.now(), product: mergedProduct });
   return mergedProduct;
