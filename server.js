@@ -747,6 +747,33 @@ async function supabase(pathname, options = {}) {
   return data;
 }
 
+async function supabaseAdmin(pathname, options = {}) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) return await supabase(pathname, options);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      "Content-Type": "application/json",
+      ...(SUPABASE_SERVICE_ROLE_KEY.startsWith("ey")
+        ? { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
+        : {}),
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  if (!response.ok) {
+    const message = data?.message || data?.hint || String(data || `Supabase admin request failed: ${response.status}`);
+    throw new Error(message);
+  }
+  return data;
+}
+
 async function supabaseProduct(pathSuffix = "", options = {}) {
   let lastError;
   for (const table of PRODUCT_TABLES) {
@@ -1125,7 +1152,7 @@ async function saveSupabaseProduct(path, method, product) {
     sizes: product.sizes,
     images: product.images
   };
-  return await supabase(`products${path}`, {
+  return await supabaseAdmin(`products${path}`, {
     method,
     headers: { Prefer: "return=representation" },
     body: JSON.stringify(payload)
@@ -1289,41 +1316,40 @@ async function getProduct(id) {
 async function createProduct(input) {
   const { description, ...cleanedProduct } = cleanProduct(input);
   const product = useSupabase ? await storeProductImages(cleanedProduct) : cleanedProduct;
-  return await withSupabaseFallback("product create", async () => {
+  if (useSupabase) {
     const [created] = await saveSupabaseProduct("", "POST", product);
+    if (!created?.id) throw new Error("Supabase 상품 등록 결과를 확인할 수 없습니다.");
     const savedDescription = await saveProductDescription(created.id, description);
     clearProductSummaryCache();
     return { ...normalizeProductRow(created), description: savedDescription };
-  }, async () => {
-    const products = await readJson(productsFile);
-    products.unshift({ ...product, description, createdAt: new Date().toISOString() });
-    await writeJson(productsFile, products);
-    await saveProductDescription(product.id, description);
-    clearProductSummaryCache();
-    return { ...product, description };
-  });
+  }
+  const products = await readJson(productsFile);
+  products.unshift({ ...product, description, createdAt: new Date().toISOString() });
+  await writeJson(productsFile, products);
+  await saveProductDescription(product.id, description);
+  clearProductSummaryCache();
+  return { ...product, description };
 }
 
 async function updateProduct(id, input) {
   const { description, ...cleanedProduct } = cleanProduct({ ...input, id });
   const product = useSupabase ? await storeProductImages(cleanedProduct) : cleanedProduct;
-  return await withSupabaseFallback("product update", async () => {
+  if (useSupabase) {
     const [updated] = await saveSupabaseProduct(`?id=eq.${encodeURIComponent(id)}`, "PATCH", product);
     if (!updated) throw new Error("상품을 찾을 수 없습니다.");
     const savedDescription = await saveProductDescription(id, description);
     clearProductSummaryCache();
     return { ...normalizeProductRow(updated), description: savedDescription };
-  }, async () => {
-    const products = await readJson(productsFile);
-    const previous = products.find(item => item.id === id) || {};
-    const index = products.findIndex(item => item.id === id);
-    if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
-    products[index] = { ...previous, ...product, description, createdAt: previous.createdAt || previous.created_at || new Date().toISOString(), updatedAt: new Date().toISOString() };
-    await writeJson(productsFile, products);
-    await saveProductDescription(id, description);
-    clearProductSummaryCache();
-    return products[index];
-  });
+  }
+  const products = await readJson(productsFile);
+  const previous = products.find(item => item.id === id) || {};
+  const index = products.findIndex(item => item.id === id);
+  if (index < 0) throw new Error("상품을 찾을 수 없습니다.");
+  products[index] = { ...previous, ...product, description, createdAt: previous.createdAt || previous.created_at || new Date().toISOString(), updatedAt: new Date().toISOString() };
+  await writeJson(productsFile, products);
+  await saveProductDescription(id, description);
+  clearProductSummaryCache();
+  return products[index];
 }
 
 async function deleteProduct(id) {
