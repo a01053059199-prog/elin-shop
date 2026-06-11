@@ -1150,6 +1150,7 @@ async function saveSupabaseProduct(path, method, product) {
     price: product.price,
     colors: product.colors,
     sizes: product.sizes,
+    image: product.image || product.images?.[0] || "",
     images: product.images
   };
   return await supabaseAdmin(`products${path}`, {
