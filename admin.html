@@ -766,7 +766,8 @@
       });
     });
 
-    const supportedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+    const supportedImageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const supportedImageExtensions = /\.(jpe?g|png|webp)$/i;
 
     document.querySelector("#imageFile").addEventListener("change", async event => {
       const selectedFiles = [...event.target.files];
@@ -782,7 +783,7 @@
       const files = selectedFiles.slice(0, remainingSlots);
       if (selectedFiles.length > remainingSlots) alert(`남은 등록 가능 수량은 ${remainingSlots}장입니다. ${remainingSlots}장만 추가합니다.`);
       for (const file of files) {
-        if (!supportedImageTypes.includes(file.type)) {
+        if (!supportedImageTypes.includes(String(file.type || "").toLowerCase()) && !supportedImageExtensions.test(file.name || "")) {
           alert("JPG, PNG, WEBP 이미지만 등록할 수 있습니다. HEIC 사진은 JPG로 변환해서 올려주세요.");
           event.target.value = "";
           return;
@@ -2464,6 +2465,25 @@
       return new Blob([bytes], { type: match[1] });
     }
 
+    async function uploadImageBlob(blob, productId, index) {
+      const query = new URLSearchParams({
+        productId: productId || `new-${Date.now()}`,
+        index: String(index)
+      });
+      const request = () => fetch(`/api/admin/product-image-upload?${query}`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": blob.type },
+        body: blob
+      });
+      let response = await request();
+      if (response.status === 401) {
+        const login = await loginWithSavedAdmin();
+        if (login) response = await request();
+      }
+      return response;
+    }
+
     async function uploadImagesToStorage(images, productId, onProgress) {
       const results = [...images];
       const pending = results
@@ -2477,16 +2497,7 @@
         while (nextIndex < pending.length) {
           const item = pending[nextIndex++];
           const blob = dataUrlToBlob(item.image);
-          const query = new URLSearchParams({
-            productId: productId || `new-${Date.now()}`,
-            index: String(item.index)
-          });
-          const response = await fetch(`/api/admin/product-image-upload?${query}`, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "Content-Type": blob.type },
-            body: blob
-          });
+          const response = await uploadImageBlob(blob, productId, item.index);
           const text = await response.text();
           let result = {};
           try { result = JSON.parse(text); } catch (_) {}
