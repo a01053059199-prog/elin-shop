@@ -161,6 +161,7 @@
               <option value="women-blouse">셔츠/블라우스</option>
               <option value="women-knit">니트/가디건</option>
               <option value="women-pants">진/팬츠</option>
+              <option value="women-setup">셋업</option>
             </optgroup>
             <optgroup label="MAN">
               <option value="men">남성 전체</option>
@@ -169,6 +170,7 @@
               <option value="men-shirt">셔츠</option>
               <option value="men-knit">니트/가디건</option>
               <option value="men-pants">진/팬츠</option>
+              <option value="men-setup">셋업</option>
             </optgroup>
             <optgroup label="BAG">
               <option value="bag">가방 전체</option>
@@ -253,12 +255,14 @@
               <option value="women-blouse">여성 셔츠/블라우스</option>
               <option value="women-knit">여성 니트/가디건</option>
               <option value="women-pants">여성 진/팬츠</option>
+              <option value="women-setup">여성 셋업</option>
               <option value="men">남성 전체</option>
               <option value="men-outer">남성 아우터</option>
               <option value="men-tshirt">남성 티셔츠</option>
               <option value="men-shirt">남성 셔츠</option>
               <option value="men-knit">남성 니트/가디건</option>
               <option value="men-pants">남성 진/팬츠</option>
+              <option value="men-setup">남성 셋업</option>
               <option value="bag">가방 전체</option>
               <option value="bag-men">남성가방</option>
               <option value="bag-women">여성가방</option>
@@ -1721,12 +1725,14 @@
         "women-blouse": "여성 셔츠/블라우스",
         "women-knit": "여성 니트/가디건",
         "women-pants": "여성 진/팬츠",
+        "women-setup": "여성 셋업",
         men: "남성 전체",
         "men-outer": "남성 아우터",
         "men-tshirt": "남성 티셔츠",
         "men-shirt": "남성 셔츠",
         "men-knit": "남성 니트/가디건",
         "men-pants": "남성 진/팬츠",
+        "men-setup": "남성 셋업",
         bag: "가방 전체",
         "bag-men": "남성가방",
         "bag-women": "여성가방",
@@ -1753,8 +1759,8 @@
       })[value] || value || "상품";
     }
     const categoryChildren = {
-      women: ["women-outer", "women-tshirt", "women-blouse", "women-knit", "women-pants"],
-      men: ["men-outer", "men-tshirt", "men-shirt", "men-knit", "men-pants"],
+      women: ["women-outer", "women-tshirt", "women-blouse", "women-knit", "women-pants", "women-setup"],
+      men: ["men-outer", "men-tshirt", "men-shirt", "men-knit", "men-pants", "men-setup"],
       bag: ["bag-men", "bag-women"],
       wallet: ["wallet-men", "wallet-women"],
       shoes: ["shoes-men", "shoes-women"],
