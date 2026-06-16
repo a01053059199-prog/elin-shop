@@ -473,6 +473,7 @@ const defaultCategoryCards = [
   { title: "BAG", text: "토트 · 숄더 · 미니백", image: "" },
   { title: "WALLET", text: "반지갑 · 장지갑 · 카드지갑", image: "" },
   { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "" },
+  { title: "GOLF", text: "웨어 · 골프백 · 용품", image: "" },
   { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "" },
   { title: "WATCH", text: "클래식 · 데일리", image: "" }
 ];
@@ -609,7 +610,7 @@ function normalizeSiteSettings(input = {}) {
     };
   });
   settings.heroSlides = cleanVisualItems(input.heroSlides, defaultHeroSlides, 4, true);
-  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, 7)
+  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, defaultCategoryCards.length)
     .map(card => ({
       ...card,
       image: legacyCategoryImageUrls.has(card.image) ? "" : card.image
