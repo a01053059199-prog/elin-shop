@@ -1768,8 +1768,19 @@
       accessory: ["wallet-men", "wallet-women", "accessory-belt", "accessory-hat", "accessory-scarf", "accessory-glasses", "accessory-jewelry"],
       watch: ["watch-men", "watch-women"]
     };
-    function categoryMatches(productCategory, filter) {
-      const product = String(productCategory || "");
+    function inferCategoryGroup(productItem) {
+      if (!productItem || typeof productItem !== "object") return String(productItem || "");
+      const category = String(productItem.category || "").trim();
+      const text = `${productItem.name || ""} ${productItem.category || ""} ${productItem.keywords || ""}`.toLowerCase();
+      if (/가방|핸드백|토트|숄더|크로스|미니백|백\b|bag|tote|shoulder|cross/.test(text)) return category.startsWith("bag") ? category : "bag";
+      if (/신발|슈즈|스니커즈|로퍼|샌들|운동화|부츠|shoes|sneakers|loafer|sandal|boots/.test(text)) return category.startsWith("shoes") ? category : "shoes";
+      if (/지갑|반지갑|장지갑|카드지갑|wallet/.test(text)) return category.startsWith("wallet") ? category : "wallet";
+      if (/시계|워치|watch|rolex/.test(text)) return category.startsWith("watch") ? category : "watch";
+      if (/골프|golf/.test(text)) return category.startsWith("golf") ? category : "golf";
+      return category;
+    }
+    function categoryMatches(productItem, filter) {
+      const product = inferCategoryGroup(productItem);
       const selected = String(filter || "");
       if (!selected) return true;
       if (!product) return false;
@@ -2218,7 +2229,7 @@
       const category = document.querySelector("#productCategory").value;
       const filtered = products.filter(product => {
         const text = `${product.name} ${product.category} ${product.keywords || ""}`.toLowerCase();
-        return (!keyword || text.includes(keyword)) && categoryMatches(product.category, category);
+        return (!keyword || text.includes(keyword)) && categoryMatches(product, category);
       });
       const list = document.querySelector("#productList");
       const productRow = product => {
