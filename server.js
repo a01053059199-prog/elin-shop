@@ -1105,7 +1105,14 @@ async function listProductSummaries() {
       "sizes",
       "created_at"
     ].join(",");
-    products = await supabase(`products?select=${encodeURIComponent(summaryColumns)}&order=created_at.desc&limit=1000`);
+    const pageSize = 1000;
+    products = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await supabase(`products?select=${encodeURIComponent(summaryColumns)}&order=created_at.desc&limit=${pageSize}&offset=${offset}`);
+      if (!Array.isArray(page) || !page.length) break;
+      products.push(...page);
+      if (page.length < pageSize) break;
+    }
     if (!Array.isArray(products) || !products.length) {
       throw new Error("Supabase products 테이블에 상품이 없습니다.");
     }
