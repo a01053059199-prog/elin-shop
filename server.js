@@ -543,7 +543,9 @@ const legacyCategoryImageUrls = new Set([
   "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80"
 ]);
 const defaultCategoryImageUrls = new Set(defaultCategoryCards.map(card => card.image).filter(Boolean));
-const fixedDefaultCategoryImages = new Set(["GOLF", "ACCESSORY", "WATCH"]);
+const defaultCategoryTitleByImage = new Map(defaultCategoryCards
+  .filter(card => card.image)
+  .map(card => [card.image, String(card.title || "").toUpperCase()]));
 
 const defaultCheckoutBankAccounts = [
   "신한은행 110-000-000000 ELIN",
@@ -622,13 +624,16 @@ function cleanCategoryCards(items) {
   return defaultCategoryCards.map(base => {
     const titleKey = String(base.title || "").toUpperCase();
     const saved = byTitle.get(titleKey) || {};
+    const savedImage = String(saved.image || "").trim();
+    const savedDefaultTitle = defaultCategoryTitleByImage.get(savedImage);
+    const isWrongDefaultImage = savedDefaultTitle && savedDefaultTitle !== titleKey;
     return {
       ...base,
       title: String(saved.title || base.title || "").trim(),
       text: String(saved.text || base.text || "").trim(),
-      image: fixedDefaultCategoryImages.has(titleKey) || defaultCategoryImageUrls.has(String(saved.image || "").trim()) || legacyCategoryImageUrls.has(String(saved.image || "").trim())
+      image: isWrongDefaultImage || (legacyCategoryImageUrls.has(savedImage) && !savedDefaultTitle)
         ? String(base.image || "").trim()
-        : String(saved.image || base.image || "").trim()
+        : String(savedImage || base.image || "").trim()
     };
   });
 }

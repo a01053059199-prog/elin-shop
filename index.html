@@ -1754,7 +1754,7 @@
       WATCH: defaultCategoryImages[7]
     };
     const defaultCategoryImageUrls = new Set(defaultCategoryImages);
-    const fixedDefaultCategoryImages = new Set(["GOLF", "ACCESSORY", "WATCH"]);
+    const defaultCategoryTitleByImage = new Map(Object.entries(defaultCategoryImageByTitle).map(([title, image]) => [image, title]));
 
     function lineHtml(value) {
       return escapeHtml(value).replace(/\n/g, "<br>");
@@ -1850,7 +1850,9 @@
         if (titleText) seenCategoryTitles.add(titleText);
         const fallbackImage = defaultCategoryImageByTitle[titleText] || defaultCategoryImages[index] || "";
         const savedImage = String(category.image || "").trim();
-        const categoryImage = fixedDefaultCategoryImages.has(titleText) || legacyCategoryImageUrls.has(savedImage) || defaultCategoryImageUrls.has(savedImage) ? "" : savedImage;
+        const savedDefaultTitle = defaultCategoryTitleByImage.get(savedImage);
+        const isWrongDefaultImage = savedDefaultTitle && savedDefaultTitle !== titleText;
+        const categoryImage = isWrongDefaultImage || (legacyCategoryImageUrls.has(savedImage) && !savedDefaultTitle) ? "" : savedImage;
         const finalImage = categoryImage || fallbackImage;
         cardElement.style.backgroundImage = finalImage ? `url('${safeCssUrl(finalImage)}')` : "";
         const title = cardElement.querySelector("strong");
