@@ -661,6 +661,12 @@ function normalizeSiteSettings(input = {}) {
   ]) {
     settings[key] = String(settings[key] || "").trim();
   }
+  if (/\uFFFD|\?{2,}/.test(settings.productDetailTitle)) {
+    settings.productDetailTitle = defaultSiteSettings.productDetailTitle;
+  }
+  if (/\uFFFD|\?{2,}/.test(settings.productDetailText)) {
+    settings.productDetailText = defaultSiteSettings.productDetailText;
+  }
   settings.checkoutBankAccounts = (Array.isArray(input.checkoutBankAccounts)
     ? input.checkoutBankAccounts
     : String(input.checkoutBankAccounts || "").split(/\n+/))

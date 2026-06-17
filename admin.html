@@ -1587,8 +1587,8 @@
       setValue("productGuideShippingText", settings.productGuideShippingText);
       setValue("productGuideReturnTitle", settings.productGuideReturnTitle);
       setValue("productGuideReturnText", settings.productGuideReturnText);
-      setValue("productDetailTitle", settings.productDetailTitle);
-      setValue("productDetailText", settings.productDetailText);
+      setValue("productDetailTitle", cleanDisplayText(settings.productDetailTitle, "상품 상세정보"));
+      setValue("productDetailText", cleanDisplayText(settings.productDetailText, "ELIN에서 선별한 상품입니다. 전체 실루엣, 소재감, 디테일을 확인하실 수 있도록 등록된 이미지를 아래에 한 번 더 정리했습니다."));
       setValue("productExchangeTitle", settings.productExchangeTitle);
       setValue("checkoutBankAccounts", (Array.isArray(settings.checkoutBankAccounts) ? settings.checkoutBankAccounts : []).join("\n"));
       setValue("checkoutDepositNotice", settings.checkoutDepositNotice);
@@ -1722,6 +1722,12 @@
     function optionText(value, fallback) {
       return parseOptions(value, fallback).join(", ");
     }
+
+    function cleanDisplayText(value, fallback = "") {
+      const text = String(value || "").replace(/\uFFFD|\?{2,}/g, "").trim();
+      return text || fallback;
+    }
+
     function categoryLabel(value) {
       return ({
         women: "여성 전체",

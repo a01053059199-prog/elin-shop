@@ -782,6 +782,11 @@
       return escapeHtml(value).replace(/\n/g, "<br>");
     }
 
+    function cleanDisplayText(value, fallback = "") {
+      const text = String(value || "").replace(/\uFFFD|\?{2,}/g, "").trim();
+      return text || fallback;
+    }
+
     function productGuide() {
       return {
         purchaseTitle: siteSettings.productGuidePurchaseTitle || "구매 전 안내",
@@ -1147,8 +1152,8 @@
       const title = escapeHtml(product.name);
       const guide = productGuide();
       const related = relatedProducts();
-      const detailTitle = String(siteSettings.productDetailTitle || "상품 상세정보").trim();
-      const detailText = String(siteSettings.productDetailText || "ELIN에서 선별한 상품입니다. 전체 실루엣, 소재감, 디테일을 확인하실 수 있도록 등록된 이미지를 아래에 한 번 더 정리했습니다.").trim();
+      const detailTitle = cleanDisplayText(siteSettings.productDetailTitle, "상품 상세정보");
+      const detailText = cleanDisplayText(siteSettings.productDetailText, "ELIN에서 선별한 상품입니다. 전체 실루엣, 소재감, 디테일을 확인하실 수 있도록 등록된 이미지를 아래에 한 번 더 정리했습니다.");
       const productDescription = String(product.description || "").trim();
 
       document.querySelector("#productRoot").className = "";
