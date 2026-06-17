@@ -618,8 +618,8 @@ function cleanCategoryCards(items) {
     .filter(item => item && typeof item === "object")
     .map(item => [String(item.title || "").trim().toUpperCase(), item])
     .filter(([title]) => title));
-  return defaultCategoryCards.map((base, index) => {
-    const saved = byTitle.get(String(base.title || "").toUpperCase()) || items[index] || {};
+  return defaultCategoryCards.map(base => {
+    const saved = byTitle.get(String(base.title || "").toUpperCase()) || {};
     return {
       ...base,
       title: String(saved.title || base.title || "").trim(),

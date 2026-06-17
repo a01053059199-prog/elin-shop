@@ -1834,10 +1834,10 @@
       const seenCategoryTitles = new Set();
       document.querySelectorAll("[data-category-card]").forEach((cardElement, index) => {
         const fallbackTitle = String(cardElement.querySelector("strong")?.textContent || "").trim().toUpperCase();
-        const category = categoriesByTitle.get(fallbackTitle) || categories[index];
+        const category = categoriesByTitle.get(fallbackTitle);
         cardElement.hidden = false;
         if (!category) {
-          const fallbackImage = defaultCategoryImages[index] || "";
+          const fallbackImage = defaultCategoryImageByTitle[fallbackTitle] || defaultCategoryImages[index] || "";
           cardElement.style.backgroundImage = fallbackImage ? `url('${safeCssUrl(fallbackImage)}')` : "";
           return;
         }
