@@ -524,14 +524,14 @@ const defaultHeroSlides = [
 ];
 
 const defaultCategoryCards = [
-  { title: "WOMEN", text: "아우터 · 니트 · 팬츠", image: "" },
-  { title: "MAN", text: "셔츠 · 아우터 · 팬츠", image: "" },
-  { title: "BAG", text: "토트 · 숄더 · 미니백", image: "" },
-  { title: "WALLET", text: "반지갑 · 장지갑 · 카드지갑", image: "" },
-  { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "" },
+  { title: "WOMEN", text: "아우터 · 니트 · 팬츠", image: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80" },
+  { title: "MAN", text: "셔츠 · 아우터 · 팬츠", image: "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?auto=format&fit=crop&w=700&q=80" },
+  { title: "BAG", text: "토트 · 숄더 · 미니백", image: "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=700&q=80" },
+  { title: "WALLET", text: "반지갑 · 장지갑 · 카드지갑", image: "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=700&q=80" },
+  { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=700&q=80" },
   { title: "GOLF", text: "남성 · 여성 · 골프백 · 모자", image: "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?auto=format&fit=crop&w=700&q=80" },
-  { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "" },
-  { title: "WATCH", text: "클래식 · 데일리", image: "" }
+  { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80" },
+  { title: "WATCH", text: "클래식 · 데일리", image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80" }
 ];
 
 const legacyCategoryImageUrls = new Set([
@@ -542,6 +542,7 @@ const legacyCategoryImageUrls = new Set([
   "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=700&q=80",
   "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=700&q=80"
 ]);
+const defaultCategoryImageUrls = new Set(defaultCategoryCards.map(card => card.image).filter(Boolean));
 
 const defaultCheckoutBankAccounts = [
   "신한은행 110-000-000000 ELIN",
@@ -623,7 +624,9 @@ function cleanCategoryCards(items) {
       ...base,
       title: String(saved.title || base.title || "").trim(),
       text: String(saved.text || base.text || "").trim(),
-      image: String(saved.image || base.image || "").trim()
+      image: defaultCategoryImageUrls.has(String(saved.image || "").trim()) || legacyCategoryImageUrls.has(String(saved.image || "").trim())
+        ? String(base.image || "").trim()
+        : String(saved.image || base.image || "").trim()
     };
   });
 }
@@ -687,7 +690,7 @@ function normalizeSiteSettings(input = {}) {
   settings.categoryCards = cleanCategoryCards(input.categoryCards)
     .map(card => ({
       ...card,
-      image: legacyCategoryImageUrls.has(card.image) ? "" : card.image
+      image: legacyCategoryImageUrls.has(card.image) && !defaultCategoryImageUrls.has(card.image) ? "" : card.image
     }));
   return settings;
 }
