@@ -610,6 +610,24 @@ function cleanVisualItems(items, fallback, limit, hasButton = false) {
   });
 }
 
+function cleanCategoryCards(items) {
+  const cards = cleanVisualItems(items, defaultCategoryCards, defaultCategoryCards.length);
+  if (!Array.isArray(items)) return cards;
+  const byTitle = new Map(items
+    .filter(item => item && typeof item === "object")
+    .map(item => [String(item.title || "").trim().toUpperCase(), item])
+    .filter(([title]) => title));
+  return defaultCategoryCards.map((base, index) => {
+    const saved = byTitle.get(String(base.title || "").toUpperCase()) || items[index] || {};
+    return {
+      ...base,
+      title: String(saved.title || base.title || "").trim(),
+      text: String(saved.text || base.text || "").trim(),
+      image: String(saved.image || base.image || "").trim()
+    };
+  });
+}
+
 function normalizeSiteSettings(input = {}) {
   const settings = { ...defaultSiteSettings, ...(input || {}) };
   for (const key of [
@@ -666,7 +684,7 @@ function normalizeSiteSettings(input = {}) {
     };
   });
   settings.heroSlides = cleanVisualItems(input.heroSlides, defaultHeroSlides, 4, true);
-  settings.categoryCards = cleanVisualItems(input.categoryCards, defaultCategoryCards, defaultCategoryCards.length)
+  settings.categoryCards = cleanCategoryCards(input.categoryCards)
     .map(card => ({
       ...card,
       image: legacyCategoryImageUrls.has(card.image) ? "" : card.image

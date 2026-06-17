@@ -1816,9 +1816,13 @@
       visibleSlides[0]?.classList.add("active");
 
       const categories = Array.isArray(settings.categoryCards) ? settings.categoryCards : [];
+      const categoriesByTitle = new Map(categories
+        .map(category => [String(category?.title || "").trim().toUpperCase(), category])
+        .filter(([title]) => title));
       const seenCategoryTitles = new Set();
       document.querySelectorAll("[data-category-card]").forEach((cardElement, index) => {
-        const category = categories[index];
+        const fallbackTitle = String(cardElement.querySelector("strong")?.textContent || "").trim().toUpperCase();
+        const category = categoriesByTitle.get(fallbackTitle) || categories[index];
         cardElement.hidden = false;
         if (!category) {
           const fallbackImage = defaultCategoryImages[index] || "";
