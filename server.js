@@ -529,7 +529,7 @@ const defaultCategoryCards = [
   { title: "BAG", text: "토트 · 숄더 · 미니백", image: "" },
   { title: "WALLET", text: "반지갑 · 장지갑 · 카드지갑", image: "" },
   { title: "SHOES", text: "스니커즈 · 로퍼 · 샌들", image: "" },
-  { title: "GOLF", text: "남성 · 여성 · 골프백 · 모자", image: "" },
+  { title: "GOLF", text: "남성 · 여성 · 골프백 · 모자", image: "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?auto=format&fit=crop&w=700&q=80" },
   { title: "ACCESSORY", text: "주얼리 · 벨트 · 지갑", image: "" },
   { title: "WATCH", text: "클래식 · 데일리", image: "" }
 ];
