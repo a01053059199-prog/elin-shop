@@ -1768,15 +1768,25 @@
       accessory: ["wallet-men", "wallet-women", "accessory-belt", "accessory-hat", "accessory-scarf", "accessory-glasses", "accessory-jewelry"],
       watch: ["watch-men", "watch-women"]
     };
+    const knownCategories = new Set(Object.keys(categoryChildren).concat(...Object.values(categoryChildren)));
     function inferCategoryGroup(productItem) {
       if (!productItem || typeof productItem !== "object") return String(productItem || "");
       const category = String(productItem.category || "").trim();
-      const text = `${productItem.name || ""} ${productItem.category || ""} ${productItem.keywords || ""}`.toLowerCase();
-      if (/가방|핸드백|토트|숄더|크로스|미니백|백\b|bag|tote|shoulder|cross/.test(text)) return category.startsWith("bag") ? category : "bag";
-      if (/신발|슈즈|스니커즈|로퍼|샌들|운동화|부츠|shoes|sneakers|loafer|sandal|boots/.test(text)) return category.startsWith("shoes") ? category : "shoes";
-      if (/지갑|반지갑|장지갑|카드지갑|wallet/.test(text)) return category.startsWith("wallet") ? category : "wallet";
-      if (/시계|워치|watch|rolex/.test(text)) return category.startsWith("watch") ? category : "watch";
-      if (/골프|golf/.test(text)) return category.startsWith("golf") ? category : "golf";
+      if (knownCategories.has(category)) return category;
+      const categoryText = category.toLowerCase();
+      const fullText = `${productItem.name || ""} ${productItem.category || ""} ${productItem.keywords || ""}`.toLowerCase();
+      if (/가방|핸드백|토트|숄더|크로스|미니백|bag|tote|shoulder|cross/.test(categoryText)) return "bag";
+      if (/신발|슈즈|스니커즈|로퍼|샌들|운동화|부츠|shoes|sneakers|loafer|sandal|boots/.test(categoryText)) return "shoes";
+      if (/쥬얼리|주얼리|목걸이|팔찌|반지|귀걸이|jewelry|jewellery/.test(categoryText)) return "accessory-jewelry";
+      if (/지갑|반지갑|장지갑|카드지갑|wallet/.test(categoryText)) return "wallet";
+      if (/시계|워치|watch|rolex/.test(categoryText)) return "watch";
+      if (/골프|golf/.test(categoryText)) return "golf";
+      if (/진|팬츠|바지|데님|pants|jeans|setup|셋업|셔츠|블라우스|니트|가디건|아우터|티셔츠/.test(categoryText)) {
+        return /남성|맨|men|man/.test(fullText) ? "men" : "women";
+      }
+      if (/가방|핸드백|토트|숄더|크로스|미니백|bag|tote|shoulder|cross/.test(fullText)) return "bag";
+      if (/신발|슈즈|스니커즈|로퍼|샌들|운동화|부츠|shoes|sneakers|loafer|sandal|boots/.test(fullText)) return "shoes";
+      if (/쥬얼리|주얼리|목걸이|팔찌|반지|귀걸이|jewelry|jewellery/.test(fullText)) return "accessory-jewelry";
       return category;
     }
     function categoryMatches(productItem, filter) {
@@ -1794,6 +1804,20 @@
       const images = parseImages(product.images);
       if (!images.length && product.image) images.push(product.image);
       return images.slice(0, productImageLimit);
+    }
+
+    function friendlyApiMessage(text, fallback) {
+      const clean = String(text || "").trim();
+      if (!clean) return fallback;
+      try {
+        const parsed = JSON.parse(clean);
+        if (parsed && parsed.error) return parsed.error;
+        if (parsed && parsed.message) return parsed.message;
+      } catch (_) {}
+      if (/<!doctype|<html|<head|<body|502|bad gateway/i.test(clean)) {
+        return "서버가 잠시 응답하지 않습니다. Render 배포/재시작 상태를 확인한 뒤 다시 저장해주세요.";
+      }
+      return clean.slice(0, 180);
     }
 
     function setImages(images) {
@@ -2528,7 +2552,7 @@
           let result = {};
           try { result = JSON.parse(text); } catch (_) {}
           if (!response.ok || !result.url) {
-            throw new Error(result.error || text || `이미지 ${item.index + 1} 업로드에 실패했습니다.`);
+            throw new Error(friendlyApiMessage(text, `이미지 ${item.index + 1} 업로드에 실패했습니다.`));
           }
           results[item.index] = result.url;
           completed += 1;
@@ -2610,11 +2634,7 @@
       }
       if (!response.ok) {
         const text = await response.text();
-        let message = text;
-        try {
-          message = JSON.parse(text).error || text;
-        } catch (_) {}
-        alert(message || "상품 저장에 실패했습니다.");
+        alert(friendlyApiMessage(text, "상품 저장에 실패했습니다."));
         progress.textContent = "상품 저장 실패";
         if (submitButton) {
           submitButton.disabled = false;
