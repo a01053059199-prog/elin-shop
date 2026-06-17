@@ -15,6 +15,7 @@ const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
 const siteSettingsFile = path.join(dataDir, "site-settings.json");
 const productDescriptionsFile = path.join(dataDir, "product-descriptions.json");
+const visitorStatsFile = path.join(dataDir, "visitor-stats.json");
 const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
@@ -83,6 +84,7 @@ async function ensureData() {
   await ensureJson(customerCenterSettingsFile, null);
   await ensureJson(siteSettingsFile, null);
   await ensureJson(productDescriptionsFile, {});
+  await ensureJson(visitorStatsFile, { total: 0, byDate: {}, lastVisitAt: "" });
 }
 
 async function ensureJson(file, fallback) {
@@ -126,6 +128,60 @@ async function withSupabaseFallback(area, remote, local) {
 function send(res, status, body, type = "application/json; charset=utf-8", headers = {}) {
   res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store", ...headers });
   res.end(type.startsWith("application/json") ? JSON.stringify(body) : body);
+}
+
+function todayKeyKst() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function normalizeVisitorStats(value = {}) {
+  const byDate = value && typeof value.byDate === "object" && !Array.isArray(value.byDate) ? value.byDate : {};
+  return {
+    total: Number(value.total || 0) || 0,
+    byDate,
+    lastVisitAt: String(value.lastVisitAt || "")
+  };
+}
+
+async function visitorStats() {
+  return await withSupabaseFallback("visitor stats", async () => {
+    const rows = await supabase("admin_settings?key=eq.visitor_stats&select=value");
+    const value = rows?.[0]?.value;
+    if (!value) return normalizeVisitorStats(await readJson(visitorStatsFile).catch(() => ({})));
+    return normalizeVisitorStats(typeof value === "string" ? JSON.parse(value || "{}") : value);
+  }, async () => normalizeVisitorStats(await readJson(visitorStatsFile).catch(() => ({}))));
+}
+
+async function saveVisitorStats(stats) {
+  const normalized = normalizeVisitorStats(stats);
+  await writeJson(visitorStatsFile, normalized);
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?on_conflict=key", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify([{ key: "visitor_stats", value: JSON.stringify(normalized) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "visitor stats save");
+    }
+  }
+  return normalized;
+}
+
+async function trackHomepageVisit(req) {
+  if (req.method !== "GET") return;
+  const stats = await visitorStats();
+  const today = todayKeyKst();
+  stats.total += 1;
+  stats.byDate[today] = (Number(stats.byDate[today] || 0) || 0) + 1;
+  stats.lastVisitAt = new Date().toISOString();
+  await saveVisitorStats(stats);
 }
 
 function readBody(req) {
@@ -1911,6 +1967,18 @@ async function handleApi(req, res, url) {
     return send(res, 200, listActiveMembers());
   }
 
+  if (url.pathname === "/api/admin/visits" && req.method === "GET") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const stats = await visitorStats();
+    const today = todayKeyKst();
+    return send(res, 200, {
+      total: stats.total,
+      today: Number(stats.byDate[today] || 0) || 0,
+      todayKey: today,
+      lastVisitAt: stats.lastVisitAt
+    });
+  }
+
   if (url.pathname === "/api/inquiries" && req.method === "POST") {
     const member = currentMember(req);
     return send(res, 201, await createInquiry(await readBody(req), member), "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
@@ -2040,6 +2108,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname === "/health") return send(res, 200, { ok: true, storage: useSupabase ? "supabase" : "json" });
     if (url.pathname.startsWith("/api/")) return await handleApi(req, res, url);
+    if (url.pathname === "/" || url.pathname === "/index.html") await trackHomepageVisit(req);
     return await serveStatic(req, res, url);
   } catch (error) {
     send(res, 500, { error: error.message || "서버 오류가 발생했습니다." });

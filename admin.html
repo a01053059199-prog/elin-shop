@@ -652,6 +652,7 @@
     let members = [];
     let activeMembers = [];
     let inquiries = [];
+    let visitStats = { today: 0, total: 0 };
     let customerGuideItems = [];
     let customerFaqs = [];
     let footerLinks = [];
@@ -1061,7 +1062,8 @@
     async function refresh(options = {}) {
       const requests = [
         fetch("/api/orders", { headers: headers() }).then(response => response.json()),
-        fetch("/api/admin/active-members", { headers: headers() }).then(response => response.json())
+        fetch("/api/admin/active-members", { headers: headers() }).then(response => response.json()),
+        fetch("/api/admin/visits", { headers: headers() }).then(response => response.json())
       ];
       const includeDetails = !options.fast && (!options.polling || adminDetailsLoaded);
       if (includeDetails) {
@@ -1091,10 +1093,11 @@
         throw error;
       }
       if (!options.polling) products = results.shift();
-      const [nextOrders, nextActiveMembers, nextMembers = members, nextInquiries = inquiries] = results;
+      const [nextOrders, nextActiveMembers, nextVisitStats = visitStats, nextMembers = members, nextInquiries = inquiries] = results;
       handleNotifications(nextOrders, nextMembers, nextInquiries, options);
       orders = nextOrders;
       activeMembers = nextActiveMembers;
+      visitStats = nextVisitStats || { today: 0, total: 0 };
       if (includeDetails) {
         members = nextMembers;
         inquiries = nextInquiries;
@@ -1684,6 +1687,8 @@
       const count = status => orders.filter(order => order.status === status).length;
       const unanswered = inquiries.filter(inquiry => inquiry.status !== "답변완료").length;
       document.querySelector("#dashboard").innerHTML = `
+        <div class="metric"><strong>${Number(visitStats.today || 0).toLocaleString("ko-KR")}</strong><span>오늘 방문</span></div>
+        <div class="metric"><strong>${Number(visitStats.total || 0).toLocaleString("ko-KR")}</strong><span>전체 방문</span></div>
         <div class="metric"><strong>${orders.length}</strong><span>총 주문</span></div>
         <div class="metric"><strong>${count("입금대기")}</strong><span>입금대기</span></div>
         <div class="metric"><strong>${count("배송중")}</strong><span>배송중</span></div>
