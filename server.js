@@ -8,8 +8,10 @@ const dataDir = path.join(root, "data");
 const productsFile = path.join(dataDir, "products.json");
 const ordersFile = path.join(dataDir, "orders.json");
 const inquiriesFile = path.join(dataDir, "inquiries.json");
+const inquiryRepliesFile = path.join(dataDir, "inquiry-replies.json");
 const reviewsFile = path.join(dataDir, "reviews.json");
 const membersFile = path.join(dataDir, "members.json");
+const memberRewardsFile = path.join(dataDir, "member-rewards.json");
 const adminSettingsFile = path.join(dataDir, "admin-settings.json");
 const memberPageSettingsFile = path.join(dataDir, "member-page-settings.json");
 const customerCenterSettingsFile = path.join(dataDir, "customer-center-settings.json");
@@ -78,6 +80,7 @@ async function ensureData() {
   await ensureJson(productsFile, seedProducts);
   await ensureJson(ordersFile, []);
   await ensureJson(inquiriesFile, []);
+  await ensureJson(inquiryRepliesFile, {});
   await ensureJson(reviewsFile, []);
   await ensureJson(adminSettingsFile, null);
   await ensureJson(memberPageSettingsFile, null);
@@ -105,6 +108,7 @@ async function writeJson(file, value) {
 
 async function readLocalMembers() {
   await ensureJson(membersFile, []);
+  await ensureJson(memberRewardsFile, {});
   return await readJson(membersFile);
 }
 
@@ -791,6 +795,78 @@ function publicMember(member) {
     phone: member.phone || "",
     address: member.address || ""
   };
+}
+
+function normalizeCouponList(value) {
+  const source = Array.isArray(value) ? value : String(value || "").split(/\r?\n|,/);
+  return source.map(item => String(item || "").trim()).filter(Boolean).slice(0, 30);
+}
+
+function normalizeMemberReward(value = {}) {
+  return {
+    mileage: Math.max(0, Math.floor(Number(value.mileage || value.points || 0) || 0)),
+    coupons: normalizeCouponList(value.coupons)
+  };
+}
+
+function normalizeMemberRewards(value = {}) {
+  const normalized = {};
+  Object.entries(value && typeof value === "object" ? value : {}).forEach(([memberId, reward]) => {
+    const id = String(memberId || "").trim();
+    if (id) normalized[id] = normalizeMemberReward(reward);
+  });
+  return normalized;
+}
+
+async function memberRewards() {
+  const localRewards = async () => {
+    try {
+      return normalizeMemberRewards(await readJson(memberRewardsFile));
+    } catch {
+      return {};
+    }
+  };
+  const local = await localRewards();
+  if (useSupabase) {
+    try {
+      const rows = await supabase("admin_settings?key=eq.member_rewards&select=value");
+      const latest = rows?.[rows.length - 1];
+      if (latest?.value) return normalizeMemberRewards(JSON.parse(latest.value));
+    } catch {}
+  }
+  return local;
+}
+
+async function saveMemberRewards(rewards) {
+  const normalized = normalizeMemberRewards(rewards);
+  await writeJson(memberRewardsFile, normalized);
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?key=eq.member_rewards", { method: "DELETE" });
+    } catch {}
+    try {
+      await supabase("admin_settings", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify([{ key: "member_rewards", value: JSON.stringify(normalized) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "member rewards save");
+    }
+  }
+  return normalized;
+}
+
+async function getMemberReward(memberId) {
+  const rewards = await memberRewards();
+  return normalizeMemberReward(rewards[String(memberId || "")]);
+}
+
+async function setMemberReward(memberId, input = {}) {
+  const rewards = await memberRewards();
+  rewards[String(memberId || "")] = normalizeMemberReward(input);
+  await saveMemberRewards(rewards);
+  return rewards[String(memberId || "")];
 }
 
 function listActiveMembers() {
@@ -1563,13 +1639,94 @@ async function deleteOrder(id) {
   });
 }
 
+function normalizeInquiryReply(value = {}) {
+  return {
+    status: String(value.status || "").trim(),
+    answer: String(value.answer || "").trim(),
+    admin_memo: String(value.admin_memo || "").trim(),
+    updatedAt: String(value.updatedAt || value.updated_at || "").trim()
+  };
+}
+
+function normalizeInquiryReplies(value = {}) {
+  const normalized = {};
+  Object.entries(value && typeof value === "object" ? value : {}).forEach(([inquiryId, reply]) => {
+    const id = String(inquiryId || "").trim();
+    if (id) normalized[id] = normalizeInquiryReply(reply);
+  });
+  return normalized;
+}
+
+async function inquiryReplies() {
+  const localReplies = async () => {
+    try {
+      return normalizeInquiryReplies(await readJson(inquiryRepliesFile));
+    } catch {
+      return {};
+    }
+  };
+  const local = await localReplies();
+  if (useSupabase) {
+    try {
+      const rows = await supabase("admin_settings?key=eq.inquiry_replies&select=value");
+      const latest = rows?.[rows.length - 1];
+      if (latest?.value) return normalizeInquiryReplies(JSON.parse(latest.value));
+    } catch {}
+  }
+  return local;
+}
+
+async function saveInquiryReplies(replies) {
+  const normalized = normalizeInquiryReplies(replies);
+  await writeJson(inquiryRepliesFile, normalized);
+  if (useSupabase) {
+    try {
+      await supabase("admin_settings?key=eq.inquiry_replies", { method: "DELETE" });
+    } catch {}
+    try {
+      await supabase("admin_settings", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify([{ key: "inquiry_replies", value: JSON.stringify(normalized) }])
+      });
+    } catch (error) {
+      logSupabaseFallback(error, "inquiry replies save");
+    }
+  }
+  return normalized;
+}
+
+async function saveInquiryReply(id, input = {}) {
+  const replies = await inquiryReplies();
+  replies[String(id || "")] = normalizeInquiryReply({
+    status: input.status,
+    answer: input.answer,
+    admin_memo: input.admin_memo,
+    updatedAt: new Date().toISOString()
+  });
+  await saveInquiryReplies(replies);
+  return replies[String(id || "")];
+}
+
+function mergeInquiryReply(inquiry, reply = {}) {
+  const normalizedReply = normalizeInquiryReply(reply);
+  return {
+    ...inquiry,
+    status: normalizedReply.status || inquiry.status || "접수",
+    answer: normalizedReply.answer || inquiry.answer || "",
+    admin_memo: normalizedReply.admin_memo || inquiry.admin_memo || "",
+    replyUpdatedAt: normalizedReply.updatedAt || inquiry.replyUpdatedAt || ""
+  };
+}
+
 async function listInquiries() {
   const inquiries = await withSupabaseFallback(
     "inquiries list",
     () => supabase("inquiries?select=*&order=created_at.desc"),
     () => readJson(inquiriesFile)
   );
-  return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
+  const replies = await inquiryReplies();
+  return inquiries.map(item => mergeInquiryReply({ ...item, createdAt: item.createdAt || item.created_at }, replies[item.id]));
 }
 
 async function listMemberInquiries(memberId) {
@@ -1579,7 +1736,8 @@ async function listMemberInquiries(memberId) {
     () => supabase(`inquiries?member_id=eq.${encodeURIComponent(memberId)}&select=*&order=created_at.desc`),
     async () => (await readJson(inquiriesFile)).filter(item => item.member_id === memberId)
   );
-  return inquiries.map(item => ({ ...item, createdAt: item.createdAt || item.created_at }));
+  const replies = await inquiryReplies();
+  return inquiries.map(item => mergeInquiryReply({ ...item, createdAt: item.createdAt || item.created_at }, replies[item.id]));
 }
 
 async function createInquiry(input, member) {
@@ -1620,10 +1778,9 @@ async function createInquiry(input, member) {
 }
 
 async function updateInquiry(id, input) {
+  const reply = await saveInquiryReply(id, input);
   const patch = {
     status: String(input.status || "접수").trim(),
-    answer: String(input.answer || "").trim(),
-    admin_memo: String(input.admin_memo || "").trim()
   };
   return await withSupabaseFallback("inquiry update", async () => {
     const [updated] = await supabase(`inquiries?id=eq.${encodeURIComponent(id)}`, {
@@ -1632,14 +1789,16 @@ async function updateInquiry(id, input) {
       body: JSON.stringify(patch)
     });
     if (!updated) throw new Error("문의를 찾을 수 없습니다.");
-    return { ...updated, createdAt: updated.created_at };
+    return mergeInquiryReply({ ...updated, createdAt: updated.created_at }, reply);
   }, async () => {
     const inquiries = await readJson(inquiriesFile);
     const inquiry = inquiries.find(item => item.id === id);
-    if (!inquiry) throw new Error("문의를 찾을 수 없습니다.");
-    Object.assign(inquiry, patch);
-    await writeJson(inquiriesFile, inquiries);
-    return inquiry;
+    if (inquiry) {
+      Object.assign(inquiry, patch);
+      await writeJson(inquiriesFile, inquiries);
+      return mergeInquiryReply(inquiry, reply);
+    }
+    return mergeInquiryReply({ id, ...patch, createdAt: new Date().toISOString() }, reply);
   });
 }
 
@@ -1709,12 +1868,14 @@ async function listMembers() {
     () => supabase("members?select=*"),
     () => readLocalMembers()
   );
+  const rewards = await memberRewards();
   return members
-    .map(adminMemberView)
+    .map(member => adminMemberView(member, rewards[member.id]))
     .sort((a, b) => String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id)));
 }
 
-function adminMemberView(member) {
+function adminMemberView(member, reward = {}) {
+  const normalizedReward = normalizeMemberReward(reward);
   return {
     id: member.id,
     username: member.username || "",
@@ -1722,7 +1883,9 @@ function adminMemberView(member) {
     name: member.name || "",
     phone: member.phone || "",
     address: member.address || "",
-    createdAt: member.createdAt || member.created_at || ""
+    createdAt: member.createdAt || member.created_at || "",
+    mileage: normalizedReward.mileage,
+    coupons: normalizedReward.coupons
   };
 }
 
@@ -1787,17 +1950,19 @@ async function updateMember(id, input) {
     for (const [token, session] of memberSessions.entries()) {
       if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(updated) });
     }
-    return adminMemberView(updated);
+    const reward = await setMemberReward(id, input);
+    return adminMemberView(updated, reward);
   }, async () => {
     const members = await readLocalMembers();
     const member = members.find(item => item.id === id);
     if (!member) throw new Error("회원을 찾을 수 없습니다.");
     Object.assign(member, patch);
     await writeJson(membersFile, members);
+    const reward = await setMemberReward(id, input);
     for (const [token, session] of memberSessions.entries()) {
       if (session.id === id) memberSessions.set(token, { ...session, ...publicMember(member) });
     }
-    return adminMemberView(member);
+    return adminMemberView(member, reward);
   });
 }
 
@@ -1808,6 +1973,9 @@ async function deleteMember(id) {
     const members = await readLocalMembers();
     await writeJson(membersFile, members.filter(member => member.id !== id));
   });
+  const rewards = await memberRewards();
+  delete rewards[id];
+  await saveMemberRewards(rewards);
   for (const [token, session] of memberSessions.entries()) {
     if (session.id === id) memberSessions.delete(token);
   }
@@ -1943,7 +2111,8 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/auth/me" && req.method === "GET") {
     const member = currentMember(req);
-    return send(res, 200, { member: publicMember(member) }, "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
+    const reward = member ? await getMemberReward(member.id) : normalizeMemberReward();
+    return send(res, 200, { member: publicMember(member), reward }, "application/json; charset=utf-8", member ? refreshMemberSession(member) : {});
   }
 
   if (url.pathname === "/api/member-page-settings" && req.method === "GET") {
