@@ -661,6 +661,7 @@
     let heroSlides = [];
     let categoryCards = [];
     let editingMemberId = "";
+    const inquiryDrafts = new Map();
     let adminDetailsLoaded = false;
     let adminSettingsLoaded = false;
     let adminProductRenderToken = 0;
@@ -993,6 +994,14 @@
     document.querySelector("#memberSearch").addEventListener("input", renderMembers);
     document.querySelector("#inquirySearch").addEventListener("input", renderInquiries);
     document.querySelector("#inquiryStatus").addEventListener("change", renderInquiries);
+    document.querySelector("#inquiryList").addEventListener("input", event => {
+      const match = event.target.id && event.target.id.match(/^inquiry-(?:answer|memo)-(.+)$/);
+      if (match) rememberInquiryDraft(match[1]);
+    });
+    document.querySelector("#inquiryList").addEventListener("change", event => {
+      const match = event.target.id && event.target.id.match(/^inquiry-status-(.+)$/);
+      if (match) rememberInquiryDraft(match[1]);
+    });
     document.querySelector("#enableNotifyBtn").addEventListener("click", enableOrderNotifications);
     document.querySelector("#orderAlertOpen").addEventListener("click", () => {
       stopAlarmLoop();
@@ -1110,7 +1119,7 @@
       renderOrders();
       if (includeDetails) renderMembers();
       renderActiveMembers();
-      if (includeDetails) renderInquiries();
+      if (includeDetails && !isEditingInquiry()) renderInquiries();
     }
 
     function showAdmin() {
@@ -2411,6 +2420,34 @@
       `).join("") : "<p>회원 정보가 없습니다.</p>";
     }
 
+    function isEditingInquiry() {
+      const active = document.activeElement;
+      return Boolean(active && active.closest && active.closest("#inquiryList") && ["TEXTAREA", "SELECT", "INPUT"].includes(active.tagName));
+    }
+
+    function readInquiryDraft(id) {
+      const saved = inquiryDrafts.get(id);
+      if (saved) return saved;
+      const inquiry = inquiries.find(item => item.id === id) || {};
+      return {
+        status: inquiry.status || "접수",
+        answer: inquiry.answer || "",
+        admin_memo: inquiry.admin_memo || ""
+      };
+    }
+
+    function rememberInquiryDraft(id) {
+      const status = document.getElementById(`inquiry-status-${id}`);
+      const answer = document.getElementById(`inquiry-answer-${id}`);
+      const memo = document.getElementById(`inquiry-memo-${id}`);
+      if (!status || !answer || !memo) return;
+      inquiryDrafts.set(id, {
+        status: status.value,
+        answer: answer.value,
+        admin_memo: memo.value
+      });
+    }
+
     function renderInquiries() {
       const keyword = document.querySelector("#inquirySearch").value.trim().toLowerCase();
       const statusFilter = document.querySelector("#inquiryStatus").value;
@@ -2419,6 +2456,9 @@
         return (!keyword || text.includes(keyword)) && (!statusFilter || inquiry.status === statusFilter);
       });
       document.querySelector("#inquiryList").innerHTML = filtered.length ? filtered.map(inquiry => `
+        ${(() => {
+          const draft = readInquiryDraft(inquiry.id);
+          return `
         <article class="order">
           <div>
             <strong>${inquiry.id}</strong>
@@ -2431,16 +2471,18 @@
           <div>
             <label>처리 상태</label>
             <select id="inquiry-status-${inquiry.id}">
-              ${["접수", "확인중", "답변완료", "보류"].map(status => `<option ${inquiry.status === status ? "selected" : ""}>${status}</option>`).join("")}
+              ${["접수", "확인중", "답변완료", "보류"].map(status => `<option ${draft.status === status ? "selected" : ""}>${status}</option>`).join("")}
             </select>
             <label>고객 답변</label>
-            <textarea id="inquiry-answer-${inquiry.id}" placeholder="고객에게 안내할 답변">${inquiry.answer || ""}</textarea>
+            <textarea id="inquiry-answer-${inquiry.id}" placeholder="고객에게 안내할 답변">${escapeHtml(draft.answer)}</textarea>
             <label>관리자 메모</label>
-            <textarea id="inquiry-memo-${inquiry.id}" placeholder="내부 메모">${inquiry.admin_memo || ""}</textarea>
+            <textarea id="inquiry-memo-${inquiry.id}" placeholder="내부 메모">${escapeHtml(draft.admin_memo)}</textarea>
             <div style="height:10px"></div>
             <button type="button" onclick="saveInquiry('${inquiry.id}', this)">문의 저장</button>
           </div>
         </article>
+          `;
+        })()}
       `).join("") : "<p>고객문의가 없습니다.</p>";
     }
 
@@ -2772,6 +2814,8 @@
     };
 
     window.saveInquiry = async (id, button) => {
+      rememberInquiryDraft(id);
+      const draft = readInquiryDraft(id);
       if (button) {
         button.disabled = true;
         button.textContent = "저장 중";
@@ -2780,9 +2824,9 @@
         method: "PATCH",
         headers: headers(),
         body: JSON.stringify({
-          status: document.querySelector(`#inquiry-status-${id}`).value,
-          answer: document.querySelector(`#inquiry-answer-${id}`).value,
-          admin_memo: document.querySelector(`#inquiry-memo-${id}`).value
+          status: draft.status,
+          answer: draft.answer,
+          admin_memo: draft.admin_memo
         })
       });
       if (!response.ok) {
@@ -2794,6 +2838,7 @@
         }
         return;
       }
+      inquiryDrafts.delete(id);
       await refresh();
       alert("문의 답변을 저장했습니다.");
     };
