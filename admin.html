@@ -1811,6 +1811,7 @@
       if (!product) return false;
       if (product === selected) return true;
       if ((categoryChildren[selected] || []).includes(product)) return true;
+      if (product === "bag" && ["bag-men", "bag-women"].includes(selected)) return true;
       return false;
     }
 
@@ -2362,7 +2363,7 @@
     function renderMembers() {
       const keyword = document.querySelector("#memberSearch").value.trim().toLowerCase();
       const filtered = members.filter(member => {
-        const text = `${member.username || ""} ${member.name || ""} ${member.phone || ""} ${member.address || ""} ${member.email || ""}`.toLowerCase();
+        const text = `${member.username || ""} ${member.name || ""} ${member.phone || ""} ${member.address || ""} ${member.email || ""} ${member.mileage || ""} ${(member.coupons || []).join(" ")}`.toLowerCase();
         return !keyword || text.includes(keyword);
       });
       document.querySelector("#memberList").innerHTML = filtered.length ? filtered.map(member => editingMemberId === member.id ? `
@@ -2381,6 +2382,11 @@
             <input id="member-address-${member.id}" value="${escapeHtml(member.address)}" />
             <label>이메일</label>
             <input id="member-email-${member.id}" value="${escapeHtml(member.email)}" />
+            <label>마일리지</label>
+            <input id="member-mileage-${member.id}" inputmode="numeric" value="${Number(member.mileage || 0).toLocaleString("ko-KR")}" placeholder="0" />
+            <label>쿠폰</label>
+            <textarea id="member-coupons-${member.id}" rows="3" placeholder="신규가입 5,000원&#10;무료배송">${escapeHtml((member.coupons || []).join("\n"))}</textarea>
+            <div class="hint">쿠폰은 줄바꿈으로 여러 개 입력할 수 있습니다.</div>
           </div>
           <div class="actions">
             <button type="button" onclick="saveMember('${member.id}')">저장</button>
@@ -2394,6 +2400,7 @@
             <strong>${escapeHtml(member.name || "이름 없음")} <span class="meta">(${escapeHtml(member.username || "-")})</span></strong>
             <div class="meta">연락처 ${escapeHtml(member.phone || "-")} · 주소 ${escapeHtml(member.address || "-")}</div>
             <div class="meta">이메일 ${escapeHtml(member.email || "-")} · 가입일 ${member.createdAt ? new Date(member.createdAt).toLocaleString("ko-KR") : "-"}</div>
+            <div class="meta">마일리지 ${Number(member.mileage || 0).toLocaleString("ko-KR")}원 · 쿠폰 ${(member.coupons || []).length ? escapeHtml((member.coupons || []).join(", ")) : "없음"}</div>
           </div>
           <div class="actions">
             <button class="ghost" type="button" onclick="copyMember('${member.id}')">정보 복사</button>
@@ -2440,7 +2447,7 @@
     window.copyMember = async id => {
       const member = members.find(item => item.id === id);
       if (!member) return;
-      const text = `아이디: ${member.username || "-"}\n이름: ${member.name || "-"}\n연락처: ${member.phone || "-"}\n주소: ${member.address || "-"}\n이메일: ${member.email || "-"}`;
+      const text = `아이디: ${member.username || "-"}\n이름: ${member.name || "-"}\n연락처: ${member.phone || "-"}\n주소: ${member.address || "-"}\n이메일: ${member.email || "-"}\n마일리지: ${Number(member.mileage || 0).toLocaleString("ko-KR")}원\n쿠폰: ${(member.coupons || []).join(", ") || "없음"}`;
       try {
         await navigator.clipboard.writeText(text);
         alert("회원 정보가 복사되었습니다.");
@@ -2466,7 +2473,9 @@
         name: formValue(`member-name-${id}`),
         phone: formValue(`member-phone-${id}`),
         address: formValue(`member-address-${id}`),
-        email: formValue(`member-email-${id}`)
+        email: formValue(`member-email-${id}`),
+        mileage: formValue(`member-mileage-${id}`).replace(/[^0-9]/g, ""),
+        coupons: formValue(`member-coupons-${id}`).split(/\r?\n/).map(item => item.trim()).filter(Boolean)
       };
       const response = await fetch(`/api/admin/members/${encodeURIComponent(id)}`, {
         method: "PATCH",

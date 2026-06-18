@@ -1518,6 +1518,7 @@
       if (!product) return false;
       if (product === selected) return true;
       if ((categoryChildren[selected] || []).includes(product)) return true;
+      if (product === "bag" && ["bag-men", "bag-women"].includes(selected)) return true;
       return false;
     };
 
