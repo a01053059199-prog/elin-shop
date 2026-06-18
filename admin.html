@@ -2479,8 +2479,7 @@
             <textarea id="inquiry-memo-${inquiry.id}" placeholder="내부 메모">${escapeHtml(draft.admin_memo)}</textarea>
             <div style="height:10px"></div>
             <div class="actions">
-              <button type="button" onclick="saveInquiry('${inquiry.id}', this)">문의 저장</button>
-              <button class="ghost" type="button" onclick="completeInquiry('${inquiry.id}', this)">답변완료</button>
+              <button type="button" onclick="completeInquiry('${inquiry.id}', this)">문의답변</button>
               <button class="danger" type="button" onclick="deleteInquiry('${inquiry.id}')">삭제</button>
             </div>
           </div>
@@ -2820,6 +2819,7 @@
     window.saveInquiry = async (id, button) => {
       rememberInquiryDraft(id);
       const draft = readInquiryDraft(id);
+      const originalButtonText = button?.textContent || "문의답변";
       if (button) {
         button.disabled = true;
         button.textContent = "저장 중";
@@ -2838,7 +2838,7 @@
         alert(result.error || "문의 저장에 실패했습니다.");
         if (button) {
           button.disabled = false;
-          button.textContent = "문의 저장";
+          button.textContent = originalButtonText;
         }
         return;
       }
