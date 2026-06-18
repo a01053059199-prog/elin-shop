@@ -2478,7 +2478,11 @@
             <label>관리자 메모</label>
             <textarea id="inquiry-memo-${inquiry.id}" placeholder="내부 메모">${escapeHtml(draft.admin_memo)}</textarea>
             <div style="height:10px"></div>
-            <button type="button" onclick="saveInquiry('${inquiry.id}', this)">문의 저장</button>
+            <div class="actions">
+              <button type="button" onclick="saveInquiry('${inquiry.id}', this)">문의 저장</button>
+              <button class="ghost" type="button" onclick="completeInquiry('${inquiry.id}', this)">답변완료</button>
+              <button class="danger" type="button" onclick="deleteInquiry('${inquiry.id}')">삭제</button>
+            </div>
           </div>
         </article>
           `;
@@ -2841,6 +2845,30 @@
       inquiryDrafts.delete(id);
       await refresh();
       alert("문의 답변을 저장했습니다.");
+    };
+
+    window.completeInquiry = async (id, button) => {
+      const status = document.getElementById(`inquiry-status-${id}`);
+      if (status) status.value = "답변완료";
+      rememberInquiryDraft(id);
+      await saveInquiry(id, button);
+    };
+
+    window.deleteInquiry = async id => {
+      const inquiry = inquiries.find(item => item.id === id);
+      if (!confirm(`${inquiry?.subject || id} 문의를 삭제할까요?`)) return;
+      const response = await fetch(`/api/admin/inquiries/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: headers()
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        alert(result.error || "문의 삭제에 실패했습니다.");
+        return;
+      }
+      inquiryDrafts.delete(id);
+      await refresh();
+      alert("문의를 삭제했습니다.");
     };
 
     async function restoreSession() {

@@ -1802,6 +1802,19 @@ async function updateInquiry(id, input) {
   });
 }
 
+async function deleteInquiry(id) {
+  await withSupabaseFallback("inquiry delete", async () => {
+    await supabase(`inquiries?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+  }, async () => {
+    const inquiries = await readJson(inquiriesFile);
+    await writeJson(inquiriesFile, inquiries.filter(item => item.id !== id));
+  });
+  const replies = await inquiryReplies();
+  delete replies[id];
+  await saveInquiryReplies(replies);
+  return { ok: true };
+}
+
 async function listReviews() {
   const reviews = await readJson(reviewsFile);
   return reviews.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -2196,6 +2209,12 @@ async function handleApi(req, res, url) {
     if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
     const id = decodeURIComponent(url.pathname.split("/").pop());
     return send(res, 200, await updateInquiry(id, await readBody(req)));
+  }
+
+  if (url.pathname.startsWith("/api/admin/inquiries/") && req.method === "DELETE") {
+    if (!(await requireAdmin(req))) return send(res, 401, { error: "관리자 로그인이 필요합니다." });
+    const id = decodeURIComponent(url.pathname.split("/").pop());
+    return send(res, 200, await deleteInquiry(id));
   }
 
   if (url.pathname === "/api/member/orders" && req.method === "GET") {
